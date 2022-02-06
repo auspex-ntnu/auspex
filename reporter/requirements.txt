@@ -1,0 +1,2 @@
+ordered-set==4.0.2; python_version >= "3.5"
+pylatex==1.4.1

@@ -1,0 +1,19 @@
+[tool.poetry]
+name = "restapi"
+version = "0.1.0"
+description = ""
+authors = ["Peder Hovdan Andresen <pedeha@stud.ntnu.no>"]
+
+[tool.poetry.dependencies]
+python = "^3.10"
+fastapi = "^0.73.0"
+uvicorn = "^0.17.4"
+
+[tool.poetry.dev-dependencies]
+pytest = "^5.2"
+mypy = "^0.931"
+black = "^22.1.0"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"

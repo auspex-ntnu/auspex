@@ -1,0 +1,17 @@
+FROM python:3.10-alpine
+
+ENV SNYK_TOKEN=<TOKEN>
+ENV USER_ID=1234
+
+# https://static.snyk.io/cli/latest/release.json
+# https://docs.snyk.io/features/snyk-cli/install-the-snyk-cli#install-with-standalone-executables
+# https://github.com/gliderlabs/docker-alpine/blob/master/docs/usage.md
+RUN : \
+    && apk add --update-cache curl \
+    && rm -rf /var/cache/apk/* \
+    && curl https://static.snyk.io/cli/v1.840.0/snyk-alpine -o snyk \
+    && chmod +x ./snyk \
+    && mv ./snyk /usr/local/bin/ \
+    && :
+
+CMD ["/bin/ash"]
