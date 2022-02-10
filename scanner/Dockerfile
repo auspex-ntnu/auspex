@@ -1,5 +1,3 @@
-
-
 FROM python:3.10-slim as scanner-requirements
 
 WORKDIR /tmp

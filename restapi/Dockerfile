@@ -16,4 +16,5 @@ RUN pip install --no-cache-dir --upgrade -r /code/requirements.txt
 
 # Copy application code and run application
 COPY ./ /code
+COPY ../auspex_core /auspex_core
 CMD ["uvicorn", "restapi:app", "--host", "0.0.0.0", "--port", "80"]

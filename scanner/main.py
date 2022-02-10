@@ -12,8 +12,9 @@ app = FastAPI()
 
 
 class ScanRequest(BaseModel):
-    image: str
+    images: list[str]
     backend: str = "snyk"
+    pdf: bool = False
 
 
 @app.exception_handler(APIError)
@@ -23,10 +24,10 @@ async def handle_api_error(request: Request, exc: APIError):
 
 
 @app.post("/scan")
-async def scan_endpoint(scanr: ScanRequest) -> dict:
+async def scan_endpoint(request: ScanRequest) -> dict:
     scan = scan_container(
-        image_name=scanr.image,
-        backend=scanr.backend,
+        image_name=request.image,
+        backend=request.backend,
     )
     return scan.dict()
     # return json.loads(scan.get_results())
