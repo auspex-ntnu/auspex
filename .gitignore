@@ -1,7 +1,20 @@
+
+# VSCode
 .vscode/*
-.dccache
+
+# File types
 *.pdf
+*.json
+
+# Python
 *__pycache__*
 *.mypy_cache*
 *.pytest_cache/*
-analyzer copy
+
+# Poetry
+*/dist/*
+
+# Google Drive
+.dccache
+
+
