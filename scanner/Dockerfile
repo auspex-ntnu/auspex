@@ -1,8 +1,16 @@
 FROM python:3.10-slim as scanner-requirements
 
 WORKDIR /tmp
+
+# Install poetry and copy poetry files
 RUN pip install poetry 
-COPY ./pyproject.toml ./poetry.lock* /tmp/
+COPY ./scanner/pyproject.toml /tmp/
+
+# Copy core module
+# Needs to be copied here in order for poetry export to function
+COPY ./core /core
+
+# Generate requirements.txt
 RUN poetry export -f requirements.txt --output requirements.txt --without-hashes
 
 FROM python:3.10-slim
@@ -23,9 +31,10 @@ RUN : \
 
 WORKDIR /app
 COPY --from=scanner-requirements /tmp/requirements.txt /app/requirements.txt
+COPY --from=scanner-requirements /core /core
 RUN pip install --no-cache-dir --upgrade -r /app/requirements.txt
 
-COPY ./* /app
+COPY ./scanner /app
 EXPOSE 80
 
-CMD ["/bin/bash"]
+CMD ["uvicorn", "scanner:app", "--host", "0.0.0.0", "--port", "80"]

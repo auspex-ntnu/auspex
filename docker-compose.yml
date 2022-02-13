@@ -1,0 +1,40 @@
+version: "3.3"
+
+services:
+  reporter:
+    image: auspex/reporter:latest
+    build:
+      context: .
+      dockerfile: ./reporter/Dockerfile
+    env_file: .env
+    # environment:
+    #   SOME_VAR: SOME_VAL
+    ports:
+      - 8090:80
+    networks:
+      - default
+
+  restapi:
+    image: auspex/restapi:latest
+    build:
+      context: .
+      dockerfile: ./restapi/Dockerfile
+    env_file: .env
+    ports:
+      - 8091:80
+    networks:
+      - default
+
+  scanner:
+    image: auspex/scanner:latest
+    build:
+      context: ./
+      dockerfile: ./scanner/Dockerfile
+    env_file: .env
+    ports:
+      - 8092:80
+    networks:
+      - default
+
+# volumes:
+#   persistent:
