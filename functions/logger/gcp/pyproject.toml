@@ -10,6 +10,8 @@ google-cloud = ">=0.34.0"
 firebase-admin = "^5.2.0"
 google-cloud-storage = "^2.1.0"
 sanitize-filename = "^1.2.0"
+functions-framework = "^3.0.0"
+pydantic = "^1.9.0"
 
 [tool.poetry.dev-dependencies]
 mypy = "^0.931"
