@@ -2,7 +2,7 @@ from datetime import datetime
 import time
 import os
 
-from typing import TYPE_CHECKING, Optional, Tuple
+from typing import TYPE_CHECKING, Optional, Tuple, Union
 
 if TYPE_CHECKING:
     import flask
@@ -23,6 +23,7 @@ BUCKET_NAME = os.getenv("BUCKET_NAME", "auspex-scans")
 COLLECTION_NAME = os.getenv("COLLECTION_NAME", "auspex-logs")
 PROJECT_NAME = os.getenv("GCP_PROJECT", "ntnu-student-project")
 
+# We get automatically authenticated with firebase with default credentials
 firebase_admin.initialize_app(
     credentials.ApplicationDefault(),
     {
@@ -32,19 +33,21 @@ firebase_admin.initialize_app(
 
 
 class Scan(BaseModel):
+    """Model for incoming scans."""
+
     image: str
-    backend: str
-    started: int
-    finished: Optional[int] = None  # set by function
-    status: str
-    stderr: str
-    score: float
+    started: float
+    finished: Optional[float] = None  # set by function
     url: Optional[str] = None  # set by function
+
+    class Config:
+        extra = "allow"  # we account for future additions to schema
+        validate_assignment = True
 
 
 def log_results(scan: Scan, scan_file: "FileStorage") -> Scan:
-    scan.finished = int(time.time())
-    docname = f"{scan.image}_{scan.started}"
+    scan.finished = time.time()
+    docname = f"{scan.image}_{str(scan.started).replace('.', '_')}"
 
     # Upload JSON blob to bucket
     blob = upload_json_blob_from_memory(scan_file, docname)
@@ -84,7 +87,9 @@ def upload_json_blob_from_memory(
 
 
 @functions_framework.http
-def handle_request(request: "flask.Request") -> Tuple[str, int]:  # msg, status code
+def handle_request(
+    request: "flask.Request",
+) -> Tuple[Union[dict, str], int]:  # msg, status code
     """Responds to any HTTP request.
     Args:
         request (flask.Request): HTTP request object.
@@ -101,10 +106,11 @@ def handle_request(request: "flask.Request") -> Tuple[str, int]:  # msg, status 
     try:
         form = Scan(**request.form)
     except ValidationError as e:
-        return str(e), 422
+        return e.json(), 422
 
-    if not (f := request.files["scan"]):
-        return "Unprocessable entity", 422
+    # Check that a file is present under the key "scan"
+    if not (f := request.files.get("scan")):
+        return 'A file is required for the key "scan"', 422
 
     scan = log_results(form, f)
-    return scan.dict(), 201
+    return scan.json(), 201
