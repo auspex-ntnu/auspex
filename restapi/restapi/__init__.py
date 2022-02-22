@@ -4,7 +4,7 @@ __version__ = "0.1.0"
 import sys
 import os
 
-sys.path.append(os.path.abspath("/auspex_core"))
+# sys.path.append(os.path.abspath("/auspex/core"))
 
 
 from .main import app

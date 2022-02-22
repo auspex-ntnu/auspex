@@ -15,6 +15,15 @@ from typing import Any
 from google.cloud.workflows_v1beta import WorkflowsAsyncClient
 from google.cloud.workflows.executions_v1beta import ExecutionsAsyncClient
 from google.cloud.workflows.executions_v1beta.types import Execution
+from pydantic import BaseSettings, Field
+
+
+class WorkflowSettings(BaseSettings):
+    project: str = Field(..., env="GOOGLE_CLOUD_PROJECT")
+    region: str = Field(..., env="WORKFLOW_REGION")
+
+
+SETTINGS = WorkflowSettings()
 
 
 async def run_workflow(name: str, **kwargs) -> Any:  # TODO: fix return type
@@ -23,8 +32,7 @@ async def run_workflow(name: str, **kwargs) -> Any:  # TODO: fix return type
     workflows_client = WorkflowsAsyncClient()
 
     # Construct the fully qualified workflow path.
-    project, location = await get_project_location()
-    parent = workflows_client.workflow_path(project, location, name)
+    parent = workflows_client.workflow_path(SETTINGS.project, SETTINGS.region, name)
 
     # Execute workflow
     response = await _execute_workflow(
@@ -45,26 +53,18 @@ async def run_workflow(name: str, **kwargs) -> Any:  # TODO: fix return type
         )
         execution_finished = execution.state != Execution.State.ACTIVE
 
-        # If we haven't seen the result yet, wait a second.
-        if not execution_finished:
-            logger.debug("- Waiting for results...")
-            time.sleep(backoff_delay)
-            backoff_delay *= 2  # Double the delay to provide exponential backoff.
-        else:
+        if execution_finished:
             logger.debug(f"Execution finished with state: {execution.state.name}")
             logger.debug(execution.result)
             return execution.result
 
-
-async def get_project_location() -> tuple[str, str]:
-    if not (project := os.getenv("GOOGLE_CLOUD_PROJECT", "bachelor-339614")):
-        raise Exception("GOOGLE_CLOUD_PROJECT env var is required.")
-    if not (location := os.getenv("WORKFLOW_REGION", "europe-west4")):
-        raise Exception("WORKFLOW_REGION env var is required.")
-    return project, location
+        # If we haven't seen the result yet, wait a second.
+        logger.debug("- Waiting for results...")
+        time.sleep(backoff_delay)
+        backoff_delay *= 2  # Double the delay to provide exponential backoff.
 
 
-async def get_execution_args(kwargs: dict) -> Execution | None:
+async def _get_execution_args(kwargs: dict) -> Execution | None:
     """Serializes dict of arguments to JSON that will be passed to the workflow execution."""
     execution = None
     if kwargs:
@@ -78,7 +78,7 @@ async def _execute_workflow(
 ) -> Execution:
     """Creates a callable object that starts the execution of a workflow"""
     # Add keyword arguments to request body (if any)
-    execution = await get_execution_args(kwargs)
+    execution = await _get_execution_args(kwargs)
     return await client.create_execution(
         parent=parent,
         execution=execution,

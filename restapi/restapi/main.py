@@ -1,13 +1,18 @@
+from typing import cast
 from fastapi import FastAPI, File, Request
 from fastapi.responses import RedirectResponse
 from pydantic import BaseModel
 import os
-from .workflows import start_pdf_workflow, run_workflow
+
+from .workflows.base import WorkflowRunner
+from .workflows import get_runner
+from .workflows.gcp import start_pdf_workflow, run_workflow
 from auspex_core.models.scan import ScanIn, ScanOut
 from auspex_core.models.pdf import PDFRequestIn
 
 
 app = FastAPI()
+runner: WorkflowRunner = get_runner()
 
 
 @app.get("/logs", response_class=RedirectResponse)
