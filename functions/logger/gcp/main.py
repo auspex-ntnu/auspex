@@ -13,7 +13,7 @@ import functions_framework
 import firebase_admin
 from firebase_admin import credentials, firestore
 from google.cloud import storage
-from google.cloud.firestore_v1.types.write import WriteResult
+from google.cloud.firestore import DocumentReference
 from sanitize_filename import sanitize
 from pydantic import BaseModel, ValidationError
 
@@ -35,10 +35,10 @@ firebase_admin.initialize_app(
 class Scan(BaseModel):
     """Model for incoming scans."""
 
-    image: str
-    started: float
-    finished: Optional[float] = None  # set by function
-    url: Optional[str] = None  # set by function
+    image: str  # Name of scanned image
+    id: Optional[str] = None  #  (set by function) Firestore document ID
+    timestamp: Optional[float] = None  # (set by function) Timestamp of scan
+    url: Optional[str] = None  # (set by function) URL to scan results
 
     class Config:
         extra = "allow"  # we account for future additions to schema
@@ -46,25 +46,28 @@ class Scan(BaseModel):
 
 
 def log_results(scan: Scan, scan_file: "FileStorage") -> Scan:
-    scan.finished = time.time()
-    docname = f"{scan.image}_{str(scan.started).replace('.', '_')}"
+    # Generate log filename
+    scan.timestamp = time.time()
+    filename = f"{scan.image}_{str(scan.timestamp).replace('.', '_')}"
 
-    # Upload JSON blob to bucket
-    blob = upload_json_blob_from_memory(scan_file, docname)
+    # Upload JSON log blob to bucket
+    blob = upload_json_blob_from_memory(scan_file, filename)
     scan.url = blob.public_url
 
     # Add firestore document
-    add_firestore_document(scan)
+    doc = add_firestore_document(scan)
+    scan.id = doc.id
 
     return scan
 
 
-def add_firestore_document(scan: Scan) -> WriteResult:
+def add_firestore_document(scan: Scan) -> DocumentReference:
     """Adds a firestore document."""
     # Use the application default credentials
     db = firestore.client()  # type: FirestoreClient
-    ref = db.collection(COLLECTION_NAME).document().set(scan.dict())
-    return ref
+    doc = db.collection(COLLECTION_NAME).document()
+    doc.set(scan.dict())
+    return doc
 
 
 def upload_json_blob_from_memory(
