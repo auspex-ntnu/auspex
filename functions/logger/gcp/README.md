@@ -1,5 +1,7 @@
 # Logger (GCP)
 
+Logger is a service that receives results of a scan performed by the Scanner service. Logger stores the scan metadata in Firestore and the scan results (JSON) in a Cloud Storage bucket.
+
 ## Input
 
 Method: `POST`
@@ -14,7 +16,7 @@ Body:
     "backend": "snyk",
     "status": "ok",
     "stderr": "",
-    "scan": "<JSON encoded string from scanning software output>"
+    "scan": "<JSON encoded string from scanning tool output>"
     // Schema can be extended by user without making changes to code.
 }
 ```
@@ -26,15 +28,15 @@ The function will store any key:value pairs in the firestore collection (with th
 ```json
 {
     "image": "vulhub/php:5.4.1-cgi",
-    "id": "DDTZ7usJZC4dlE0qbKZq",
-    "timestamp": 1645541989.5863428,
-    "url": "https://storage.googleapis.com/auspex-scans/vulhubphp5.4.1-cgi_1645541989_5863428.json.json",
-    "score": "9.4",
+    // ID of Firestore document
+    "id": "40FX1DQnKKM9tu9iyOJf",
+     // Timestamp of logging
+    "timestamp": 1645612197.495193,
+    // URL to file storing output of scanning tool
+    "url": "https://storage.googleapis.com/auspex-scans/vulhubphp5  4.1-cgi_1645612197_495193.json.json",
     "backend": "snyk",
-    "started": "1644836960.12491414",
     "stderr": "",
-    "status": "ok",
-    "finished": "1644836970.1921491294"
+    "status": "ok"
 }
 ```
 
