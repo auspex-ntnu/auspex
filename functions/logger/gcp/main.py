@@ -6,7 +6,6 @@ from typing import TYPE_CHECKING, Optional, Tuple, Union
 
 if TYPE_CHECKING:
     import flask
-    from werkzeug.datastructures import FileStorage
     from google.cloud.firestore import Client as FirestoreClient
 
 import functions_framework
@@ -15,7 +14,7 @@ from firebase_admin import credentials, firestore
 from google.cloud import storage
 from google.cloud.firestore import DocumentReference
 from sanitize_filename import sanitize
-from pydantic import BaseModel, ValidationError
+from pydantic import BaseModel, ValidationError, Field
 
 
 # TODO: remove defaults??
@@ -36,6 +35,7 @@ class Scan(BaseModel):
     """Model for incoming scans."""
 
     image: str  # Name of scanned image
+    scan: str = Field(..., exclude=True)  # Output of scanning software (not dumped)
     id: Optional[str] = None  #  (set by function) Firestore document ID
     timestamp: Optional[float] = None  # (set by function) Timestamp of scan
     url: Optional[str] = None  # (set by function) URL to scan results
@@ -45,13 +45,12 @@ class Scan(BaseModel):
         validate_assignment = True
 
 
-def log_results(scan: Scan, scan_file: "FileStorage") -> Scan:
+def log_results(scan: Scan) -> Scan:
     # Generate log filename
     scan.timestamp = time.time()
     filename = f"{scan.image}_{str(scan.timestamp).replace('.', '_')}"
-
     # Upload JSON log blob to bucket
-    blob = upload_json_blob_from_memory(scan_file, filename)
+    blob = upload_json_blob_from_memory(scan.scan, filename)
     scan.url = blob.public_url
 
     # Add firestore document
@@ -66,13 +65,11 @@ def add_firestore_document(scan: Scan) -> DocumentReference:
     # Use the application default credentials
     db = firestore.client()  # type: FirestoreClient
     doc = db.collection(COLLECTION_NAME).document()
-    doc.set(scan.dict())
+    doc.set(scan.dict(exclude={"id"}))
     return doc
 
 
-def upload_json_blob_from_memory(
-    scan_file: "FileStorage", filename: str
-) -> storage.Blob:
+def upload_json_blob_from_memory(scan_contents: str, filename: str) -> storage.Blob:
     """Uploads a file to the bucket."""
     # Get client and bucket
     storage_client = storage.Client()
@@ -84,7 +81,7 @@ def upload_json_blob_from_memory(
     filename = sanitize(filename)
 
     blob = bucket.blob(f"{filename}.json")
-    blob.upload_from_file(scan_file)
+    blob.upload_from_string(scan_contents, content_type="application/json")
     print("{} uploaded to {}.".format(filename, BUCKET_NAME))
     return blob
 
@@ -105,15 +102,15 @@ def handle_request(
     if not request.method == "POST":
         return "Method Not Allowed", 405
 
+    request_json = request.json
+    if not request_json:
+        return "Request must contain a JSON payload", 422
+
     # Parse request body
     try:
-        form = Scan(**request.form)
+        scan = Scan(**request_json)
     except ValidationError as e:
         return e.json(), 422
 
-    # Check that a file is present under the key "scan"
-    if not (f := request.files.get("scan")):
-        return 'A file is required for the key "scan"', 422
-
-    scan = log_results(form, f)
+    scan = log_results(scan)
     return scan.json(), 201

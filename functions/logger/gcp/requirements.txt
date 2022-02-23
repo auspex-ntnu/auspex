@@ -34,11 +34,13 @@ proto-plus==1.20.0; platform_python_implementation != "PyPy" and python_version 
 protobuf==3.19.4; platform_python_implementation != "PyPy" and python_version >= "3.7"
 pyasn1-modules==0.2.8; python_version >= "3.7" and python_full_version < "3.0.0" and platform_python_implementation != "PyPy" or python_full_version >= "3.6.0" and python_version >= "3.7" and platform_python_implementation != "PyPy"
 pyasn1==0.4.8; python_version >= "3.7" and python_full_version < "3.0.0" and platform_python_implementation != "PyPy" and python_version < "4" and (python_version >= "3.7" and python_full_version < "3.0.0" and platform_python_implementation != "PyPy" or python_full_version >= "3.6.0" and python_version >= "3.7" and platform_python_implementation != "PyPy") or python_full_version >= "3.6.0" and python_version >= "3.7" and platform_python_implementation != "PyPy" and python_version < "4" and (python_version >= "3.7" and python_full_version < "3.0.0" and platform_python_implementation != "PyPy" or python_full_version >= "3.6.0" and python_version >= "3.7" and platform_python_implementation != "PyPy")
+pydantic==1.9.0; python_full_version >= "3.6.1"
 pyparsing==3.0.7; python_version >= "3.6" and python_full_version < "3.0.0" and platform_python_implementation != "PyPy" or python_full_version >= "3.4.0" and python_version >= "3.6" and platform_python_implementation != "PyPy"
 requests==2.27.1; python_version >= "3.7" and python_full_version < "3.0.0" and platform_python_implementation != "PyPy" or python_full_version >= "3.6.0" and python_version >= "3.7" and platform_python_implementation != "PyPy"
 rsa==4.8; python_version >= "3.6" and python_version < "4" and (python_version >= "3.7" and python_full_version < "3.0.0" and platform_python_implementation != "PyPy" or python_full_version >= "3.6.0" and python_version >= "3.7" and platform_python_implementation != "PyPy")
 sanitize-filename==1.2.0; python_version >= "3.7" and python_version < "4.0"
 six==1.16.0; python_version >= "3.7" and python_full_version < "3.0.0" and platform_python_implementation != "PyPy" or python_full_version >= "3.6.0" and python_version >= "3.7" and platform_python_implementation != "PyPy"
+typing-extensions==4.1.1; python_version >= "3.6" and python_full_version >= "3.6.1"
 uritemplate==4.1.1; python_version >= "3.6"
 urllib3==1.26.8; python_version >= "3.7" and python_full_version < "3.0.0" and platform_python_implementation != "PyPy" or python_full_version >= "3.6.0" and python_version < "4" and python_version >= "3.7" and platform_python_implementation != "PyPy"
 watchdog==1.0.2; python_version >= "3.6" and python_version < "4"
