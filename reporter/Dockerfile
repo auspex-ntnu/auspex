@@ -4,7 +4,7 @@ WORKDIR /tmp
 
 # Install poetry and copy poetry files
 RUN pip install poetry 
-COPY ./reporter/pyproject.toml ./reporter/poetry.lock* /tmp/
+COPY ./reporter/pyproject.toml /tmp/
 
 # Copy core module
 COPY ./core /core
@@ -16,12 +16,16 @@ FROM texlive/texlive:latest
 
 # Install Python + Pip
 RUN : \
+    # && apt-get remove -y python3 python3.9 \
     && apt-get update \
+    # && apt install software-properties-common curl -y \
+    # && add-apt-repository ppa:deadsnakes/ppa \
     && DEBIAN_FRONTEND=noninteractive apt-get install -y \
     --no-install-recommends \
-    python3 python3-pip \
+    python3-pip\
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/* \
+    # && curl -sS https://bootstrap.pypa.io/get-pip.py | python3.10 \
     && :
 
 WORKDIR /app
@@ -29,6 +33,7 @@ WORKDIR /app
 # Copy dependencies from poetry stage
 COPY --from=reporter-requirements /tmp/requirements.txt /app/requirements.txt
 COPY --from=reporter-requirements /core /core
+# RUN python3.10 -m pip install --no-cache-dir --upgrade -r /app/requirements.txt
 RUN pip install --no-cache-dir --upgrade -r /app/requirements.txt
 
 COPY ./reporter /app

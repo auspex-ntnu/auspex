@@ -2,13 +2,15 @@ version: "3.3"
 
 services:
   reporter:
+    container_name: auspex_reporter
     image: auspex/reporter:latest
     build:
       context: .
       dockerfile: ./reporter/Dockerfile
     env_file: .env
-    # environment:
-    #   SOME_VAR: SOME_VAL
+    environment:
+      environment: testing
+      SERVICE_ACCOUNT_KEYFILE: /app/reporter_local.json
     ports:
       - 8090:80
     networks:
@@ -16,10 +18,14 @@ services:
 
   restapi:
     image: auspex/restapi:latest
+    container_name: auspex_restapi
     build:
       context: .
       dockerfile: ./restapi/Dockerfile
     env_file: .env
+    # environment:
+    #   GCP_PROJECT: ntnu-student-project
+    #   WORKFLOW_REGION: europe-north1
     ports:
       - 8091:80
     networks:
@@ -27,6 +33,7 @@ services:
 
   scanner:
     image: auspex/scanner:latest
+    container_name: auspex_scanner
     build:
       context: ./
       dockerfile: ./scanner/Dockerfile

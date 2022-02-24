@@ -19,7 +19,7 @@ from pydantic import BaseModel, ValidationError, Field
 
 # TODO: remove defaults??
 BUCKET_NAME = os.getenv("BUCKET_NAME", "auspex-scans")
-COLLECTION_NAME = os.getenv("COLLECTION_NAME", "auspex-logs")
+LOGS_COLLECTION_NAME = os.getenv("LOGS_COLLECTION_NAME", "auspex-logs")
 PROJECT_NAME = os.getenv("GCP_PROJECT", "ntnu-student-project")
 
 # We get automatically authenticated with firebase with default credentials
@@ -49,6 +49,7 @@ def log_results(scan: Scan) -> Scan:
     # Generate log filename
     scan.timestamp = time.time()
     filename = f"{scan.image}_{str(scan.timestamp).replace('.', '_')}"
+
     # Upload JSON log blob to bucket
     blob = upload_json_blob_from_memory(scan.scan, filename)
     scan.url = blob.public_url
@@ -64,7 +65,7 @@ def add_firestore_document(scan: Scan) -> DocumentReference:
     """Adds a firestore document."""
     # Use the application default credentials
     db = firestore.client()  # type: FirestoreClient
-    doc = db.collection(COLLECTION_NAME).document()
+    doc = db.collection(LOGS_COLLECTION_NAME).document()
     doc.set(scan.dict(exclude={"id"}))
     return doc
 

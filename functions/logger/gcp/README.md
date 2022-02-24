@@ -44,6 +44,6 @@ The function will store any key:value pairs in the firestore collection (with th
 
 `BUCKET_NAME`: Name of bucket to store JSON logs in.
 
-`COLLECTION_NAME`: Name of Firestore collection to store scan logs in.
+`LOGS_COLLECTION_NAME`: Name of Firestore collection to store scan logs in.
 
 `GCP_PROJECT`: Project that function is deployed to. (Automatically set by GCP, but needs to be specified when run locally (?))
