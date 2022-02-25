@@ -39,6 +39,7 @@ class Scan(BaseModel):
     id: Optional[str] = None  #  (set by function) Firestore document ID
     timestamp: Optional[float] = None  # (set by function) Timestamp of scan
     url: Optional[str] = None  # (set by function) URL to scan results
+    blob: Optional[str] = None  # (set by function) Name of uploaded blob
 
     class Config:
         extra = "allow"  # we account for future additions to schema
@@ -53,6 +54,7 @@ def log_results(scan: Scan) -> Scan:
     # Upload JSON log blob to bucket
     blob = upload_json_blob_from_memory(scan.scan, filename)
     scan.url = blob.public_url
+    scan.blob = blob.name
 
     # Add firestore document
     doc = add_firestore_document(scan)
@@ -81,7 +83,7 @@ def upload_json_blob_from_memory(scan_contents: str, filename: str) -> storage.B
         filename = f"{filename}.json"
     filename = sanitize(filename)
 
-    blob = bucket.blob(f"{filename}.json")
+    blob = bucket.blob(filename)
     blob.upload_from_string(scan_contents, content_type="application/json")
     print("{} uploaded to {}.".format(filename, BUCKET_NAME))
     return blob

@@ -29,11 +29,12 @@ The function will store any key:value pairs in the firestore collection (with th
 {
     "image": "vulhub/php:5.4.1-cgi",
     // ID of Firestore document
-    "id": "40FX1DQnKKM9tu9iyOJf",
+    "id": "6yh6rPCX7hFgAgUIB2Wo",
      // Timestamp of logging
-    "timestamp": 1645612197.495193,
+    "timestamp": 1645787343.142973,
     // URL to file storing output of scanning tool
-    "url": "https://storage.googleapis.com/auspex-scans/vulhubphp5  4.1-cgi_1645612197_495193.json.json",
+    "url": "https://storage.googleapis.com/auspex-scans/vulhubphp54.1-cgi_1645787343_142973.json",
+    "blob": "vulhubphp5.4.1-cgi_1645787343_142973.json",
     "backend": "snyk",
     "stderr": "",
     "status": "ok"
