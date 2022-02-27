@@ -8,9 +8,10 @@ services:
       context: .
       dockerfile: ./reporter/Dockerfile
     env_file: .env
+    secrets:
+      - reporter-key
     environment:
-      environment: testing
-      SERVICE_ACCOUNT_KEYFILE: /app/reporter_local.json
+      SERVICE_ACCOUNT_KEYFILE: /run/secrets/reporter-key
     ports:
       - 8090:80
     networks:
@@ -43,5 +44,6 @@ services:
     networks:
       - default
 
-# volumes:
-#   persistent:
+secrets:
+  reporter-key:
+    file: .keys/reporter_local.json
