@@ -84,7 +84,13 @@ def upload_json_blob_from_memory(scan_contents: str, filename: str) -> storage.B
     filename = sanitize(filename)
 
     blob = bucket.blob(filename)
-    blob.upload_from_string(scan_contents, content_type="application/json")
+    blob.upload_from_string(
+        scan_contents,
+        # Explicitly set content-type charset to UTF-8 for faster parsing
+        # by google-aio-storage
+        # See: https://pypi.org/project/gcloud-aio-storage/#:~:text=the%20session%20explicitly-,file%20encodings,-In%20some%20cases
+        content_type="application/json; charset=UTF-8",
+    )
     print("{} uploaded to {}.".format(filename, BUCKET_NAME))
     return blob
 
