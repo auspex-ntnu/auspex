@@ -8,7 +8,7 @@ COPY ./scanner/pyproject.toml /tmp/
 
 # Copy core module
 # Needs to be copied here in order for poetry export to function
-COPY ./core /core
+COPY ./core/pyproject.toml /core/pyproject.toml
 
 # Generate requirements.txt
 RUN poetry export -f requirements.txt --output requirements.txt --without-hashes
@@ -31,8 +31,9 @@ RUN : \
 
 WORKDIR /app
 COPY --from=scanner-requirements /tmp/requirements.txt /app/requirements.txt
-COPY --from=scanner-requirements /core /core
-RUN pip install --no-cache-dir --upgrade -r /app/requirements.txt
+COPY ./core /core
+RUN --mount=type=cache,target=/root/.cache \
+    pip install --upgrade -r /app/requirements.txt
 
 COPY ./scanner /app
 EXPOSE 80

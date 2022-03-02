@@ -11,7 +11,7 @@ COPY ./restapi/pyproject.toml /tmp/
 # COPY ./restapi/pyproject.toml ./reporter/poetry.lock* /tmp/
 
 # Copy core module
-COPY ./core /core
+COPY ./core/pyproject.toml /core/pyproject.toml
 
 # Generate requirements.txt
 RUN poetry export -f requirements.txt --output requirements.txt --without-hashes
@@ -23,8 +23,9 @@ WORKDIR /app
 
 # Copy dependencies from poetry stage
 COPY --from=restapi-requirements /tmp/requirements.txt /app/requirements.txt
-COPY --from=restapi-requirements /core /core
-RUN pip install --no-cache-dir --upgrade -r /app/requirements.txt
+COPY ./core /core
+RUN --mount=type=cache,target=/root/.cache \
+    pip install --upgrade -r /app/requirements.txt
 
 # Copy application code and run application
 COPY ./restapi /app

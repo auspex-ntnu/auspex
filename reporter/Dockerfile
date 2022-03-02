@@ -7,7 +7,7 @@ RUN pip install poetry
 COPY ./reporter/pyproject.toml /tmp/
 
 # Copy core module
-COPY ./core /core
+COPY ./core/pyproject.toml /core/pyproject.toml
 
 # Generate requirements.txt
 RUN poetry export -f requirements.txt --output requirements.txt --without-hashes
@@ -32,9 +32,11 @@ WORKDIR /app
 
 # Copy dependencies from poetry stage
 COPY --from=reporter-requirements /tmp/requirements.txt /app/requirements.txt
-COPY --from=reporter-requirements /core /core
+# COPY --from=reporter-requirements /core /core
+COPY ./core /core
 # RUN python3.10 -m pip install --no-cache-dir --upgrade -r /app/requirements.txt
-RUN pip install --no-cache-dir --upgrade -r /app/requirements.txt
+RUN --mount=type=cache,target=/root/.cache \
+    pip install --upgrade -r /app/requirements.txt
 
 COPY ./reporter /app
 EXPOSE 80
