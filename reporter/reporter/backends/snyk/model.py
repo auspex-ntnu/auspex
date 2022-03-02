@@ -56,8 +56,8 @@ class SnykVulnerability(BaseModel):
     isPatchable: bool
     name: str
     version: str
-    # dockerFileInstruction: str
-    dockerFileInstruction: Optional[str]
+    nearestFixedInVersion: Optional[str]
+    dockerFileInstruction: Optional[str]  # how to fix vuln
     dockerBaseImage: str
 
     # TODO: determine if vulnerability is related to Docker
@@ -160,20 +160,16 @@ class SnykContainerScan(BaseModel):
         """
         WARNING: does not work as intended.
         `severity` can still include `"critical"` even though only
-        `severityWithCritical` should be able to do that.
+        `severityWithCritical` should be able to do that if we assume
+        "severity" represents CVSS v2.0.
         """
         return self._get_severity_counter(v2=True).most_common()
 
     def _get_severity_counter(self, v2: bool = False) -> Counter[str]:
         c: Counter[str] = Counter()
 
-        # sanity check before we do getattr (disabled in production with -O)
-        assert hasattr(self, "severity")
-        assert hasattr(self, "severityWithCritical")
-
-        attr = "severity" if v2 else "severityWithCritical"
         for vuln in self.vulnerabilities:
-            severity = getattr(vuln, attr)  # type: Optional[str]
+            severity = vuln.severity if v2 else vuln.severityWithCritical
             if severity is None:
                 severity = "unknown"
             c[severity] += 1
