@@ -1,13 +1,14 @@
-import os
 from functools import cache
 
 import firebase_admin
 from firebase_admin import credentials, firestore
+from google.cloud.firestore_v1 import DocumentSnapshot
 from google.cloud.firestore_v1.async_client import AsyncClient
 from google.oauth2.service_account import Credentials
 from loguru import logger
 
-from .env import GCP_PROJECT
+from .auth import credentials_from_env
+from .env import GCP_PROJECT, SERVICE_ACCOUNT_KEYFILE
 
 
 def get_credentials() -> Credentials:
@@ -21,20 +22,9 @@ def get_credentials() -> Credentials:
     `Credentials`
         Google oauth2 credentials
     """
-
-    env = os.getenv("environment")
-    logger.debug(f"environment: {env}")
-    if env not in ["testing", "staging"]:
-        return credentials.ApplicationDefault()
-    return _credentials_from_keyfile()
-
-
-def _credentials_from_keyfile() -> Credentials:
-    """Instantiates GCP credentials from a JSON key file."""
-    keyfile = os.getenv("SERVICE_ACCOUNT_KEYFILE")
-    if not keyfile:
-        return ValueError("environment variable 'SERVICE_ACCOUNT_KEYFILE' is not set")
-    return Credentials.from_service_account_file(keyfile)
+    if SERVICE_ACCOUNT_KEYFILE:
+        return credentials_from_env()
+    return credentials.ApplicationDefault()
 
 
 @cache
@@ -65,3 +55,19 @@ app = firebase_admin.initialize_app(
         "projectId": GCP_PROJECT,
     },
 )
+
+
+def get_firestore_logs_docpath(collection_name: str, document_id: str) -> str:
+    return f"{collection_name}/{document_id}"
+
+
+async def get_document(collection_name: str, document_id: str) -> DocumentSnapshot:
+    db = get_firestore_client()
+    # Get firestore document
+    docpath = get_firestore_logs_docpath(collection_name, document_id)
+    logger.debug(f"Fetching {docpath}")
+    d = db.document(docpath)
+    doc = await d.get()  # type: DocumentSnapshot # type: ignore
+    if not doc.exists:
+        raise ValueError("Document not found.")
+    return doc
