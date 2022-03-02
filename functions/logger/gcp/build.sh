@@ -8,7 +8,7 @@ poetry export -f requirements.txt -o requirements.txt --without-hashes
 
 # This should be defined somewhere else
 gcloud config set project ntnu-student-project
-gcloud config set compute/zone europe-north1
+gcloud config set compute/region europe-north1
 gcloud config set compute/zone europe-north1-a
 
 # DOCS: https://cloud.google.com/sdk/gcloud/reference/functions/deploy
