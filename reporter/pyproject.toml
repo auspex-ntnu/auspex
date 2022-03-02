@@ -11,13 +11,14 @@ fastapi = "^0.72.0"
 uvicorn = "^0.17.4"
 firebase-admin = "^5.2.0"
 loguru = "^0.6.0"
-auspex-core = "~0.1.0"
+auspex-core = {path = "../core"}
+sanitize-filename = "^1.2.0"
+matplotlib = "^3.5.1"
 
 [tool.poetry.dev-dependencies]
 pytest = "^5.2"
 mypy = "^0.931"
 black = "^22.1.0"
-auspex-core = { path = "../core", develop = true }
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
