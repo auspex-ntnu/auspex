@@ -1,10 +1,24 @@
-from datetime import datetime
-from collections import Counter
-from functools import cache
 import json
+from collections import Counter
+from datetime import datetime
+from functools import cached_property
 from os import PathLike
 from typing import Any, List, Optional, Tuple
+
+import numpy as np
+from loguru import logger
+from numpy.typing import NDArray
 from pydantic import BaseModel, Field
+
+from ..shared import (
+    CVSS_DATE_BRACKETS,
+    DEFAULT_CVSS_TIMETYPE,
+    CVSSTimeType,
+    DateDescription,
+    UpgradabilityCounter,
+)
+from ...utils.matplotlib import get_cvss_color
+
 
 # JSON: .vulnerabilities[n].identifiers
 class Identifiers(BaseModel):
@@ -40,10 +54,11 @@ class SnykVulnerability(BaseModel):
     CVSSv3: Optional[str]
     patches: List[Any]  # we don't know what this can contain
     references: List[Reference]
-    creationTime: datetime
-    modificationTime: datetime
-    publicationTime: datetime
-    disclosureTime: datetime
+    # TODO: find out which of these dates Snyk can ommit
+    creationTime: Optional[datetime]
+    modificationTime: Optional[datetime]
+    publicationTime: Optional[datetime]
+    disclosureTime: Optional[datetime]  # Can be omitted by Snyk
     id: str
     malicious: bool
     nvdSeverity: str
@@ -59,6 +74,19 @@ class SnykVulnerability(BaseModel):
     nearestFixedInVersion: Optional[str]
     dockerFileInstruction: Optional[str]  # how to fix vuln
     dockerBaseImage: str
+
+    def get_numpy_color(self) -> np.ndarray:
+        return get_cvss_color(self.cvssScore)
+
+    def get_age_score_color(
+        self,
+        timetype: CVSSTimeType = DEFAULT_CVSS_TIMETYPE,
+    ) -> Tuple[int, float, NDArray]:
+        attr = getattr(self, timetype.value)  # type: datetime
+        age_days = 0
+        if attr is not None:
+            age_days = (datetime.now(attr.tzinfo) - attr).days
+        return age_days, self.cvssScore, self.get_numpy_color()
 
     # TODO: determine if vulnerability is related to Docker
 
@@ -98,11 +126,146 @@ class SnykFiltered(BaseModel):
     patch: List[FilteredPatch]
 
 
+# FIXME: vvvv SPAGHETTI BOLOGNESE vvvv
+class VulnerabilityList(BaseModel):
+    __root__: list[SnykVulnerability]
+
+    def __iter__(self):
+        return iter(self.__root__)
+
+    def __getitem__(self, item) -> SnykVulnerability:
+        return self.__root__[item]
+
+    def get_vulns_by_date(
+        self, time_type: CVSSTimeType
+    ) -> dict[DateDescription, list[SnykVulnerability]]:
+
+        # Instantiate dict of lists
+        vulns: dict[DateDescription, list[SnykVulnerability]] = {
+            k: [] for k in CVSS_DATE_BRACKETS
+        }
+        attr = time_type.value
+        for vuln in self:
+            # Put guards around our unsafe metaprogramming
+            assert hasattr(vuln, attr)
+            try:
+                t = getattr(vuln, attr)  # type: datetime
+            except AttributeError:
+                logger.exception(
+                    f"Vulnerability {vuln.identifiers} has no attribute {attr}"
+                )
+                continue
+
+            # Handle falsey time value
+            if not t:
+                logger.warning(
+                    # TODO: fix wording. Find better word than "falsey"
+                    f"Vulnerability {vuln.identifiers} has a falsey value for attribute {attr}: '{t}'"
+                )
+                continue
+
+            # Put vulnerability into correct time bracket
+            now = datetime.now(t.tzinfo)
+            for bracket in CVSS_DATE_BRACKETS:
+                if now - bracket.date > t:
+                    vulns[bracket].append(vuln)
+                    break
+            else:
+                vulns[bracket].append(vuln)  # default to last bracket
+
+        return vulns
+
+    def get_cvss_scores(self) -> NDArray:
+        """Retrieves an NDArray of all vulnerability scores."""
+        return np.array([vuln.cvssScore for vuln in self if vuln.cvssScore is not None])
+
+    def _get_vulns_by_severity_level(self, level: str) -> list[SnykVulnerability]:
+        return [v for v in self if v.severityWithCritical == level]
+
+    def _get_vuln_upgradability_distribution(
+        self, vulns: list[SnykVulnerability]
+    ) -> UpgradabilityCounter:
+        c = UpgradabilityCounter()
+        for vuln in vulns:
+            if vuln.isUpgradable:
+                c.is_upgradable += 1
+            else:
+                c.not_upgradable += 1
+        return c
+
+    @property
+    def low(self) -> list[SnykVulnerability]:
+        """All vulnerabilities with a CVSS rating of low."""
+        return self._get_vulns_by_severity_level("low")
+
+    @property
+    def medium(self) -> list[SnykVulnerability]:
+        """All vulnerabilities with a CVSS rating of medium."""
+        return self._get_vulns_by_severity_level("medium")
+
+    @property
+    def high(self) -> list[SnykVulnerability]:
+        """All vulnerabilities with a CVSS rating of high."""
+        return self._get_vulns_by_severity_level("high")
+
+    @property
+    def critical(self) -> list[SnykVulnerability]:
+        """All vulnerabilities with a CVSS rating of critical."""
+        return self._get_vulns_by_severity_level("critical")
+
+    @property
+    def low_by_upgradability(self) -> UpgradabilityCounter:
+        """Distribution of upgradable to non-upgradable vulnerabilties
+        with a rating of low."""
+        return self._get_vuln_upgradability_distribution(self.low)
+
+    @property
+    def medium_by_upgradability(self) -> UpgradabilityCounter:
+        """Distribution of upgradable to non-upgradable vulnerabilties
+        with a rating of medium."""
+        return self._get_vuln_upgradability_distribution(self.medium)
+
+    @property
+    def high_by_upgradability(self) -> UpgradabilityCounter:
+        """Distribution of upgradable to non-upgradable vulnerabilties
+        with a rating of high."""
+        return self._get_vuln_upgradability_distribution(self.high)
+
+    @property
+    def critical_by_upgradability(self) -> UpgradabilityCounter:
+        """Distribution of upgradable to non-upgradable vulnerabilties
+        with a rating of critical."""
+        return self._get_vuln_upgradability_distribution(self.critical)
+
+    def get_distribution_by_upgradability(self) -> UpgradabilityCounter:
+        """Retrieves distribution upgradable to non-upgradable vulnerabilities
+        for all severity levels combined."""
+        return self._get_vuln_upgradability_distribution(self.__root__)
+
+    def get_distribution_by_severity(self) -> dict[str, int]:
+        return {
+            "low": len(self.low),
+            "medium": len(self.medium),
+            "high": len(self.high),
+            "critical": len(self.critical),
+        }
+
+    def get_distribution_by_severity_and_upgradability(
+        self,
+    ) -> dict[str, dict[str, int]]:
+        return {
+            "low": self.low_by_upgradability.dict(),
+            "medium": self.medium_by_upgradability.dict(),
+            "high": self.high_by_upgradability.dict(),
+            "critical": self.critical_by_upgradability.dict(),
+        }
+
+
 # JSON: .
 class SnykContainerScan(BaseModel):
     """Represents the output of `snyk container scan --json`"""
 
-    vulnerabilities: List[SnykVulnerability]
+    vulnerabilities: VulnerabilityList
     ok: bool
     dependencyCount: int
     org: str
@@ -123,29 +286,39 @@ class SnykContainerScan(BaseModel):
     class Config:
         extra = "allow"  # should we allow or disallow this?
         validate_assignment = True
-
-    def mean_cvss_score(self) -> float:
-        """Retrieves mean CVSS v3.0 score of all CVEs."""
-        scores = [
-            vuln.cvssScore
-            for vuln in self.vulnerabilities
-            if vuln.cvssScore is not None
-        ]
-        return sum(scores) / len(scores) if len(scores) > 0 else 0
+        keep_untouched = (cached_property,)
 
     def __hash__(self) -> int:
         """Returns ID of self. Required to add object to dict."""
         return id(self)
+
+    def __repr__(self) -> str:
+        return f"SnykVulnerabilityScan(path={self.path}, platform={self.platform})"
 
     @property
     def architecture(self) -> str:
         r = self.platform.split("/")
         return r[1] if len(r) > 1 else r[0]
 
+    # TODO: use @computed_field when its PR is merged into pydantic
+    @cached_property
+    def mean_cvss_score(self) -> float:
+        """Retrieves mean CVSS v3.0 score of all CVEs."""
+        scores = self.vulnerabilities.get_cvss_scores()
+        return scores.mean()
+
+    @cached_property
+    def median_cvss_score(self) -> float:
+        scores = self.vulnerabilities.get_cvss_scores()
+        try:
+            return float(np.median(scores))
+        except Exception as e:
+            logger.error(f"Failed to get median CVSS score for {self}", e)
+            return 0.0
+
     def most_common_cve(self, max_n: Optional[int] = 5) -> List[Tuple[str, int]]:
         return self._get_cve_counter().most_common(n=max_n)
 
-    @cache
     def _get_cve_counter(self) -> Counter[str]:
         c: Counter[str] = Counter()
         for vuln in self.vulnerabilities:
