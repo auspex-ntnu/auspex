@@ -19,6 +19,8 @@ RUN poetry export -f requirements.txt --output requirements.txt --without-hashes
 # Build application using generated requirements
 FROM python:3.10-slim
 
+ENV PYTHONOPTIMIZE=1
+
 WORKDIR /app
 
 # Copy dependencies from poetry stage

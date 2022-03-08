@@ -15,6 +15,7 @@ RUN poetry export -f requirements.txt --output requirements.txt --without-hashes
 
 FROM python:3.10-slim
 
+ENV PYTHONOPTIMIZE=1
 ENV SNYK_TOKEN=<TOKEN>
 ENV USER_ID=1234
 RUN : \
