@@ -81,7 +81,12 @@ class SnykVulnerability(BaseModel):
     def get_age_score_color(
         self,
         timetype: CVSSTimeType = DEFAULT_CVSS_TIMETYPE,
-    ) -> Tuple[int, float, NDArray]:
+    ) -> tuple[int, float, NDArray]:
+        """
+        Retrieves the vulnerability's age, score and numpy color (determined by its CVSS score).
+
+        Used for displaying vulnerabilities in scatter plots.
+        """
         attr = getattr(self, timetype.value)  # type: datetime
         age_days = 0
         if attr is not None:
@@ -139,6 +144,22 @@ class VulnerabilityList(BaseModel):
     def get_vulns_by_date(
         self, time_type: CVSSTimeType
     ) -> dict[DateDescription, list[SnykVulnerability]]:
+        """
+        Retrieves all vulnerabilities grouped by time period.
+
+        Parameters
+        ----------
+        time_type : `CVSSTimeType`
+           Which CVE time to group by.
+           See `CVSSTimeType` for possible options.
+
+        Returns
+        -------
+        dict[DateDescription, list[SnykVulnerability]]
+            A dict where each key denotes a specific time period and the
+            value is a list of vulnerabilities that were
+            created/modified/published/disclosed within that time period.
+        """
 
         # Instantiate dict of lists
         vulns: dict[DateDescription, list[SnykVulnerability]] = {
@@ -221,28 +242,53 @@ class VulnerabilityList(BaseModel):
 
     @property
     def medium_by_upgradability(self) -> UpgradabilityCounter:
-        """Distribution of upgradable to non-upgradable vulnerabilties
-        with a rating of medium."""
+        """
+        Distribution of upgradable to non-upgradable vulnerabilties
+        with a rating of medium.
+        """
         return self._get_vuln_upgradability_distribution(self.medium)
 
     @property
     def high_by_upgradability(self) -> UpgradabilityCounter:
-        """Distribution of upgradable to non-upgradable vulnerabilties
-        with a rating of high."""
+        """
+        Distribution of upgradable to non-upgradable vulnerabilties
+        with a rating of high.
+        """
         return self._get_vuln_upgradability_distribution(self.high)
 
     @property
     def critical_by_upgradability(self) -> UpgradabilityCounter:
-        """Distribution of upgradable to non-upgradable vulnerabilties
-        with a rating of critical."""
+        """
+        Distribution of upgradable to non-upgradable vulnerabilties
+        with a rating of critical.
+        """
         return self._get_vuln_upgradability_distribution(self.critical)
 
     def get_distribution_by_upgradability(self) -> UpgradabilityCounter:
-        """Retrieves distribution upgradable to non-upgradable vulnerabilities
-        for all severity levels combined."""
+        """
+        Retrieves distribution upgradable to non-upgradable vulnerabilities
+        for all severity levels combined.
+
+        TODO: should return dict instead of UpgradabilityCounter?
+        """
         return self._get_vuln_upgradability_distribution(self.__root__)
 
     def get_distribution_by_severity(self) -> dict[str, int]:
+        """Retrieves distribution of vulnerabiltiies grouped by their
+        CVSS severity level.
+
+        Returns
+        -------
+        `dict[str, int]`
+            Dict where keys are CVSS severity levels and values are the
+            number of vulnerabilities associated with each severity.
+
+        Example return value
+        --------------------
+        ```py
+        {'low': 88, 'medium': 659, 'high': 457, 'critical': 171}
+        ```
+        """
         return {
             "low": len(self.low),
             "medium": len(self.medium),
@@ -253,6 +299,26 @@ class VulnerabilityList(BaseModel):
     def get_distribution_by_severity_and_upgradability(
         self,
     ) -> dict[str, dict[str, int]]:
+        """Retrieves the upgradability status of all vulnerabilities,
+        grouped by their CVSS severity level.
+
+        Returns
+        -------
+        `dict[str, dict[str, int]]`
+            Dict where keys are CVSS severity levels and values are dicts denoting
+            the upgradability status of all vulnerabilities of the given severity.
+
+        Example return value
+        --------------------
+        ```py
+        {
+            'low': {'is_upgradable': 1, 'not_upgradable': 87},
+            'medium': {'is_upgradable': 10, 'not_upgradable': 649}
+            'high': {'is_upgradable': 18, 'not_upgradable': 439},
+            'critical': {'is_upgradable': 7, 'not_upgradable': 164},
+        }
+        ```
+        """
         return {
             "low": self.low_by_upgradability.dict(),
             "medium": self.medium_by_upgradability.dict(),
