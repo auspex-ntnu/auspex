@@ -382,7 +382,19 @@ class SnykContainerScan(BaseModel):
             logger.error(f"Failed to get median CVSS score for {self}", e)
             return 0.0
 
+    @cached_property
+    def std_cvss_score(self) -> float:
+        scores = self.vulnerabilities.get_cvss_scores()
+        try:
+            return float(np.std(scores))
+        except Exception as e:
+            logger.error(
+                f"Failed to get standard deviation for CVSS scores for {self}", e
+            )
+            return 0.0
+
     def most_common_cve(self, max_n: Optional[int] = 5) -> List[Tuple[str, int]]:
+        # TODO: most common per severity
         return self._get_cve_counter().most_common(n=max_n)
 
     def _get_cve_counter(self) -> Counter[str]:
