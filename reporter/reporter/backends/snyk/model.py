@@ -50,7 +50,7 @@ class SnykVulnerability(BaseModel):
     severity: str
     severityWithCritical: str
     socialTrendAlert: bool
-    cvssScore: Optional[float]
+    cvssScore: float
     CVSSv3: Optional[str]
     patches: List[Any]  # we don't know what this can contain
     references: List[Reference]
@@ -74,6 +74,18 @@ class SnykVulnerability(BaseModel):
     nearestFixedInVersion: Optional[str]
     dockerFileInstruction: Optional[str]  # how to fix vuln
     dockerBaseImage: str
+
+    @validator("cvssScore", pre=True)
+    def cvssScore_defaults_to_0(cls, v: Optional[float]) -> float:
+        """
+        Some CVEs have not been assigned a score, and thus Snyk reports
+        their score as `None`.
+
+        This method interprets all None values as 0.0.
+        """
+        if v is None:
+            return 0.0
+        return v
 
     def get_numpy_color(self) -> np.ndarray:
         return get_cvss_color(self.cvssScore)
