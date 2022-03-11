@@ -22,9 +22,9 @@ from ...utils.matplotlib import get_cvss_color
 
 # JSON: .vulnerabilities[n].identifiers
 class Identifiers(BaseModel):
-    ALTERNATIVE: List[str]
-    CVE: List[str]
-    CWE: List[str]
+    ALTERNATIVE: list[str]
+    CVE: list[str]
+    CWE: list[str]
 
 
 # JSON: .vulnerabilities[n].references[n]
@@ -35,13 +35,13 @@ class Reference(BaseModel):
 
 # JSON: .vulnerabilities[n].semver
 class Semver(BaseModel):
-    vulnerable: List[str]
+    vulnerable: list[str]
 
 
 # JSON: .vulnerabilities[n]
 class SnykVulnerability(BaseModel):
     title: str
-    credit: List[str]
+    credit: list[str]
     packageName: str
     language: str
     packageManager: str
@@ -52,8 +52,8 @@ class SnykVulnerability(BaseModel):
     socialTrendAlert: bool
     cvssScore: float
     CVSSv3: Optional[str]
-    patches: List[Any]  # we don't know what this can contain
-    references: List[Reference]
+    patches: list[Any]  # we don't know what this can contain
+    references: list[Reference]
     # TODO: find out which of these dates Snyk can ommit
     creationTime: Optional[datetime]
     modificationTime: Optional[datetime]
@@ -65,8 +65,8 @@ class SnykVulnerability(BaseModel):
     relativeImportance: Any  # we don't know
     semver: Semver
     exploit: str
-    from_: List[str] = Field(..., alias="from")
-    upgradePath: List[Any]  # don't know
+    from_: list[str] = Field(..., alias="from")
+    upgradePath: list[Any]  # don't know
     isUpgradable: bool
     isPatchable: bool
     name: str
@@ -118,7 +118,7 @@ class RemediationAdvice(BaseModel):
 # JSON: .docker.baseImageRemediation
 class BaseImageRemediation(BaseModel):
     code: str
-    advice: List[RemediationAdvice] = Field(default_factory=list)
+    advice: list[RemediationAdvice] = Field(default_factory=list)
 
 
 # JSON: .docker
@@ -139,8 +139,8 @@ class FilteredPatch(BaseModel):
 
 # JSON: .filtered
 class SnykFiltered(BaseModel):
-    ignore: List[FilteredIgnore]
-    patch: List[FilteredPatch]
+    ignore: list[FilteredIgnore]
+    patch: list[FilteredPatch]
 
 
 # FIXME: vvvv SPAGHETTI BOLOGNESE vvvv
@@ -419,7 +419,7 @@ class SnykContainerScan(BaseModel):
             )
             return 0.0
 
-    def most_common_cve(self, max_n: Optional[int] = 5) -> List[Tuple[str, int]]:
+    def most_common_cve(self, max_n: Optional[int] = 5) -> list[tuple[str, int]]:
         # TODO: most common per severity
         return self._get_cve_counter().most_common(n=max_n)
 
@@ -433,7 +433,7 @@ class SnykContainerScan(BaseModel):
     def severity_v3(self) -> list[tuple[str, int]]:
         return self._get_severity_counter().most_common()
 
-    def severity_v2(self) -> List[Tuple[str, int]]:
+    def severity_v2(self) -> list[tuple[str, int]]:
         """
         WARNING: does not work as intended.
         `severity` can still include `"critical"` even though only
