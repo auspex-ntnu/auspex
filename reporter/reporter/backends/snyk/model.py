@@ -4,11 +4,12 @@ from datetime import datetime
 from functools import cached_property
 from os import PathLike
 from typing import Any, List, Optional, Tuple
+import time
 
 import numpy as np
 from loguru import logger
 from numpy.typing import NDArray
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, validator
 
 from ..shared import (
     CVSS_DATE_BRACKETS,
@@ -18,6 +19,7 @@ from ..shared import (
     UpgradabilityCounter,
 )
 from ...utils.matplotlib import get_cvss_color
+from ..._types import MplRGBAColor
 
 
 # JSON: .vulnerabilities[n].identifiers
@@ -87,13 +89,13 @@ class SnykVulnerability(BaseModel):
             return 0.0
         return v
 
-    def get_numpy_color(self) -> np.ndarray:
+    def get_numpy_color(self) -> MplRGBAColor:
         return get_cvss_color(self.cvssScore)
 
     def get_age_score_color(
         self,
         timetype: CVSSTimeType = DEFAULT_CVSS_TIMETYPE,
-    ) -> tuple[int, float, NDArray]:
+    ) -> tuple[int, float, MplRGBAColor]:
         """
         Retrieves the vulnerability's age, score and numpy color (determined by its CVSS score).
 
@@ -205,8 +207,12 @@ class VulnerabilityList(BaseModel):
                     break
             else:
                 vulns[bracket].append(vuln)  # default to last bracket
-
         return vulns
+
+    def get_vulns_age_score_color(
+        self,
+    ) -> list[tuple[int, float, MplRGBAColor]]:
+        return [vuln.get_age_score_color() for vuln in self]
 
     def get_cvss_scores(self) -> NDArray:
         """Retrieves an NDArray of all vulnerability scores."""
