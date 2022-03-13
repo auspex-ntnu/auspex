@@ -46,8 +46,8 @@ class AggregateScan(BaseModel):
         return float(np.mean(self.cvss_scores))
 
     @cached_property
-    def cvss_std(self) -> float:
-        return float(np.mean(self.cvss_scores))
+    def cvss_sd(self) -> float:
+        return float(np.std(self.cvss_scores))
 
     def most_common_cve(self, n: int) -> list[tuple[str, int]]:
         c: Counter[str] = Counter()
