@@ -1,15 +1,16 @@
 from collections import Counter
+from dataclasses import dataclass
 from loguru import logger
 import numpy as np
 
-from pydantic import BaseModel
 from functools import cached_property
 from .model import SnykContainerScan
 
 from numpy.typing import NDArray
 
-
-class AggregateScan(BaseModel):
+# Use dataclass here since we don't need validation
+@dataclass
+class AggregateScan:
     scans: list[SnykContainerScan]
 
     def get_scan_ids(self) -> list[str]:
@@ -18,13 +19,6 @@ class AggregateScan(BaseModel):
     # TODO: Add caching!
     @cached_property
     def cvss_scores(self) -> list[float]:
-        # s = [
-        #     scan.vulnerabilities.get_cvss_scores()
-        #     for scan in self.scans
-        # ] # type: list[list[float]]
-        # # flatten list of lists
-        # scores = list(itertools.chain.from_iterable(s))
-
         scores: list[float] = []
         for scan in self.scans:
             scores.extend(scan.vulnerabilities.get_cvss_scores())
@@ -36,6 +30,8 @@ class AggregateScan(BaseModel):
                 f"the following scans: {self.scans}"
             )
         return scores
+
+    # TODO: Exception handling for median, mean and std
 
     @cached_property
     def cvss_median(self) -> float:
