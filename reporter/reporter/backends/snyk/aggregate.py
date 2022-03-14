@@ -32,7 +32,7 @@ class AggregateScan:
         return float(np.mean(self.cvss_scores))
 
     @property
-    def cvss_sd(self) -> float:
+    def cvss_stdev(self) -> float:
         return float(np.std(self.cvss_scores))
 
     # TODO: Add caching!

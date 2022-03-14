@@ -457,7 +457,7 @@ class SnykContainerScan(BaseModel):
             return 0.0
 
     @property
-    def cvss_std(self) -> float:
+    def cvss_stdev(self) -> float:
         scores = self.vulnerabilities.get_cvss_scores()
         try:
             return float(np.std(scores))
