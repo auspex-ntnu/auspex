@@ -1,7 +1,7 @@
 import json
 from collections import Counter
 from datetime import datetime
-from functools import cached_property
+from functools import cache, cached_property, _lru_cache_wrapper
 from os import PathLike
 from typing import Any, Optional
 import time
@@ -158,6 +158,9 @@ class SnykFiltered(BaseModel):
 class VulnerabilityList(BaseModel):
     __root__: list[SnykVulnerability]
 
+    class Config:
+        keep_untouched = (_lru_cache_wrapper,)
+
     def __iter__(self):
         return iter(self.__root__)
 
@@ -293,8 +296,10 @@ class VulnerabilityList(BaseModel):
     ) -> list[tuple[int, float, MplRGBAColor]]:
         return [vuln.get_age_score_color() for vuln in self]
 
+    @cache
     def get_cvss_scores(self, ignore_zero: bool = True) -> NDArray[np.float64]:
         """Retrieves an NDArray of all vulnerability scores."""
+        # TODO: rewrite without list comp to avoid extra allocation
         if ignore_zero:
             return np.array([vuln.cvssScore for vuln in self if vuln.cvssScore != 0.0])
         else:
