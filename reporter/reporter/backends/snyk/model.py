@@ -155,82 +155,12 @@ class VulnerabilityList(BaseModel):
     def __getitem__(self, item) -> SnykVulnerability:
         return self.__root__[item]
 
-    def get_vulns_by_date(
-        self, time_type: CVSSTimeType
-    ) -> dict[DateDescription, list[SnykVulnerability]]:
-        """
-        Retrieves all vulnerabilities grouped by time period.
+    def __repr__(self) -> str:
+        return f"VulnerabilityList(len={len(self.__root__)})"
 
-        Parameters
-        ----------
-        time_type : `CVSSTimeType`
-           Which CVE time to group by.
-           See `CVSSTimeType` for possible options.
-
-        Returns
-        -------
-        dict[DateDescription, list[SnykVulnerability]]
-            A dict where each key denotes a specific time period and the
-            value is a list of vulnerabilities that were
-            created/modified/published/disclosed within that time period.
-        """
-
-        # Instantiate dict of lists
-        vulns: dict[DateDescription, list[SnykVulnerability]] = {
-            k: [] for k in CVSS_DATE_BRACKETS
-        }
-        attr = time_type.value
-        for vuln in self:
-            # Put guards around our unsafe metaprogramming
-            assert hasattr(vuln, attr)
-            try:
-                t = getattr(vuln, attr)  # type: datetime
-            except AttributeError:
-                logger.exception(
-                    f"Vulnerability {vuln.identifiers} has no attribute {attr}"
-                )
-                continue
-
-            # Handle falsey time value
-            if not t:
-                logger.warning(
-                    # TODO: fix wording. Find better word than "falsey"
-                    f"Vulnerability {vuln.identifiers} has a falsey value for attribute {attr}: '{t}'"
-                )
-                continue
-
-            # Put vulnerability into correct time bracket
-            now = datetime.now(t.tzinfo)
-            for bracket in CVSS_DATE_BRACKETS:
-                if now - bracket.date > t:
-                    vulns[bracket].append(vuln)
-                    break
-            else:
-                vulns[bracket].append(vuln)  # default to last bracket
-        return vulns
-
-    def get_vulns_age_score_color(
-        self,
-    ) -> list[tuple[int, float, MplRGBAColor]]:
-        return [vuln.get_age_score_color() for vuln in self]
-
-    def get_cvss_scores(self) -> NDArray:
-        """Retrieves an NDArray of all vulnerability scores."""
-        return np.array([vuln.cvssScore for vuln in self if vuln.cvssScore is not None])
-
-    def _get_vulns_by_severity_level(self, level: str) -> list[SnykVulnerability]:
-        return [v for v in self if v.severityWithCritical == level]
-
-    def _get_vuln_upgradability_distribution(
-        self, vulns: list[SnykVulnerability]
-    ) -> UpgradabilityCounter:
-        c = UpgradabilityCounter()
-        for vuln in vulns:
-            if vuln.isUpgradable:
-                c.is_upgradable += 1
-            else:
-                c.not_upgradable += 1
-        return c
+    # DEV NOTE: We have chosen to copy-paste the methods below here instead of
+    # going all in on metaprogramming which would reduce readability.
+    # Performance is a secondary concern given the system's overall low latency sensitivity.
 
     @property
     def low(self) -> list[SnykVulnerability]:
@@ -281,6 +211,91 @@ class VulnerabilityList(BaseModel):
         with a rating of critical.
         """
         return self._get_vuln_upgradability_distribution(self.critical)
+
+    # NOTE: remain a property or be a function named get_malicious?
+    @property
+    def malicious(self) -> list[SnykVulnerability]:
+        return [v for v in self if v.malicious]
+
+    def get_vulns_by_date(
+        self, time_type: CVSSTimeType
+    ) -> dict[DateDescription, list[SnykVulnerability]]:
+        """
+        Retrieves all vulnerabilities grouped by time period.
+
+        Parameters
+        ----------
+        time_type : `CVSSTimeType`
+           Which CVE time to group by.
+           See `CVSSTimeType` for possible options.
+
+        Returns
+        -------
+        dict[DateDescription, list[SnykVulnerability]]
+            A dict where each key denotes a specific time period and the
+            value is a list of vulnerabilities that were
+            created/modified/published/disclosed within that time period.
+        """
+
+        # Instantiate dict of lists
+        vulns: dict[DateDescription, list[SnykVulnerability]] = {
+            k: [] for k in CVSS_DATE_BRACKETS
+        }
+        attr = time_type.value  # type: str
+        for vuln in self:
+            # Put guards around our unsafe metaprogramming
+            try:
+                t = getattr(vuln, attr)  # type: datetime
+            except AttributeError:
+                logger.exception(
+                    f"Vulnerability {vuln.identifiers} has no attribute {attr}"
+                )
+                continue
+
+            # Handle falsey time value
+            if not t:
+                logger.warning(
+                    # TODO: fix wording. Find better word than "falsey"
+                    f"Cannot sort vulnerability {vuln.identifiers}. "
+                    f"Vulnerability has a falsey value for attribute {attr}: '{t}'."
+                )
+                continue
+
+            # Put vulnerability into correct time bracket
+            now = datetime.now(t.tzinfo)
+            for bracket in CVSS_DATE_BRACKETS:
+                if now - bracket.date > t:
+                    vulns[bracket].append(vuln)
+                    break
+            else:
+                vulns[bracket].append(vuln)  # default to last bracket
+        return vulns
+
+    def get_vulns_age_score_color(
+        self,
+    ) -> list[tuple[int, float, MplRGBAColor]]:
+        return [vuln.get_age_score_color() for vuln in self]
+
+    def get_cvss_scores(self, ignore_zero: bool = True) -> NDArray[np.float64]:
+        """Retrieves an NDArray of all vulnerability scores."""
+        if ignore_zero:
+            return np.array([vuln.cvssScore for vuln in self if vuln.cvssScore != 0.0])
+        else:
+            return np.array([vuln.cvssScore for vuln in self])
+
+    def _get_vulns_by_severity_level(self, level: str) -> list[SnykVulnerability]:
+        return [v for v in self if v.severityWithCritical == level]
+
+    def _get_vuln_upgradability_distribution(
+        self, vulns: list[SnykVulnerability]
+    ) -> UpgradabilityCounter:
+        c = UpgradabilityCounter()
+        for vuln in vulns:
+            if vuln.isUpgradable:
+                c.is_upgradable += 1
+            else:
+                c.not_upgradable += 1
+        return c
 
     def get_distribution_by_upgradability(self) -> UpgradabilityCounter:
         """
