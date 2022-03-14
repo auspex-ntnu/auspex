@@ -172,6 +172,14 @@ class VulnerabilityList(BaseModel):
     # Performance is a secondary concern given the system's overall low latency sensitivity.
 
     @property
+    def most_severe(self) -> SnykVulnerability:
+        return max(self.__root__, key=lambda v: v.cvssScore)
+
+    @property
+    def least_severe(self) -> SnykVulnerability:
+        return min(self.__root__, key=lambda v: v.cvssScore)
+
+    @property
     def low(self) -> list[SnykVulnerability]:
         """All vulnerabilities with a CVSS rating of low."""
         return self._get_vulns_by_severity_level("low")
