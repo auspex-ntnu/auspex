@@ -13,6 +13,13 @@ from numpy.typing import NDArray
 class AggregateScan:
     scans: list[SnykContainerScan]
 
+    @property
+    def cvss_max(self) -> float:
+        return max(scan.cvss_max for scan in self.scans)
+
+    @property
+    def cvss_min(self) -> float:
+        return min(scan.cvss_min for scan in self.scans)
 
     @property
     def cvss_median(self) -> float:

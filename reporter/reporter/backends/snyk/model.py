@@ -427,8 +427,18 @@ class SnykContainerScan(BaseModel):
 
     @property
     def architecture(self) -> str:
+        # TODO: add docstring
         r = self.platform.split("/")
         return r[1] if len(r) > 1 else r[0]
+
+    @property
+    def cvss_min(self) -> float:
+        """Lowest CVSS score of the identified vulnerabilities"""
+        return min((vuln.cvssScore for vuln in self.vulnerabilities), default=0.0)
+
+    @property
+    def cvss_max(self) -> float:
+        return max((vuln.cvssScore for vuln in self.vulnerabilities), default=0.0)
 
     # TODO: use @computed_field when its PR is merged into pydantic
     @property
