@@ -64,7 +64,9 @@ class SnykVulnerability(BaseModel):
     id: str
     malicious: bool
     nvdSeverity: str
-    relativeImportance: Any  # we don't know
+    relativeImportance: Optional[
+        str
+    ]  # observed values: {'negligible', None, 'low', 'medium', 'high'}
     semver: Semver
     exploit: str
     from_: list[str] = Field(..., alias="from")
@@ -78,15 +80,21 @@ class SnykVulnerability(BaseModel):
     dockerBaseImage: str
 
     @validator("cvssScore", pre=True)
-    def cvssScore_defaults_to_0(cls, v: Optional[float]) -> float:
+    def cvssScore_defaults_to_0(
+        cls, v: Optional[float], values: dict[str, Any]
+    ) -> float:
         """
         Some CVEs have not been assigned a score, and thus Snyk reports
         their score as `None`.
 
-        This method interprets all None values as 0.0.
         """
+        # XXX: Document behavior and/or clarify whether we need to make up these numbers
+        severity_scores = {"low": 3.9, "medium": 6.9, "high": 8.9, "critical": 10.0}
         if v is None:
-            return 0.0
+            # TODO: decide whether we interpret None as number rounded up to vulnerability's
+            # severity level or as 0.0
+            return severity_scores.get(values.get("severity", ""), 0.0)
+            # return 0.0
         return v
 
     def get_numpy_color(self) -> MplRGBAColor:
