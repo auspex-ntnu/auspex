@@ -431,29 +431,29 @@ class SnykContainerScan(BaseModel):
         return r[1] if len(r) > 1 else r[0]
 
     # TODO: use @computed_field when its PR is merged into pydantic
-    @cached_property
-    def mean_cvss_score(self) -> float:
+    @property
+    def cvss_mean(self) -> float:
         """Retrieves mean CVSS v3.0 score of all CVEs."""
         scores = self.vulnerabilities.get_cvss_scores()
         return scores.mean()
 
-    @cached_property
-    def median_cvss_score(self) -> float:
+    @property
+    def cvss_median(self) -> float:
         scores = self.vulnerabilities.get_cvss_scores()
         try:
             return float(np.median(scores))
         except Exception as e:
-            logger.error(f"Failed to get median CVSS score for {self}", e)
+            logger.error(f"Failed to get median CVSS score for {self.id}", e)
             return 0.0
 
-    @cached_property
-    def std_cvss_score(self) -> float:
+    @property
+    def cvss_std(self) -> float:
         scores = self.vulnerabilities.get_cvss_scores()
         try:
             return float(np.std(scores))
         except Exception as e:
             logger.error(
-                f"Failed to get standard deviation for CVSS scores for {self}", e
+                f"Failed to get standard deviation for CVSS scores for {self.id}", e
             )
             return 0.0
 

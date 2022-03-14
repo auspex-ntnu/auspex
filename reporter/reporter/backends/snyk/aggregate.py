@@ -13,11 +13,21 @@ from numpy.typing import NDArray
 class AggregateScan:
     scans: list[SnykContainerScan]
 
-    def get_scan_ids(self) -> list[str]:
-        return [scan.id for scan in self.scans]
+
+    @property
+    def cvss_median(self) -> float:
+        return float(np.median(self.cvss_scores))
+
+    @property
+    def cvss_mean(self) -> float:
+        return float(np.mean(self.cvss_scores))
+
+    @property
+    def cvss_sd(self) -> float:
+        return float(np.std(self.cvss_scores))
 
     # TODO: Add caching!
-    @cached_property
+    @property
     def cvss_scores(self) -> list[float]:
         scores: list[float] = []
         for scan in self.scans:
