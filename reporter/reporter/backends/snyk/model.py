@@ -109,10 +109,11 @@ class SnykVulnerability(BaseModel):
 
         Used for displaying vulnerabilities in scatter plots.
         """
-        attr = getattr(self, timetype.value)  # type: datetime
+        # NOTE: catch AttributeError?
+        vuln_date = getattr(self, timetype.value)  # type: datetime
         age_days = 0
-        if attr is not None:
-            age_days = (datetime.now(attr.tzinfo) - attr).days
+        if vuln_date is not None:
+            age_days = (datetime.now(vuln_date.tzinfo) - vuln_date).days
         return age_days, self.cvssScore, self.get_numpy_color()
 
     # TODO: determine if vulnerability is related to Docker
