@@ -150,8 +150,19 @@ class FilteredPatch(BaseModel):
 
 # JSON: .filtered
 class SnykFiltered(BaseModel):
-    ignore: list[FilteredIgnore]
-    patch: list[FilteredPatch]
+    ignore: list[Any]  # unknown contents
+    patch: list[Any]
+
+
+class OrgLicenseRule(BaseModel):
+    licenseType: str
+    severity: str
+    instructions: str
+
+
+class LicensesPolicy(BaseModel):
+    severities: dict[Any, Any]  # unknown contents; can't type
+    orgLicenseRules: dict[str, OrgLicenseRule]  # key: name of license
 
 
 # FIXME: vvvv SPAGHETTI BOLOGNESE vvvv
@@ -384,7 +395,12 @@ class VulnerabilityList(BaseModel):
 
 # JSON: .
 class SnykContainerScan(BaseModel):
-    """Represents the output of `snyk container scan --json`"""
+    """Represents the output of `snyk container scan --json`
+
+    All methods that retrieve CVSS Scores are implemented in this class,
+    while methods that retrieve the vulnerabilities themselves are implemented
+    in the `VulnerabilityList` class.
+    """
 
     vulnerabilities: VulnerabilityList
     ok: bool
@@ -392,13 +408,13 @@ class SnykContainerScan(BaseModel):
     org: str
     policy: str
     isPrivate: bool
-    licensesPolicy: dict
+    licensesPolicy: LicensesPolicy
     packageManager: str
     ignoreSettings: Any
     docker: SnykDocker
     summary: str
     filesystemPolicy: bool
-    filtered: dict  # TODO: use SnykFiltered
+    filtered: SnykFiltered
     uniqueCount: int
     projectName: str
     platform: str
