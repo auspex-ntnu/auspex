@@ -113,7 +113,44 @@ class AggregateScan:
             for vuln in scan.vulnerabilities:
                 yield vuln
 
-    # TODO: Exception handling for median, mean and std
+    def most_severe(self, n: int = 5) -> list[SnykVulnerability]:
+        """Retrieves the N most severe vulnerabilities across all images scanned.
+
+        Parameters
+        ----------
+        n : int, optional
+            Number of vulnerabilities to return, by default 5
+
+        Returns
+        -------
+        list[SnykVulnerability]
+            List of vulnerabilities
+        """
+        vulns = list(self.vulnerabilities)
+        vulns.sort(key=lambda v: v.cvssScore, reverse=True)
+        if n > len(vulns):  # make sure we don't go out of bounds
+            n = len(vulns)
+        return vulns[:n]
+
+    # TODO: add n argument so we can get multiple per image?
+    def most_severe_per_scan(self) -> dict[str, Optional[SnykVulnerability]]:
+        """Retrieves the most severe vulnerability from each scanned image.
+
+        Returns
+        -------
+        list[SnykVulnerability]
+            Dictionary where keys are image names and values are scans
+        """
+        vulns = {}  # type: dict[str, Optional[SnykVulnerability]]
+        for scan in self.scans:
+            most_severe = scan.vulnerabilities.most_severe
+            if not most_severe:
+                logger.info(f"Scan {scan.id} has no vulnerabilities.")
+            # TECHNICALLY we could run into an issue where two scans somehow have the same ID
+            # and will overwrite each other in this mapping, but that's such an unlikely edge-case
+            # that we simply ignore it.
+            vulns[scan.id] = most_severe
+        return vulns
 
     def most_common_cve(self, n: int) -> list[tuple[str, int]]:
         c: Counter[str] = Counter()
