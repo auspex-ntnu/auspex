@@ -129,7 +129,9 @@ class RemediationAdvice(BaseModel):
 # JSON: .docker.baseImageRemediation
 class BaseImageRemediation(BaseModel):
     code: str
-    advice: list[RemediationAdvice] = Field(default_factory=list)
+    advice: list[RemediationAdvice] = Field(
+        default=[]
+    )  # TODO: why does default_factory=list break hypothesis test?
 
 
 # JSON: .docker
