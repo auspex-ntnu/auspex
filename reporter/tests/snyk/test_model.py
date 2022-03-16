@@ -1,5 +1,8 @@
 # from typing import Any
+from datetime import datetime
+
 from hypothesis import HealthCheck, given, settings, strategies as st
+from reporter.backends.shared import CVSSTimeType
 from reporter.backends.snyk.model import (
     SnykContainerScan,
     VulnerabilityList,
@@ -65,6 +68,10 @@ def test_fuzz_VulnerabilityList(v: VulnerabilityList) -> None:
     upg = v.all_by_upgradability
     assert upg.is_upgradable + upg.not_upgradable == len(v)
 
+    # Test malicious (remove?)
+    for vuln in v.malicious:
+        assert vuln.malicious
+
 
 @settings(max_examples=5, suppress_health_check=[HealthCheck.too_slow])
 @given(st.builds(SnykVulnerability))
@@ -81,6 +88,14 @@ def test_fuzz_SnykVulnerability(vuln: SnykVulnerability) -> None:
     assert score is not None
     assert 0.0 <= score <= 10.0
     assert color is not None
+
+    vuln.creationTime = datetime.now()
+    vuln.disclosureTime = datetime.now()
+    vuln.publicationTime = datetime.now()
+    vuln.modificationTime = datetime.now()
+
+    for val in CVSSTimeType:
+        age, score, color = vuln.get_age_score_color(val)
 
 
 @pytest.mark.skip
