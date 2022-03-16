@@ -106,6 +106,7 @@ class AggregateScan:
     def get_scan_ids(self) -> list[str]:
         return [scan.id for scan in self.scans]
 
+    @property
     def vulnerabilities(self) -> Iterator[SnykVulnerability]:
         """Generator that yields vulnerabilities from all scans."""
         for scan in self.scans:
