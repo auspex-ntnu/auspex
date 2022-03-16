@@ -51,8 +51,8 @@ class SnykVulnerability(BaseModel):
     packageManager: str
     description: str
     identifiers: Identifiers
-    severity: str
     severityWithCritical: str
+    severity: str
     socialTrendAlert: bool
     cvssScore: float = Field(ge=0.0, le=10.0)  # CVSS v3 scores are between 0.0 and 10.0
     CVSSv3: Optional[str]
@@ -80,6 +80,19 @@ class SnykVulnerability(BaseModel):
     nearestFixedInVersion: Optional[str]
     dockerFileInstruction: Optional[str]  # how to fix vuln
     dockerBaseImage: str
+
+    @validator("severity")
+    def ensure_severity_equal(cls, v: str, values: dict[str, Any]) -> str:
+        # FIXME: ensure we actually want to make these values the same
+        # Rationale: In Snyk version 1.8.0 there is no distinction between "severity" and "severityWithCritical"
+        # Their values are always the same. It seems reasonable to believe the "severity" is for CVSSv2 and
+        # "severityWithCritical" is for CVSSv3, due to CVSSv2 not having a "critical" severity.
+        # Given that we are targetting CVSSv3, we will simply set "severity" to whatever value
+        # that "severityWithCritical" has
+        severityWithCritical = values.get("severityWithCritical")
+        if severityWithCritical:
+            return severityWithCritical
+        return v
 
     @validator("cvssScore", pre=True)
     def cvssScore_defaults_to_0(
