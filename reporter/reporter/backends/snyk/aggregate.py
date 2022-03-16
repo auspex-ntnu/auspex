@@ -36,8 +36,7 @@ class AggregateScan:
     def cvss_stdev(self) -> float:
         return float(np.std(self.cvss_scores))
 
-    # TODO: Add caching!
-    @property
+    @cached_property
     def cvss_scores(self) -> list[float]:
         scores: list[float] = []
         for scan in self.scans:
@@ -45,8 +44,8 @@ class AggregateScan:
 
         if not scores:
             scores = [0.0]
-            logger.info(
-                "Unable to fetch scores when creating aggregate report for "
+            logger.warning(
+                "Unable to retrieve scores when creating aggregate report for "
                 f"the following scans: {self.scans}"
             )
         return scores
