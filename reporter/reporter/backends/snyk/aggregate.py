@@ -50,6 +50,59 @@ class AggregateScan:
             )
         return scores
 
+    @property
+    def low(self) -> list[SnykVulnerability]:
+        return self._get_vulnerabilities_by_severity("low")
+
+    @property
+    def medium(self) -> list[SnykVulnerability]:
+        return self._get_vulnerabilities_by_severity("medium")
+
+    @property
+    def high(self) -> list[SnykVulnerability]:
+        return self._get_vulnerabilities_by_severity("high")
+
+    @property
+    def critical(self) -> list[SnykVulnerability]:
+        return self._get_vulnerabilities_by_severity("critical")
+
+    # TODO: optimize these n_<severity> methods
+    @property
+    def n_low(self) -> int:
+        return len(self.low)
+
+    @property
+    def n_medium(self) -> int:
+        return len(self.medium)
+
+    @property
+    def n_high(self) -> int:
+        return len(self.high)
+
+    @property
+    def n_critical(self) -> int:
+        """Number of critical vulnerabilities."""
+        return len(self.critical)
+
+    def _get_vulnerabilities_by_severity(
+        self, severity: str
+    ) -> list[SnykVulnerability]:
+        # FIXME: will not raise exception on invalid severity if aggregate report has no scans
+
+        l = []
+        for scan in self.scans:
+            attrs = {
+                "low": scan.vulnerabilities.low,
+                "medium": scan.vulnerabilities.medium,
+                "high": scan.vulnerabilities.high,
+                "critical": scan.vulnerabilities.critical,
+            }
+            vulns = attrs.get(severity)
+            if vulns is None:
+                raise ValueError(f"Unknown severity: '{severity}'")
+            l.extend(vulns)
+        return l
+
     def get_scan_ids(self) -> list[str]:
         return [scan.id for scan in self.scans]
 
