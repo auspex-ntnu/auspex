@@ -52,7 +52,7 @@ class SnykVulnerability(BaseModel):
     severity: str
     severityWithCritical: str
     socialTrendAlert: bool
-    cvssScore: float
+    cvssScore: float = Field(ge=0.0, le=10.0)  # CVSS v3 scores are between 0.0 and 10.0
     CVSSv3: Optional[str]
     patches: list[Any]  # we don't know what this can contain
     references: list[Reference]
