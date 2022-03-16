@@ -181,6 +181,12 @@ class VulnerabilityList(BaseModel):
     def __repr__(self) -> str:
         return f"VulnerabilityList(len={len(self.__root__)})"
 
+    def __len__(self) -> int:
+        return len(self.__root__)
+
+    def __hash__(self) -> int:
+        return id(self)
+
     # DEV NOTE: We have chosen to copy-paste the methods below here instead of
     # going all in on metaprogramming which would reduce readability.
     # Performance is a secondary concern given the system's overall low latency sensitivity.
