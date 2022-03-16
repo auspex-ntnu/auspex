@@ -1,16 +1,20 @@
+# TODO: Rewrite methods that return lists as generators in order to optimize memory usage.
+
 import json
+import time
 from collections import Counter
 from datetime import datetime
-from functools import cache, cached_property, _lru_cache_wrapper
+from functools import _lru_cache_wrapper, cache, cached_property
 from os import PathLike
-from typing import Any, Optional
-import time
+from typing import Any, Iterator, Optional, Union
 
 import numpy as np
 from loguru import logger
 from numpy.typing import NDArray
 from pydantic import BaseModel, Field, validator
 
+from ..._types import MplRGBAColor
+from ...utils.matplotlib import get_cvss_color
 from ..shared import (
     CVSS_DATE_BRACKETS,
     DEFAULT_CVSS_TIMETYPE,
@@ -18,8 +22,6 @@ from ..shared import (
     DateDescription,
     UpgradabilityCounter,
 )
-from ...utils.matplotlib import get_cvss_color
-from ..._types import MplRGBAColor
 
 
 # JSON: .vulnerabilities[n].identifiers
@@ -105,7 +107,7 @@ class SnykVulnerability(BaseModel):
         timetype: CVSSTimeType = DEFAULT_CVSS_TIMETYPE,
     ) -> tuple[int, float, MplRGBAColor]:
         """
-        Retrieves the vulnerability's age, score and numpy color (determined by its CVSS score).
+        Retrieves the vulnerability's age (in days), score and numpy color (determined by its CVSS score).
 
         Used for displaying vulnerabilities in scatter plots.
         """
@@ -516,6 +518,8 @@ class SnykContainerScan(BaseModel):
         # TODO: most common per severity
         return self._get_cve_counter().most_common(n=max_n)
 
+    # TODO: add def _get_vulnerabilities_with_cve(self) -> list[SnykVulnerability]
+
     def _get_cve_counter(self) -> Counter[str]:
         c: Counter[str] = Counter()
         for vuln in self.vulnerabilities:
@@ -546,7 +550,7 @@ class SnykContainerScan(BaseModel):
         return c
 
 
-def parse_file(fp: PathLike) -> SnykContainerScan:
+def parse_file(fp: Union[str, PathLike[str]]) -> SnykContainerScan:
     with open(fp, "r") as f:
         j = json.load(f)
         # TODO: handle JSON parsing error
