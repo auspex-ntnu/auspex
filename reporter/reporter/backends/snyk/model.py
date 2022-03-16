@@ -187,6 +187,11 @@ class VulnerabilityList(BaseModel):
     def __hash__(self) -> int:
         return id(self)
 
+    # TODO: delete?!
+    def scores(self) -> Iterator[float]:
+        for vuln in self.__root__:
+            yield vuln.cvssScore
+
     # DEV NOTE: We have chosen to copy-paste the methods below here instead of
     # going all in on metaprogramming which would reduce readability.
     # Performance is a secondary concern given the system's overall low latency sensitivity.
