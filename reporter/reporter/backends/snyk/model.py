@@ -266,6 +266,14 @@ class VulnerabilityList(BaseModel):
         """
         return self._get_vuln_upgradability_distribution(self.critical)
 
+    @property
+    def all_by_upgradability(self) -> UpgradabilityCounter:
+        """
+        Distribution of upgradable to non-upgradable vulnerabilities
+        for all severity levels combined.
+        """
+        return self._get_vuln_upgradability_distribution(self.__root__)
+
     # NOTE: remain a property or be a function named get_malicious?
     @property
     def malicious(self) -> list[SnykVulnerability]:
@@ -352,15 +360,6 @@ class VulnerabilityList(BaseModel):
             else:
                 c.not_upgradable += 1
         return c
-
-    def get_distribution_by_upgradability(self) -> UpgradabilityCounter:
-        """
-        Retrieves distribution upgradable to non-upgradable vulnerabilities
-        for all severity levels combined.
-
-        TODO: should return dict instead of UpgradabilityCounter?
-        """
-        return self._get_vuln_upgradability_distribution(self.__root__)
 
     def get_distribution_by_severity(self) -> dict[str, int]:
         """Retrieves distribution of vulnerabiltiies grouped by their
