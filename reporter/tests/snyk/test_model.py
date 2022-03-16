@@ -29,8 +29,13 @@ def test_fuzz_SnykContainerScan(scan: SnykContainerScan) -> None:
 @settings(max_examples=5, suppress_health_check=[HealthCheck.too_slow])
 @given(st.builds(VulnerabilityList))
 def test_fuzz_VulnerabilityList(v: VulnerabilityList) -> None:
-    assert len(list(v.scores())) == len(v)
-    assert iter(v)  # check that we can iterate over the object
+    # Test dunder methods
+    assert len(list(v.scores())) == len(v)  # __len__
+    assert iter(v)  # __iter__
+    if len(v) > 0:  # __getitem__
+        for i in range(len(v)):
+            assert v[i] is not None
+    assert repr(v) is not None  # __repr__
 
     # Test properties returning least and most severe vulnerabilities
     if len(v) > 0:
