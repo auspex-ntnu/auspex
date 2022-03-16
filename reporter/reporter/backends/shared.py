@@ -9,16 +9,27 @@ class DateDescription(NamedTuple):
     date: timedelta
     description: str
 
-    # inline duplicate type checks for performance reasons
+    # inline duplicate type checks for performance and readability
+    # Methods can be replaced with operator metaprogramming (but let's not)
     def __gt__(self, other: object) -> bool:
         if not isinstance(other, DateDescription):
             raise TypeError(f"Cannot compare {type(self)} and {type(other)}")
         return self.date > other.date
 
+    def __ge__(self, other: object) -> bool:
+        if not isinstance(other, DateDescription):
+            raise TypeError(f"Cannot compare {type(self)} and {type(other)}")
+        return self.date >= other.date
+
     def __lt__(self, other: object) -> bool:
         if not isinstance(other, DateDescription):
             raise TypeError(f"Cannot compare {type(self)} and {type(other)}")
         return self.date < other.date
+
+    def __le__(self, other: object) -> bool:
+        if not isinstance(other, DateDescription):
+            raise TypeError(f"Cannot compare {type(self)} and {type(other)}")
+        return self.date <= other.date
 
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, DateDescription):
