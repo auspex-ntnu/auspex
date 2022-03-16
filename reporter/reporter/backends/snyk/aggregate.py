@@ -1,13 +1,13 @@
 from collections import Counter
 from dataclasses import dataclass
 from functools import cached_property
-from typing import Iterator
+from typing import Iterator, Optional
 
 import numpy as np
 from loguru import logger
 
-from .model import SnykContainerScan, SnykVulnerability
 from ..._types import MplRGBAColor
+from .model import SnykContainerScan, SnykVulnerability
 
 
 # Use dataclass here since we don't need validation
@@ -104,6 +104,7 @@ class AggregateScan:
         return l
 
     def get_scan_ids(self) -> list[str]:
+        """Retrieves IDs of all scans."""
         return [scan.id for scan in self.scans]
 
     @property
