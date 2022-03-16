@@ -17,11 +17,12 @@ class AggregateScan:
 
     @property
     def cvss_max(self) -> float:
-        return max(scan.cvss_max for scan in self.scans)
+        return max(self.cvss_scores)
 
     @property
     def cvss_min(self) -> float:
-        return min(scan.cvss_min for scan in self.scans)
+        # return min((scan.cvss_min for scan in self.scans), default=0.0)
+        return min(self.cvss_scores)
 
     @property
     def cvss_median(self) -> float:
