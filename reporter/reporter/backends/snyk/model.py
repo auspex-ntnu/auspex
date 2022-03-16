@@ -186,12 +186,24 @@ class VulnerabilityList(BaseModel):
     # Performance is a secondary concern given the system's overall low latency sensitivity.
 
     @property
-    def most_severe(self) -> SnykVulnerability:
-        return max(self.__root__, key=lambda v: v.cvssScore)
+    def most_severe(self) -> Optional[SnykVulnerability]:
+        """The most severe vulnerability (if any)"""
+        return max(
+            self.__root__,
+            default=None,
+            # mypy doesn't understand that None takes presedence over key
+            # hence the guard against None here
+            key=lambda v: v.cvssScore if v is not None else 0.0,
+        )
 
     @property
-    def least_severe(self) -> SnykVulnerability:
-        return min(self.__root__, key=lambda v: v.cvssScore)
+    def least_severe(self) -> Optional[SnykVulnerability]:
+        """The least severe vulnerability (if any)"""
+        return min(
+            self.__root__,
+            default=None,
+            key=lambda v: v.cvssScore if v is not None else 0.0,
+        )
 
     @property
     def low(self) -> list[SnykVulnerability]:
