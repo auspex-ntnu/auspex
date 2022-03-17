@@ -23,7 +23,17 @@ def test_fuzz_SnykContainerScan(scan: SnykContainerScan) -> None:
     if scan.cvss_max != 0.0:
         assert scan.cvss_mean != 0.0
         assert scan.cvss_stdev != 0.0
+    assert scan.cvss_mean is not None
+    assert scan.cvss_median is not None
+    assert scan.cvss_stdev is not None
     assert scan.architecture in scan.platform  # NOTE: remove?
+
+    if len(scan.vulnerabilities) > 0:
+        methods = [scan.severity_v2, scan.severity_v3]
+        for meth in methods:
+            mc = meth()
+            assert mc is not None
+            assert isinstance(mc, list)
 
 
 # TODO: Create strategy for constructing SnykVulnerability objects
