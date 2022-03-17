@@ -67,7 +67,7 @@ async def get_document(collection_name: str, document_id: str) -> DocumentSnapsh
     docpath = get_firestore_logs_docpath(collection_name, document_id)
     logger.debug(f"Fetching {docpath}")
     d = db.document(docpath)
-    doc = await d.get()  # type: DocumentSnapshot # type: ignore
+    doc = await d.get()  # type: DocumentSnapshot
     if not doc.exists:
         raise ValueError("Document not found.")
     return doc
