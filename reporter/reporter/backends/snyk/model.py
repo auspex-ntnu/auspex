@@ -333,6 +333,7 @@ class VulnerabilityList(BaseModel):
 
             # Handle falsey time value
             if not t:
+                # TODO: find out what to do with these vulnerabilities
                 logger.warning(
                     # TODO: fix wording. Find better word than "falsey"
                     f"Cannot sort vulnerability {vuln.identifiers}. "
@@ -365,7 +366,7 @@ class VulnerabilityList(BaseModel):
             return np.array([vuln.cvssScore for vuln in self])
 
     def _get_vulns_by_severity_level(self, level: str) -> list[SnykVulnerability]:
-        return [v for v in self if v.severityWithCritical == level]
+        return [v for v in self if v.severity == level]
 
     def _get_vuln_upgradability_distribution(
         self, vulns: list[SnykVulnerability]
