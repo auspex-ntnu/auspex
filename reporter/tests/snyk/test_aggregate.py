@@ -2,6 +2,7 @@ from hypothesis import HealthCheck, given, settings, strategies as st
 import pytest
 
 from reporter.backends.snyk.aggregate import AggregateScan
+from reporter.backends.snyk.model import VulnerabilityList
 
 
 @settings(max_examples=10)
@@ -18,8 +19,8 @@ def test_fuzz_AggregateScan(ag: AggregateScan) -> None:
 
     # Check that these properties simply don't throw an exception
     # TODO: add deterministic testing of these properties
-    for prop in [ag.cvss_median, ag.cvss_mean, ag.cvss_stdev]:
-        v = prop
+    for score_prop in [ag.cvss_median, ag.cvss_mean, ag.cvss_stdev]:
+        v = score_prop
         assert v is not None
 
     # Test retrieving all vulnerabilities by severity
@@ -29,9 +30,9 @@ def test_fuzz_AggregateScan(ag: AggregateScan) -> None:
         "high": ag.high,
         "critical": ag.critical,
     }
-    for severity, prop in props.items():
-        for scan in prop:
-            assert scan.severity == severity
+    for severity, vuln_prop in props.items():
+        for vuln in vuln_prop:
+            assert vuln.severity == severity
 
     # Test retrieving number of vulnerabilities by severity
     sevvulns = {"low": 0, "medium": 0, "high": 0, "critical": 0}
@@ -65,3 +66,19 @@ def test_fuzz_AggregateScan(ag: AggregateScan) -> None:
     # Test capability as a generator
     for vuln in ag.vulnerabilities:
         assert vuln is not None
+
+    # Test most severe vulnerability per scan
+    most_severe_per_scan = ag.most_severe_per_scan()
+    assert len(most_severe_per_scan) == len(ag.scans)
+    assert all(scan_id in ag.get_scan_ids() for scan_id in most_severe_per_scan)
+    # TODO: ensure output of method is correct
+
+    # Test most common vulnerability
+    # TODO: Test expected content
+    n = 5
+    mc = ag.most_common_cve(n=n)
+    assert len(mc) <= n
+
+    # Test age, score, color retrieval
+    asc = ag.get_vuln_age_score_color()
+    assert len(asc) == len(list(ag.vulnerabilities))
