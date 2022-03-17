@@ -11,14 +11,33 @@ fastapi = "^0.72.0"
 uvicorn = "^0.17.4"
 firebase-admin = "^5.2.0"
 loguru = "^0.6.0"
-auspex-core = {path = "../core"}
+auspex-core = { path = "../core", develop = true }
 sanitize-filename = "^1.2.0"
 matplotlib = "^3.5.1"
 
 [tool.poetry.dev-dependencies]
-pytest = "^5.2"
+pytest = "7.1.0"
 mypy = "^0.931"
 black = "^22.1.0"
+hypothesis = "^6.39.3"
+pytest-cov = "^3.0.0"
+poethepoet = "^0.13.1"
+
+[tool.poe.tasks]
+test = "pytest"
+testcov = "pytest --cov=reporter"
+testcov100 = { shell = "poe test  | grep -v '100%'" }
+testhtml = { shell = "poe testcov --cov-report html:cov_html" }
+serve = { script = "reporter:app(debug=True)" }                  # python script based task
+tunnel = { shell = "ssh -N -L 0.0.0.0:8080:$PROD:8080 $PROD &" } # (posix) shell based task
+
+[tool.pytest.ini_options]
+filterwarnings = [
+    # Numpy warnings that we already handle internally
+    'ignore:Mean of empty slice.',
+    'ignore:Degrees of freedom',
+    'ignore:invalid value encountered',
+]
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
