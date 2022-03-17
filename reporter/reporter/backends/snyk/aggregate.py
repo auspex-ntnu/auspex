@@ -8,6 +8,7 @@ from loguru import logger
 
 from ..._types import MplRGBAColor
 from .model import SnykContainerScan, SnykVulnerability
+from ...utils import npmath
 
 
 # Use dataclass here since we don't need validation
@@ -26,15 +27,15 @@ class AggregateScan:
 
     @property
     def cvss_median(self) -> float:
-        return float(np.median(self.cvss_scores))
+        return npmath.median(self.cvss_scores)
 
     @property
     def cvss_mean(self) -> float:
-        return float(np.mean(self.cvss_scores))
+        return npmath.mean(self.cvss_scores)
 
     @property
     def cvss_stdev(self) -> float:
-        return float(np.std(self.cvss_scores))
+        return npmath.stdev(self.cvss_scores)
 
     @cached_property
     def cvss_scores(self) -> list[float]:
