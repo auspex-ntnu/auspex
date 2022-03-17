@@ -403,7 +403,7 @@ class VulnerabilityList(BaseModel):
 
     def get_distribution_by_severity_and_upgradability(
         self,
-    ) -> dict[str, dict[str, int]]:
+    ) -> dict[str, UpgradabilityCounter]:
         """Retrieves the upgradability status of all vulnerabilities,
         grouped by their CVSS severity level.
 
@@ -425,10 +425,10 @@ class VulnerabilityList(BaseModel):
         ```
         """
         return {
-            "low": self.low_by_upgradability.dict(),
-            "medium": self.medium_by_upgradability.dict(),
-            "high": self.high_by_upgradability.dict(),
-            "critical": self.critical_by_upgradability.dict(),
+            "low": self.low_by_upgradability,
+            "medium": self.medium_by_upgradability,
+            "high": self.high_by_upgradability,
+            "critical": self.critical_by_upgradability,
         }
 
 
