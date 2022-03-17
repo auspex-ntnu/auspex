@@ -1,8 +1,10 @@
 # from typing import Any
 from datetime import datetime
+import math
+from pathlib import Path
 
 from hypothesis import HealthCheck, given, settings, strategies as st
-from reporter.backends.shared import CVSSTimeType
+from reporter.backends.shared import CVSSTimeType, DateDescription, UpgradabilityCounter
 from reporter.backends.snyk.model import (
     SnykContainerScan,
     VulnerabilityList,
@@ -11,7 +13,14 @@ from reporter.backends.snyk.model import (
 import pytest
 
 
-# st.register_type_strategy(Any, st.text())  # type: ignore
+def test_SnykContainerScan_from_file() -> None:
+    scan = SnykContainerScan.parse_file(
+        Path(__file__).parent / "../_static/vulhub_php_5.4.1_cgi.json"
+    )
+    assert scan is not None
+    assert math.isclose(scan.cvss_mean, 6.535999999999999)
+    assert math.isclose(scan.cvss_median, 6.5)  # probably don't need isclose here?
+    assert math.isclose(scan.cvss_stdev, 1.8512989051916053)
 
 
 # Fuzzing test with hypothesis
