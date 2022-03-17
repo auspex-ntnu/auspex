@@ -23,6 +23,7 @@ from ..shared import (
     UpgradabilityCounter,
 )
 
+from ...utils import npmath
 
 # JSON: .vulnerabilities[n].identifiers
 class Identifiers(BaseModel):
