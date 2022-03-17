@@ -503,29 +503,15 @@ class SnykContainerScan(BaseModel):
     # TODO: use @computed_field when its PR is merged into pydantic
     @property
     def cvss_mean(self) -> float:
-        """Retrieves mean CVSS v3.0 score of all CVEs."""
-        scores = self.vulnerabilities.get_cvss_scores()
-        return scores.mean()
+        return npmath.mean(self.vulnerabilities.get_cvss_scores())
 
     @property
     def cvss_median(self) -> float:
-        scores = self.vulnerabilities.get_cvss_scores()
-        try:
-            return float(np.median(scores))
-        except Exception as e:
-            logger.error(f"Failed to get median CVSS score for {self.id}", e)
-            return 0.0
+        return npmath.median(self.vulnerabilities.get_cvss_scores())
 
     @property
     def cvss_stdev(self) -> float:
-        scores = self.vulnerabilities.get_cvss_scores()
-        try:
-            return float(np.std(scores))
-        except Exception as e:
-            logger.error(
-                f"Failed to get standard deviation for CVSS scores for {self.id}", e
-            )
-            return 0.0
+        return npmath.stdev(self.vulnerabilities.get_cvss_scores())
 
     def most_common_cve(self, max_n: Optional[int] = 5) -> list[tuple[str, int]]:
         # TODO: most common per severity
