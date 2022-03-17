@@ -78,9 +78,56 @@ def test_fuzz_VulnerabilityList(v: VulnerabilityList) -> None:
     upg = v.all_by_upgradability
     assert upg.is_upgradable + upg.not_upgradable == len(v)
 
+    props = {
+        "low": "v.low_by_upgradability",
+        "medium": "v.medium_by_upgradability",
+        "high": "v.high_by_upgradability",
+        "critical": "v.critical_by_upgradability",
+    }
+    if len(v) > 0:
+        for severity, prop in props.items():
+            v[0].severity = severity
+            v[0].isUpgradable = True
+            assert eval(prop).is_upgradable >= 1
+
+    # Test distribution of vulnerabilities by severity
+    severities = ["low", "medium", "high", "critical"]
+    distrib = v.get_distribution_by_severity()
+    for sev in severities:
+        assert sev in distrib
+        assert isinstance(distrib[sev], int)
+        assert distrib[sev] >= 0
+
+    # Test distribution of vulnerabilities by severity and upgradability status
+    distrib_upg = v.get_distribution_by_severity_and_upgradability()
+    for sev in severities:
+        assert sev in distrib_upg
+        assert isinstance(distrib_upg[sev], UpgradabilityCounter)
+        assert distrib_upg[sev].is_upgradable >= 0
+        assert distrib_upg[sev].not_upgradable >= 0
+
     # Test malicious (remove?)
     for vuln in v.malicious:
         assert vuln.malicious
+
+    # Vulnerability by date
+    # TODO: test returned data
+    # TODO:
+    if len(v) > 0:
+        for t in CVSSTimeType:
+            n = 0
+            by_date = v.get_vulns_by_date(t)
+            for bracket, vulns in by_date.items():
+                n += len(vulns)
+                assert isinstance(bracket, DateDescription)
+            assert n == len([vuln for vuln in v if getattr(vuln, t.value)])
+
+    if len(v) > 0:
+        v[0].cvssScore = 0.0
+        scores = v.get_cvss_scores(ignore_zero=True)
+        assert 0.0 not in scores
+        scores = v.get_cvss_scores(ignore_zero=False)
+        assert 0.0 in scores
 
 
 @settings(max_examples=5, suppress_health_check=[HealthCheck.too_slow])
