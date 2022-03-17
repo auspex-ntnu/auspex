@@ -1,9 +1,6 @@
 import numpy as np
 from loguru import logger
-from typing import Any, Callable, Iterable, Protocol, Union, overload
-from numbers import Number
-from numpy.typing import ArrayLike
-
+from typing import Any, Callable, Iterable
 
 from .._types import NumberType
 
@@ -25,10 +22,15 @@ def _do_stats_math(
     a: Iterable[NumberType],
     default: float = 0.0,
 ) -> float:
-    res = func(a)
-    if np.isnan(res):
-        logger.warning(
-            f"{func.__name__}({repr(a)}) returned nan. Defaulting to {default}"
-        )
+    """Wrapper function around numpy stats functions that handles exceptions and NaN."""
+    try:
+        res = func(a)
+        if np.isnan(res):
+            logger.warning(
+                f"{func.__name__}({repr(a)}) returned nan. Defaulting to {default}"
+            )
+            return default
+    except Exception as e:
+        logger.error(f"{func.__name__}({repr(a)}) failed. Defaulting to {default}", e)
         return default
     return float(res)
