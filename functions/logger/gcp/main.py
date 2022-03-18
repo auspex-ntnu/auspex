@@ -35,11 +35,14 @@ class Scan(BaseModel):
     """Model for incoming scans."""
 
     image: str  # Name of scanned image
-    scan: str = Field(..., exclude=True)  # Output of scanning software (not dumped)
-    id: Optional[str] = None  #  (set by function) Firestore document ID
-    timestamp: Optional[float] = None  # (set by function) Timestamp of scan
-    url: Optional[str] = None  # (set by function) URL to scan results
-    blob: Optional[str] = None  # (set by function) Name of uploaded blob
+    scan: str = Field(
+        ..., exclude=True
+    )  # Output of scanning software (not stored in DB)
+    id: Optional[str] = None  #  Firestore document ID (set by function)
+    timestamp: Optional[float] = None  # Timestamp of scan (set by function)
+    url: Optional[str] = None  # URL to scan results (set by function)
+    blob: Optional[str] = None  # Name of uploaded blob (set by function)
+    bucket: Optional[str] = None  # Bucket blob is stored in (set by function)
 
     class Config:
         extra = "allow"  # we account for future additions to schema
@@ -55,6 +58,7 @@ def log_results(scan: Scan) -> Scan:
     blob = upload_json_blob_from_memory(scan.scan, filename)
     scan.url = blob.public_url
     scan.blob = blob.name
+    scan.bucket = blob.bucket
 
     # Add firestore document
     doc = add_firestore_document(scan)

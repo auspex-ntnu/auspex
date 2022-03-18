@@ -35,6 +35,7 @@ The function will store any key:value pairs in the firestore collection (with th
     // URL to file storing output of scanning tool
     "url": "https://storage.googleapis.com/auspex-scans/vulhubphp54.1-cgi_1645787343_142973.json",
     "blob": "vulhubphp5.4.1-cgi_1645787343_142973.json",
+    "bucket": "auspex-scans",
     "backend": "snyk",
     "stderr": "",
     "status": "ok"
