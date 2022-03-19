@@ -60,3 +60,28 @@ CVSS_DATE_BRACKETS = [
     DateDescription(timedelta(days=30), ">30 days"),
     DateDescription(timedelta(days=0), "Last month"),
 ]
+
+
+class CVESeverity(Enum):
+    CRITICAL = 4
+    HIGH = 3
+    MEDIUM = 2
+    LOW = 1
+    UNDEFINED = 0
+
+    @classmethod
+    def get(cls, severity: str) -> int:
+        # Can omit this type checking for performance reasons.
+        # Pydantic should guarantee severity is always a string.
+        if not isinstance(severity, str):
+            return cls.UNDEFINED.value
+        return cls.__members__.get(severity.upper(), cls.UNDEFINED).value
+
+
+SEVERITIES = {
+    "critical": 1,
+    # skip 0 to avoid bugs due to falsey value in comparison
+    "high": -1,
+    "medium": -2,
+    "low": -3,
+}

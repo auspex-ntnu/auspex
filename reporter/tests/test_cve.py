@@ -1,5 +1,5 @@
 import datetime
-from reporter.backends.shared import DateDescription
+from reporter.backends.cve import DateDescription
 import pytest
 
 date_year = DateDescription(

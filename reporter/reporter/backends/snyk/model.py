@@ -15,12 +15,13 @@ from pydantic import BaseModel, Field, validator
 
 from ..._types import MplRGBAColor
 from ...utils.matplotlib import get_cvss_color
-from ..shared import (
+from ..cve import (
     CVSS_DATE_BRACKETS,
     DEFAULT_CVSS_TIMETYPE,
     CVSSTimeType,
     DateDescription,
     UpgradabilityCounter,
+    CVESeverity,
 )
 
 from ...utils import npmath

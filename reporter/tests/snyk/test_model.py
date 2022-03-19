@@ -4,7 +4,7 @@ import math
 from pathlib import Path
 
 from hypothesis import HealthCheck, given, settings, strategies as st
-from reporter.backends.shared import CVSSTimeType, DateDescription, UpgradabilityCounter
+from reporter.backends.cve import CVSSTimeType, DateDescription, UpgradabilityCounter
 from reporter.backends.snyk.model import (
     SnykContainerScan,
     VulnerabilityList,
@@ -24,7 +24,7 @@ def test_SnykContainerScan_from_file() -> None:
 
 
 # Fuzzing test with hypothesis
-@settings(max_examples=1)
+@settings(max_examples=10)
 @given(st.builds(SnykContainerScan))
 def test_fuzz_SnykContainerScan(scan: SnykContainerScan) -> None:
     # CVSS sanity checks
@@ -48,7 +48,7 @@ def test_fuzz_SnykContainerScan(scan: SnykContainerScan) -> None:
 # TODO: Create strategy for constructing SnykVulnerability objects
 
 # Fuzzing test with hypothesis
-@settings(max_examples=5, suppress_health_check=[HealthCheck.too_slow])
+@settings(max_examples=10, suppress_health_check=[HealthCheck.too_slow])
 @given(st.builds(VulnerabilityList))
 def test_fuzz_VulnerabilityList(v: VulnerabilityList) -> None:
     # Test dunder methods
@@ -139,7 +139,7 @@ def test_fuzz_VulnerabilityList(v: VulnerabilityList) -> None:
         assert 0.0 in scores
 
 
-@settings(max_examples=5, suppress_health_check=[HealthCheck.too_slow])
+@settings(max_examples=10, suppress_health_check=[HealthCheck.too_slow])
 @given(st.builds(SnykVulnerability))
 def test_fuzz_SnykVulnerability(vuln: SnykVulnerability) -> None:
     assert vuln.get_numpy_color() is not None
