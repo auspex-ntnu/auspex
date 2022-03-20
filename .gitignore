@@ -1,15 +1,17 @@
 
-# VSCode
-.vscode/*
+
 
 # File types
 *.pdf
 *.json
+*.sarif
+*.txt
 
 # Python
-*__pycache__*
-*.mypy_cache*
-*.pytest_cache/*
+__pycache__
+.mypy_cache
+.pytest_cache
+.hypothesis
 
 # Poetry
 */dist/*
@@ -17,4 +19,17 @@
 # Google Drive
 .dccache
 
+# Scripts
+/build.sh
+reporter/pylatexexample.py
 
+# Single files
+.coverage
+.gitignore
+jsontostr.py
+scanner/tosarif.py
+sort_severity.py
+!reporter/tests/_static/vulhub_php_5.4.1_cgi.json
+
+# VSCode
+!/.vscode/tasks.json
