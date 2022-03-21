@@ -41,7 +41,7 @@ class AggregateScan:
     def cvss_scores(self) -> list[float]:
         scores: list[float] = []
         for scan in self.scans:
-            scores.extend(scan.vulnerabilities.get_cvss_scores())
+            scores.extend(scan.get_cvss_scores())
 
         if not scores:
             scores = [0.0]
@@ -93,10 +93,10 @@ class AggregateScan:
         l = []
         for scan in self.scans:
             attrs = {
-                "low": scan.vulnerabilities.low,
-                "medium": scan.vulnerabilities.medium,
-                "high": scan.vulnerabilities.high,
-                "critical": scan.vulnerabilities.critical,
+                "low": scan.low,
+                "medium": scan.medium,
+                "high": scan.high,
+                "critical": scan.critical,
             }
             vulns = attrs.get(severity)
             if vulns is None:
@@ -145,7 +145,7 @@ class AggregateScan:
         """
         vulns = {}  # type: dict[str, Optional[SnykVulnerability]]
         for scan in self.scans:
-            most_severe = scan.vulnerabilities.most_severe
+            most_severe = scan.most_severe
             if not most_severe:
                 logger.info(f"Scan {scan.id} has no vulnerabilities.")
             # TECHNICALLY we could run into an issue where two scans somehow have the same ID
@@ -165,5 +165,5 @@ class AggregateScan:
     def get_vuln_age_score_color(self) -> list[tuple[int, float, MplRGBAColor]]:
         l: list[tuple[int, float, MplRGBAColor]] = []
         for scan in self.scans:
-            l.extend(scan.vulnerabilities.get_vulns_age_score_color())
+            l.extend(scan.get_vulns_age_score_color())
         return l

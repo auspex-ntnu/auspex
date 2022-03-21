@@ -2,10 +2,13 @@
 from datetime import datetime
 import math
 from pathlib import Path
+from typing import Any
 
 from hypothesis import HealthCheck, given, settings, strategies as st
 from reporter.backends.cve import CVSSTimeType, DateDescription, UpgradabilityCounter
 from reporter.backends.snyk.model import (
+    Identifiers,
+    Semver,
     SnykContainerScan,
     VulnerabilityList,
     SnykVulnerability,
@@ -27,7 +30,7 @@ def test_SnykContainerScan_from_file() -> None:
 @settings(max_examples=10)
 @given(st.builds(SnykContainerScan))
 def test_fuzz_SnykContainerScan(scan: SnykContainerScan) -> None:
-    # CVSS sanity checks
+    # CVSS sanity tests
     assert scan.cvss_max >= scan.cvss_min
     if scan.cvss_max != 0.0:
         assert scan.cvss_mean != 0.0
@@ -44,6 +47,89 @@ def test_fuzz_SnykContainerScan(scan: SnykContainerScan) -> None:
             assert mc is not None
             assert isinstance(mc, list)
 
+    # Test properties returning least and most severe vulnerabilities
+    if len(scan.vulnerabilities) > 0:
+        assert scan.most_severe is not None
+        assert scan.least_severe is not None
+        assert scan.most_severe.cvssScore >= scan.least_severe.cvssScore
+    else:
+        assert scan.most_severe is None
+        assert scan.least_severe is None
+
+    # Test properties that return vulnerabilities of a given severity
+    # TODO: custom strategy for `severity` attribute so we know these lists are populated
+    levels = [scan.low, scan.medium, scan.high, scan.critical]
+    for level in levels:
+        for vuln in level:  # type: SnykVulnerability
+            assert vuln.severity == level
+
+    # Test properties that return UpgradabilityCounter
+    for upg in [
+        scan.low_by_upgradability,
+        scan.medium_by_upgradability,
+        scan.high_by_upgradability,
+        scan.critical_by_upgradability,
+    ]:
+        assert upg.is_upgradable >= 0
+        assert upg.not_upgradable >= 0
+    upg = scan.all_by_upgradability
+    assert upg.is_upgradable + upg.not_upgradable == len(scan.vulnerabilities)
+
+    props = {
+        "low": "scan.low_by_upgradability",
+        "medium": "scan.medium_by_upgradability",
+        "high": "scan.high_by_upgradability",
+        "critical": "scan.critical_by_upgradability",
+    }
+    if len(scan.vulnerabilities) > 0:
+        for severity, prop in props.items():
+            scan.vulnerabilities[0].severity = severity
+            scan.vulnerabilities[0].isUpgradable = True
+            assert eval(prop).is_upgradable >= 1
+
+    # Test distribution of vulnerabilities by severity
+    severities = ["low", "medium", "high", "critical"]
+    distrib = scan.get_distribution_by_severity()
+    for sev in severities:
+        assert sev in distrib
+        assert isinstance(distrib[sev], int)
+        assert distrib[sev] >= 0
+
+    # Test distribution of vulnerabilities by severity and upgradability status
+    distrib_upg = scan.get_distribution_by_severity_and_upgradability()
+    for sev in severities:
+        assert sev in distrib_upg
+        assert isinstance(distrib_upg[sev], UpgradabilityCounter)
+        assert distrib_upg[sev].is_upgradable >= 0
+        assert distrib_upg[sev].not_upgradable >= 0
+
+    # Test malicious (remove?)
+    for vuln in scan.malicious:
+        assert vuln.malicious
+
+    # Vulnerability by date
+    # TODO: test returned data
+    # TODO:
+    if len(scan.vulnerabilities) > 0:
+        for t in CVSSTimeType:
+            n = 0
+            by_date = scan.get_vulns_by_date(t)
+            for bracket, vulns in by_date.items():
+                n += len(vulns)
+                assert isinstance(bracket, DateDescription)
+            assert n == len(
+                [vuln for vuln in scan.vulnerabilities if getattr(vuln, t.value)]
+            )
+
+    if len(scan.vulnerabilities) > 0:
+        scan.vulnerabilities[0].cvssScore = 0.0
+        scores = scan.get_cvss_scores(ignore_zero=True)
+        assert 0.0 not in scores
+        scores = scan.get_cvss_scores(ignore_zero=False)
+        assert 0.0 in scores
+
+    # assert len(list(scan.scores())) == len(scan.vulnerabilities)  # __len__
+
 
 # TODO: Create strategy for constructing SnykVulnerability objects
 
@@ -52,91 +138,12 @@ def test_fuzz_SnykContainerScan(scan: SnykContainerScan) -> None:
 @given(st.builds(VulnerabilityList))
 def test_fuzz_VulnerabilityList(v: VulnerabilityList) -> None:
     # Test dunder methods
-    assert len(list(v.scores())) == len(v)  # __len__
+
     assert iter(v)  # __iter__
     if len(v) > 0:  # __getitem__
         for i in range(len(v)):
             assert v[i] is not None
     assert repr(v) is not None  # __repr__
-
-    # Test properties returning least and most severe vulnerabilities
-    if len(v) > 0:
-        assert v.most_severe is not None
-        assert v.least_severe is not None
-        assert v.most_severe.cvssScore >= v.least_severe.cvssScore
-    else:
-        assert v.most_severe is None
-        assert v.least_severe is None
-
-    # Test properties that return vulnerabilities of a given severity
-    # TODO: custom strategy for `severity` attribute so we know these lists are populated
-    levels = [v.low, v.medium, v.high, v.critical]
-    for level in levels:
-        for vuln in level:  # type: SnykVulnerability
-            assert vuln.severity == level
-
-    # Test properties that return UpgradabilityCounter
-    for upg in [
-        v.low_by_upgradability,
-        v.medium_by_upgradability,
-        v.high_by_upgradability,
-        v.critical_by_upgradability,
-    ]:
-        assert upg.is_upgradable >= 0
-        assert upg.not_upgradable >= 0
-    upg = v.all_by_upgradability
-    assert upg.is_upgradable + upg.not_upgradable == len(v)
-
-    props = {
-        "low": "v.low_by_upgradability",
-        "medium": "v.medium_by_upgradability",
-        "high": "v.high_by_upgradability",
-        "critical": "v.critical_by_upgradability",
-    }
-    if len(v) > 0:
-        for severity, prop in props.items():
-            v[0].severity = severity
-            v[0].isUpgradable = True
-            assert eval(prop).is_upgradable >= 1
-
-    # Test distribution of vulnerabilities by severity
-    severities = ["low", "medium", "high", "critical"]
-    distrib = v.get_distribution_by_severity()
-    for sev in severities:
-        assert sev in distrib
-        assert isinstance(distrib[sev], int)
-        assert distrib[sev] >= 0
-
-    # Test distribution of vulnerabilities by severity and upgradability status
-    distrib_upg = v.get_distribution_by_severity_and_upgradability()
-    for sev in severities:
-        assert sev in distrib_upg
-        assert isinstance(distrib_upg[sev], UpgradabilityCounter)
-        assert distrib_upg[sev].is_upgradable >= 0
-        assert distrib_upg[sev].not_upgradable >= 0
-
-    # Test malicious (remove?)
-    for vuln in v.malicious:
-        assert vuln.malicious
-
-    # Vulnerability by date
-    # TODO: test returned data
-    # TODO:
-    if len(v) > 0:
-        for t in CVSSTimeType:
-            n = 0
-            by_date = v.get_vulns_by_date(t)
-            for bracket, vulns in by_date.items():
-                n += len(vulns)
-                assert isinstance(bracket, DateDescription)
-            assert n == len([vuln for vuln in v if getattr(vuln, t.value)])
-
-    if len(v) > 0:
-        v[0].cvssScore = 0.0
-        scores = v.get_cvss_scores(ignore_zero=True)
-        assert 0.0 not in scores
-        scores = v.get_cvss_scores(ignore_zero=False)
-        assert 0.0 in scores
 
 
 @settings(max_examples=10, suppress_health_check=[HealthCheck.too_slow])
@@ -164,8 +171,44 @@ def test_fuzz_SnykVulnerability(vuln: SnykVulnerability) -> None:
         age, score, color = vuln.get_age_score_color(val)
 
 
-@pytest.mark.skip
-def test_SnykVulnerability_validator_cvssScore() -> None:
-    # TODO: need to mock SnykVulnerability objects with cvssScore None
-    # and test that each one's score matches the upper threshold of that CVSS severity
-    pass
+def test_SnykVulnerability_validator_cvssScore(
+    snykvulnerability_data: dict[str, Any]
+) -> None:
+    severities = {"low": 3.9, "medium": 6.9, "high": 8.9, "critical": 10.0}
+    # Test that absence of cvssScore defaults to upper threshold of severity
+    for severity, score in severities.items():
+        d = dict(snykvulnerability_data)
+        d["severity"] = severity
+        d["severityWithCritical"] = severity
+        d["nvdSeverity"] = severity
+        d["cvssScore"] = None
+        v = SnykVulnerability.parse_obj(d)
+        assert math.isclose(v.cvssScore, score)
+
+    # Test scenario where severity is an invalid value and cvssScore is None
+    d = dict(snykvulnerability_data)
+    d["severity"] = "unknown"
+    d["severityWithCritical"] = "unknown"
+    d["nvdSeverity"] = "unknown"
+    d["cvssScore"] = None
+    v = SnykVulnerability.parse_obj(d)
+    assert v.cvssScore == 0.0
+
+
+def test_SnykVulnerability_validator_severity(
+    snykvulnerability_data: dict[str, Any],
+    cve_levels: list[str],
+) -> None:
+    for level in cve_levels:
+        d = dict(snykvulnerability_data)
+        # Test severityWithCritical
+        d["severity"] = "unknown"
+        d["nvdSeverity"] = "low"
+        d["severityWithCritical"] = level
+        v = SnykVulnerability.parse_obj(d)
+        assert v.severity == level
+        # Test nvdSeverity
+        d["nvdSeverity"] = level
+        d["severityWithCritical"] = "low"
+        v = SnykVulnerability.parse_obj(d)
+        assert v.severity == level

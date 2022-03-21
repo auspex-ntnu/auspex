@@ -1,8 +1,17 @@
+from pathlib import Path
 from hypothesis import HealthCheck, given, settings, strategies as st
 import pytest
 
 from reporter.backends.snyk.aggregate import AggregateScan
-from reporter.backends.snyk.model import VulnerabilityList
+from reporter.backends.snyk.model import VulnerabilityList, SnykContainerScan
+
+
+def test_AggregateScan_from_file() -> None:
+    scan = SnykContainerScan.parse_file(
+        Path(__file__).parent / "../_static/vulhub_php_5.4.1_cgi.json"
+    )
+    ag = AggregateScan([scan])
+    assert len(list(ag.vulnerabilities)) == len(scan.vulnerabilities)
 
 
 @settings(max_examples=10)
