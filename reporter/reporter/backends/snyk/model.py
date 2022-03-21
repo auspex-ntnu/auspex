@@ -28,9 +28,9 @@ from ...utils import npmath
 
 # JSON: .vulnerabilities[n].identifiers
 class Identifiers(BaseModel):
-    ALTERNATIVE: list[str]
-    CVE: list[str]
-    CWE: list[str]
+    ALTERNATIVE: list[str] = Field(default=[])
+    CVE: list[str] = Field(default=[])
+    CWE: list[str] = Field(default=[])
 
 
 # JSON: .vulnerabilities[n].references[n]
