@@ -54,6 +54,7 @@ class SnykVulnerability(BaseModel):
     description: str
     identifiers: Identifiers
     severityWithCritical: str
+    nvdSeverity: str
     severity: str
     socialTrendAlert: bool
     cvssScore: float = Field(ge=0.0, le=10.0)  # CVSS v3 scores are between 0.0 and 10.0
@@ -67,7 +68,6 @@ class SnykVulnerability(BaseModel):
     disclosureTime: Optional[datetime]  # Can be omitted by Snyk
     id: str
     malicious: bool
-    nvdSeverity: str
     relativeImportance: Optional[
         str
     ]  # observed values: {'negligible', None, 'low', 'medium', 'high'}
@@ -85,16 +85,20 @@ class SnykVulnerability(BaseModel):
 
     @validator("severity")
     def ensure_severity_equal(cls, v: str, values: dict[str, Any]) -> str:
-        # FIXME: ensure we actually want to make these values the same
-        # Rationale: In Snyk version 1.8.0 there is no distinction between "severity" and "severityWithCritical"
-        # Their values are always the same. It seems reasonable to believe the "severity" is for CVSSv2 and
-        # "severityWithCritical" is for CVSSv3, due to CVSSv2 not having a "critical" severity.
-        # Given that we are targetting CVSSv3, we will simply set "severity" to whatever value
-        # that "severityWithCritical" has
-        severityWithCritical = values.get("severityWithCritical")
-        if severityWithCritical:
-            return severityWithCritical
-        return v
+        # UPDATE: Severity is set to the highest severity found in either
+        # "severityWithCritical" or "nvdSeverity"
+        severityWithCritical = values.get("severityWithCritical", "")
+        nvdSeverity = values.get("nvdSeverity", "")
+
+        # Compare severity levels, pick most severe
+        if CVESeverity.get(nvdSeverity) > CVESeverity.get(severityWithCritical):
+            severity = nvdSeverity
+        else:
+            severity = severityWithCritical
+
+        # return (nvd/CVE)severity if it is not an empty string, else fall back on
+        # original value for "severity" in the scan log.
+        return severity if severity else v
 
     @validator("cvssScore", pre=True)
     def cvssScore_defaults_to_0(
