@@ -54,6 +54,7 @@ class Filter(BaseModel):
     critical: Optional[int] = None
 
     def get_filters(self) -> Iterable[tuple[str, Any]]:
+        """Generator that yields all attributes whose values are not None."""
         for k, v in self.dict().items():
             if v is not None:
                 yield (k, v)
@@ -65,14 +66,11 @@ class ParsedScanRequest(BaseModel):
     limit: Optional[int] = None
     order_by: Optional[OrderBy] = None
 
+    @validator("image")
+    def ensure_not_empty(cls, v: str) -> str:
+        if len(v) == 0:
+            raise ValueError("Image cannot be an empty string.")
+        return v
+
     def get_query(self) -> FirestoreQuery:
         return FirestoreQuery(field="image", operator="==", value=self.image)
-
-    # def get_queries2(self) -> list[FirestoreQuery]:
-    #     res = [q.split(" ", 3) for q in self.where]
-    #     rtn = []  # type: list[FirestoreQuery]
-    #     for q in res:
-    #         if len(q) != 3 or not all(token for token in q):
-    #             raise InvalidQueryString(f"{q} is not a valid query.")
-    #         rtn.append(FirestoreQuery(field=q[0], operator=q[1], value=q[2]))
-    #     return rtn
