@@ -123,9 +123,9 @@ def test_fuzz_SnykContainerScan(scan: SnykContainerScan) -> None:
 
     if len(scan.vulnerabilities) > 0:
         scan.vulnerabilities[0].cvssScore = 0.0
-        scores = scan.get_cvss_scores(ignore_zero=True)
+        scores = scan.cvss_scores(ignore_zero=True)
         assert 0.0 not in scores
-        scores = scan.get_cvss_scores(ignore_zero=False)
+        scores = scan.cvss_scores(ignore_zero=False)
         assert 0.0 in scores
 
     # assert len(list(scan.scores())) == len(scan.vulnerabilities)  # __len__
