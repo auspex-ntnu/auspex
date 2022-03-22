@@ -1,26 +1,39 @@
 from datetime import datetime
-from re import S
-from typing import Any
-from pydantic import BaseModel
-from .status import Status
+from typing import Optional
+from pydantic import BaseModel, Field
 
 
-class ScanReport(BaseModel):
-    """Report for scan of a single container image."""
+class CVSSv3Distribution(BaseModel):
+    critical: int = 0
+    high: int = 0
+    medium: int = 0
+    low: int = 0
 
+
+class ParsedVulnerabilities(BaseModel):
+    vulnerabilities: list[BaseModel] = Field(default=list())
+    ok: bool  # Denotes whether or not storing vulnerabilities of this type was successful
+
+
+class Vulnerabilities(BaseModel):
+    low: ParsedVulnerabilities
+    medium: ParsedVulnerabilities
+    high: ParsedVulnerabilities
+    critical: ParsedVulnerabilities
+
+
+class ParsedScan(BaseModel):
+    id: str
     image: str
-    date: datetime
-    raw: str  # URL to raw scan data (.json log file usually)
-    pdf: str  # URL to PDF formatted report
+    scanned: datetime = Field(default_factory=datetime.now)
+    cvss_min: float
+    cvss_max: float
+    cvss_mean: float
+    cvss_median: float
+    cvss_stdev: float
+    vulnerabilities: CVSSv3Distribution
+    # most_common_cve: dict[str, int]  # IDs of most common vulnerabilities
+    report_url: Optional[str]
+    # Has subcollection
 
-
-class ScanIn(BaseModel):
-    images: list[str]
-    backend: str = "snyk"
-    # pdf: bool = True # TODO: figure out if we need this switch
-
-
-class ScanOut(BaseModel):
-    status: Status
-    summary: str | None  # URL to summary report of all images (PDF)
-    reports: list[ScanReport]
+    schema_version: str = "1"  # to account for future schema changes
