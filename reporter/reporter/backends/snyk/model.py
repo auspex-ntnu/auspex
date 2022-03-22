@@ -217,12 +217,7 @@ class VulnerabilityList(BaseModel):
 
 # JSON: .
 class SnykContainerScan(BaseModel):
-    """Represents the output of `snyk container scan --json`
-
-    All methods that retrieve CVSS Scores are implemented in this class,
-    while methods that retrieve the vulnerabilities themselves are implemented
-    in the `VulnerabilityList` class.
-    """
+    """Represents the output of `snyk container scan --json`"""
 
     vulnerabilities: VulnerabilityList
     ok: bool
@@ -269,6 +264,10 @@ class SnykContainerScan(BaseModel):
         return f"SnykVulnerabilityScan(path={self.path}, platform={self.platform})"
 
     @property
+    def image(self) -> str:
+        return self.path
+
+    @property
     def architecture(self) -> str:
         # TODO: add docstring
         r = self.platform.split("/")
@@ -286,17 +285,16 @@ class SnykContainerScan(BaseModel):
     # TODO: use @computed_field when its PR is merged into pydantic
     @property
     def cvss_mean(self) -> float:
-        return npmath.mean(self.get_cvss_scores())
+        return npmath.mean(self.cvss_scores())
 
     @property
     def cvss_median(self) -> float:
-        return npmath.median(self.get_cvss_scores())
+        return npmath.median(self.cvss_scores())
 
     @property
     def cvss_stdev(self) -> float:
-        return npmath.stdev(self.get_cvss_scores())
+        return npmath.stdev(self.cvss_scores())
 
-    ## START PASTE
     @property
     def most_severe(self) -> Optional[SnykVulnerability]:
         """The most severe vulnerability (if any)"""
@@ -307,6 +305,12 @@ class SnykContainerScan(BaseModel):
             # hence the guard against None here
             key=lambda v: v.cvssScore if v is not None else 0.0,
         )
+
+    def most_severe_n(self, n: Optional[int] = 5) -> list[SnykVulnerability]:
+        v = sorted(self.vulnerabilities, key=lambda v: v.cvssScore, reverse=True)
+        if n and len(v) > n:
+            return v[:n]
+        return v
 
     @property
     def least_severe(self) -> Optional[SnykVulnerability]:
@@ -336,6 +340,26 @@ class SnykContainerScan(BaseModel):
     def critical(self) -> list[SnykVulnerability]:
         """All vulnerabilities with a CVSS rating of critical."""
         return self._get_vulns_by_severity_level("critical")
+
+    @property
+    def n_low(self) -> int:
+        """All vulnerabilities with a CVSS rating of low."""
+        return len(self.low)
+
+    @property
+    def n_medium(self) -> int:
+        """All vulnerabilities with a CVSS rating of medium."""
+        return len(self.medium)
+
+    @property
+    def n_high(self) -> int:
+        """All vulnerabilities with a CVSS rating of high."""
+        return len(self.high)
+
+    @property
+    def n_critical(self) -> int:
+        """All vulnerabilities with a CVSS rating of critical."""
+        return len(self.critical)
 
     @property
     def low_by_upgradability(self) -> UpgradabilityCounter:
@@ -441,19 +465,16 @@ class SnykContainerScan(BaseModel):
         return [vuln.get_age_score_color() for vuln in self.vulnerabilities]
 
     @cache
-    def get_cvss_scores(self, ignore_zero: bool = True) -> NDArray[np.float64]:
+    def cvss_scores(self, ignore_zero: bool = True) -> list[float]:
         """Retrieves an NDArray of all vulnerability scores."""
         # TODO: rewrite without list comp to avoid extra allocation
         if ignore_zero:
-            return np.array(
-                [
-                    vuln.cvssScore
-                    for vuln in self.vulnerabilities
-                    if vuln.cvssScore != 0.0
-                ]
-            )
+            return [
+                vuln.cvssScore for vuln in self.vulnerabilities if vuln.cvssScore != 0.0
+            ]
+
         else:
-            return np.array([vuln.cvssScore for vuln in self.vulnerabilities])
+            return [vuln.cvssScore for vuln in self.vulnerabilities]
         # vulns = self.scores()
         # if ignore_zero:
         #     vulns = filter(lambda score: score != 0.0, vulns)
@@ -530,8 +551,6 @@ class SnykContainerScan(BaseModel):
             "high": self.high_by_upgradability,
             "critical": self.critical_by_upgradability,
         }
-
-    ## STOP PASE
 
     def most_common_cve(self, max_n: Optional[int] = 5) -> list[tuple[str, int]]:
         # TODO: most common per severity
