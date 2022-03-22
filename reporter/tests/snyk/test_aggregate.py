@@ -10,7 +10,7 @@ def test_AggregateScan_from_file() -> None:
     scan = SnykContainerScan.parse_file(
         Path(__file__).parent / "../_static/vulhub_php_5.4.1_cgi.json"
     )
-    ag = AggregateScan([scan])
+    ag = AggregateScan(scans=[scan])
     assert len(list(ag.vulnerabilities)) == len(scan.vulnerabilities)
 
 
@@ -23,7 +23,7 @@ def test_fuzz_AggregateScan(ag: AggregateScan) -> None:
     assert most_severe == sorted(most_severe, key=lambda v: v.cvssScore)
 
     assert ag.cvss_max >= ag.cvss_min
-    if any(score != 0.0 for score in ag.cvss_scores):
+    if any(score != 0.0 for score in ag.cvss_scores()):
         assert ag.cvss_mean != 0.0
 
     # Check that these properties simply don't throw an exception

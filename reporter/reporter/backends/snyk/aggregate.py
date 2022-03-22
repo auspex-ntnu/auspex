@@ -1,55 +1,54 @@
 from collections import Counter
 from dataclasses import dataclass
-from functools import cached_property
-from typing import Iterator, Optional
+from functools import _lru_cache_wrapper, cache, cached_property
+from typing import Iterator, Optional, TypeVar
 
 import numpy as np
 from loguru import logger
+from pydantic import BaseModel
 
 from ..._types import MplRGBAColor
 from .model import SnykContainerScan, SnykVulnerability
 from ...utils import npmath
-
+from ...types.protocols import ScanType
 
 # Use dataclass here since we don't need validation
-@dataclass
-class AggregateScan:
+# @dataclass
+class AggregateScan(BaseModel):
     scans: list[SnykContainerScan]
+    # OR
+    # scans: list[ScanType]
+
+    def __hash__(self) -> int:
+        return id(self)
+
+    class Config:
+        extra = "allow"  # should we allow or disallow this?
+        validate_assignment = True
+        keep_untouched = (cached_property, _lru_cache_wrapper)
 
     @property
     def cvss_max(self) -> float:
-        return max(self.cvss_scores)
+        return max(self.cvss_scores(), default=0.0)
+        # return 0.0
 
     @property
     def cvss_min(self) -> float:
         # return min((scan.cvss_min for scan in self.scans), default=0.0)
-        return min(self.cvss_scores)
+        return min(self.cvss_scores(), default=0.0)
+        # return 0.0
 
     @property
     def cvss_median(self) -> float:
-        return npmath.median(self.cvss_scores)
+        return npmath.median(self.cvss_scores())
 
     @property
     def cvss_mean(self) -> float:
-        return npmath.mean(self.cvss_scores)
+        return npmath.mean(self.cvss_scores())
 
     @property
     def cvss_stdev(self) -> float:
-        return npmath.stdev(self.cvss_scores)
-
-    @cached_property
-    def cvss_scores(self) -> list[float]:
-        scores: list[float] = []
-        for scan in self.scans:
-            scores.extend(scan.get_cvss_scores())
-
-        if not scores:
-            scores = [0.0]
-            logger.warning(
-                "Unable to retrieve scores when creating aggregate report for "
-                f"the following scans: {self.scans}"
-            )
-        return scores
+        return npmath.stdev(self.cvss_scores())
 
     @property
     def low(self) -> list[SnykVulnerability]:
@@ -84,6 +83,20 @@ class AggregateScan:
     def n_critical(self) -> int:
         """Number of critical vulnerabilities."""
         return len(self.critical)
+
+    @cache
+    def cvss_scores(self, ignore_zero: bool = True) -> list[float]:
+        scores: list[float] = []
+        for scan in self.scans:
+            scores.extend(scan.cvss_scores(ignore_zero))
+
+        if not scores:
+            scores = [0.0]
+            logger.warning(
+                "Unable to retrieve scores when creating aggregate report for "
+                f"the following scans: {self.scans}"
+            )
+        return scores
 
     def _get_vulnerabilities_by_severity(
         self, severity: str
