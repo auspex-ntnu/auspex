@@ -9,7 +9,7 @@ from auspex_core.gcp.firestore import get_firestore_client
 from auspex_core.gcp.env import PARSED_COLLECTION_NAME
 
 
-from .db import construct_query
+from .db import construct_query, filter_documents
 from .exceptions import install_handlers
 from .workflows.base import WorkflowRunner
 from .workflows import get_runner
@@ -51,6 +51,10 @@ async def get_parsed_scan(req: ParsedScanRequest) -> list[ParsedScan]:
     # Query DB
     collection = client.collection(PARSED_COLLECTION_NAME)
     query = await construct_query(collection, req)
-    res = await query.get()
+    # res = await query.get()
 
-    return [doc.to_dict() for doc in res]
+    # Use generator expression to conserve memory
+    docs = (doc.to_dict() async for doc in query.stream())
+    if req.filter:
+        docs = filter_documents(docs, req.filter)
+    return [d async for d in docs]
