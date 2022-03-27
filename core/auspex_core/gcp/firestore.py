@@ -34,7 +34,8 @@ def get_firestore_client() -> firestore.firestore.AsyncClient:
 
     NOTE
     ----
-    This function can block on first run. Subsequent runs are cached.
+    This function can block on first run (which is fine).
+    Subsequent calls return cached client.
 
     Returns
     -------
