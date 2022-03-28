@@ -11,9 +11,10 @@ from typing import Any, Iterator, Optional, Union
 import numpy as np
 from loguru import logger
 from numpy.typing import NDArray
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, root_validator, validator
+from pydantic.fields import ModelField
 
-from ..._types import MplRGBAColor
+from ...types.nptypes import MplRGBAColor
 from ...utils.matplotlib import get_cvss_color
 from ..cve import (
     CVSS_DATE_BRACKETS,
@@ -53,9 +54,9 @@ class SnykVulnerability(BaseModel):
     packageManager: str
     description: str
     identifiers: Identifiers
-    severityWithCritical: str
-    nvdSeverity: str
     severity: str
+    severityWithCritical: Optional[str]
+    nvdSeverity: Optional[str]
     socialTrendAlert: bool
     cvssScore: float = Field(ge=0.0, le=10.0)  # CVSS v3 scores are between 0.0 and 10.0
     CVSSv3: Optional[str]
@@ -83,22 +84,25 @@ class SnykVulnerability(BaseModel):
     dockerFileInstruction: Optional[str]  # how to fix vuln
     dockerBaseImage: Optional[str]
 
-    @validator("severity")
-    def ensure_severity_equal(cls, v: str, values: dict[str, Any]) -> str:
-        # UPDATE: Severity is set to the highest severity found in either
-        # "severityWithCritical" or "nvdSeverity"
-        severityWithCritical = values.get("severityWithCritical", "")
-        nvdSeverity = values.get("nvdSeverity", "")
+    @root_validator
+    def use_highest_severity_value(cls, values: dict[str, Any]) -> dict[str, Any]:
+        """
+        Some vulnerabilities have multiple severity values.
+        For some reason, Snyk sometimes omits nvdSeverity and/or severityWithCritical.
+        Other times, the values of these fields are inconsistent.
 
-        # Compare severity levels, pick most severe
-        if CVESeverity.get(nvdSeverity) > CVESeverity.get(severityWithCritical):
-            severity = nvdSeverity
-        else:
-            severity = severityWithCritical
-
-        # return (nvd/CVE)severity if it is not an empty string, else fall back on
-        # original value for "severity" in the scan log.
-        return severity if severity else v
+        This validator sets the value of 'severity' to the highest severity value among the three.
+        """
+        severities: dict[str, int] = {
+            "severity": CVESeverity.get(values.get("severity", "")),
+            "severityWithCritical": CVESeverity.get(
+                values.get("severityWithCritical", "")
+            ),
+            "nvdSeverity": CVESeverity.get(values.get("nvdSeverity", "")),
+        }
+        max_severity_key = max(severities)
+        values["severity"] = values[max_severity_key]
+        return values
 
     @validator("cvssScore", pre=True)
     def cvssScore_defaults_to_0(
@@ -108,14 +112,19 @@ class SnykVulnerability(BaseModel):
         Some CVEs have not been assigned a score, and thus Snyk reports
         their score as `None`.
 
+        Using predefined default scores for these cases based on the
+        vulnerability's severity level.
         """
+        # TODO: use validator to set score to 0
+        # then use root validator to set score based on severity?
+        # Right now, we use the severity value _before_ the root validator for severity runs.
+
         # XXX: Document behavior and/or clarify whether we need to make up these numbers
         severity_scores = {"low": 3.9, "medium": 6.9, "high": 8.9, "critical": 10.0}
         if v is None:
             # TODO: decide whether we interpret None as number rounded up to vulnerability's
             # severity level or as 0.0
             return severity_scores.get(values.get("severity", ""), 0.0)
-            # return 0.0
         return v
 
     def get_numpy_color(self) -> MplRGBAColor:
@@ -188,7 +197,6 @@ class LicensesPolicy(BaseModel):
     orgLicenseRules: dict[str, OrgLicenseRule]  # key: name of license
 
 
-# FIXME: vvvv SPAGHETTI BOLOGNESE vvvv
 class VulnerabilityList(BaseModel):
     __root__: list[SnykVulnerability]
 
@@ -210,16 +218,12 @@ class VulnerabilityList(BaseModel):
     def __hash__(self) -> int:
         return id(self)
 
-    # DEV NOTE: We have chosen to copy-paste the methods below here instead of
-    # going all in on metaprogramming which would reduce readability.
-    # Performance is a secondary concern given the system's overall low latency sensitivity.
-
 
 # JSON: .
 class SnykContainerScan(BaseModel):
     """Represents the output of `snyk container scan --json`"""
 
-    vulnerabilities: VulnerabilityList
+    vulnerabilities: VulnerabilityList  # TODO: just use list[SnykVulnerability] instead?
     ok: bool
     dependencyCount: int
     org: str
@@ -236,14 +240,26 @@ class SnykContainerScan(BaseModel):
     projectName: str
     platform: str
     path: str
-    id: str = ""
+    id: str = ""  # Not snyk-native
+    scanned: datetime = Field(default_factory=datetime.now)  # Not snyk-native
 
     class Config:
         extra = "allow"  # should we allow or disallow this?
         validate_assignment = True
         keep_untouched = (cached_property, _lru_cache_wrapper)
 
-    @validator("id", always=True)
+    @validator("scanned", pre=True)
+    def ensure_default_factory(
+        cls, v: Optional[datetime], field: ModelField
+    ) -> Optional[datetime]:
+        """Hypothesis seems to pass `None` to this attribute even though
+        it's not specified as Optional[datetime]. To make tests pass, we have to
+        add this validator to ensure passing `None` to `"scanned"` runs default factory."""
+        if v is None and field.default_factory is not None:
+            return field.default_factory()
+        return v
+
+    @validator("id", always=True)  # use Pre=True instead?
     def assign_default_id(cls, v: str, values: dict[str, Any]) -> str:
         """Fall back on autogenerating an ID if Google Cloud Storage
         does not provide us with an ID from its blob metadata.
