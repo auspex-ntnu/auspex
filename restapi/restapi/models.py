@@ -1,12 +1,22 @@
 from datetime import datetime
 from enum import Enum
+import os
 from typing import Any, Iterable, NamedTuple, Optional
-from pydantic import BaseModel, validator
+from pydantic import BaseModel, Field, validator
 from google.cloud import firestore
+
+DEFAULT_FORMAT = os.getenv("REPORTER_DEFAULT_FORMAT") or "latex"
 
 
 class InvalidQueryString(Exception):
     pass
+
+
+class ScanRequest(BaseModel):
+    images: list[str] = Field(default_factory=list)
+    format: str = DEFAULT_FORMAT  # support multiple formats?
+    backend: str = "snyk"
+    ignore_failed: bool = False
 
 
 class FirestoreQuery(NamedTuple):
