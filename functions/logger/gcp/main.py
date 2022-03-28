@@ -86,6 +86,13 @@ def upload_json_blob_from_memory(scan_contents: str, filename: str) -> storage.B
     # Get client and bucket
     storage_client = storage.Client()
     bucket = storage_client.bucket(BUCKET_NAME)
+    if not bucket.exists():
+        print(f"Creating bucket {BUCKET_NAME}")
+        storage_client.create_bucket(BUCKET_NAME)
+        # Make sure bucket exists after it has been created
+        assert (
+            bucket.exists()
+        ), "Bucket does not exist. Bucket creation failed or is pending."
 
     # Upload file with .json suffix
     if not filename.endswith(".json"):
