@@ -1,16 +1,24 @@
 from datetime import timedelta
 from enum import Enum
-from typing import NamedTuple
-
+from typing import Any, Callable, NamedTuple
+import operator
 from pydantic import BaseModel
 
 
 class DateDescription(NamedTuple):
+    # Type checks for comparison methods are done inline for performance and readability
+    # Methods bodies can be replaced with operator metaprogramming (but let's not)
+    # Example of how it could be done:
+    # def __gt__(self, other: object) -> bool:
+    #     return self._cmp(other, operator.gt)
+    # def _cmp(self, other: object, op: Callable[[Any, Any], bool]) -> bool:
+    #     if not isinstance(other, DateDescription):
+    #         raise TypeError(f"Cannot compare {type(self)} and {type(other)}")
+    #     return op(self.date, other.date)
+
     date: timedelta
     description: str
 
-    # inline duplicate type checks for performance and readability
-    # Methods can be replaced with operator metaprogramming (but let's not)
     def __gt__(self, other: object) -> bool:
         if not isinstance(other, DateDescription):
             raise TypeError(f"Cannot compare {type(self)} and {type(other)}")
@@ -78,10 +86,4 @@ class CVESeverity(Enum):
         return cls.__members__.get(severity.upper(), cls.UNDEFINED).value
 
 
-SEVERITIES = {
-    "critical": 1,
-    # skip 0 to avoid bugs due to falsey value in comparison
-    "high": -1,
-    "medium": -2,
-    "low": -3,
-}
+SEVERITIES = ("low", "medium", "high", "critical")
