@@ -39,11 +39,18 @@ services:
       context: ./
       dockerfile: ./scanner/Dockerfile
     env_file: .env
+    secrets:
+      - snyk_token
+    environment:
+      SNYK_TOKEN_FILE: /run/secrets/snyk_token
     ports:
       - 8092:80
+      - 5692:5678
     networks:
       - default
 
 secrets:
+  snyk_token:
+    file: .keys/snyk_token
   reporter-key:
     file: .keys/reporter_local.json
