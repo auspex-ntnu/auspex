@@ -1,17 +1,13 @@
-import asyncio
-from fastapi.exceptions import HTTPException
-
-from .models import Filter, ParsedScanRequest, InvalidQueryString
+from .models import Filter, ParsedScanRequest
 from google.cloud.firestore_v1.async_query import AsyncQuery
 from google.cloud.firestore_v1.async_collection import AsyncCollectionReference
 from google.cloud import firestore
-from google.cloud.firestore_v1.async_document import DocumentSnapshot
-from typing import Any, AsyncGenerator, Iterable
+from typing import Any, AsyncGenerator, Optional
 
 
 async def construct_query(
     collection: AsyncCollectionReference, req: ParsedScanRequest
-) -> AsyncQuery:
+) -> AsyncQuery:  # TODO: find out if we return an AsyncQuery or a BaseQuery (thanks gcloud-aio..)
     # Filter
     query = collection.where(*(req.get_query()))
     # Sort
@@ -24,14 +20,31 @@ async def construct_query(
 
 
 async def filter_documents(
-    docs: AsyncGenerator[dict[str, Any], None], docfilter: Filter
+    docs: AsyncGenerator[Optional[dict[str, Any]], None], docfilter: Filter
 ) -> AsyncGenerator[dict[str, Any], None]:
+    """Filter a stream of documents given a user-defined document filter.
+
+    Parameters
+    ----------
+    docs : AsyncGenerator[DocumentSnapshot, None]
+        Async generator of DocumentSnapshot objects.
+    docfilter : Filter
+        User-defined filter.
+
+    Returns
+    -------
+    AsyncGenerator[dict[str, Any], None]
+        Returns an async generator of filtered documents converted to dicts.
+    """
+
     def pred(key: str, value: Any, doc: dict[str, Any]) -> bool:
         # TODO: improve robustness of predicate function
         # Use doc.get(key) and check for None
         return doc[key] >= value
 
     async for doc in docs:
+        if doc is None:  # filter None
+            continue
         for k, v in docfilter.get_filters():
             should_yield = pred(k, v, doc)
             if should_yield:
