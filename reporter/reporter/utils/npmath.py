@@ -2,7 +2,7 @@ import numpy as np
 from loguru import logger
 from typing import Any, Callable, Iterable
 
-from .._types import NumberType
+from ..types.nptypes import NumberType
 
 
 def mean(a: Iterable[NumberType]) -> float:
