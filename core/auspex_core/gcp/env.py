@@ -1,5 +1,7 @@
 import os
 
+from pydantic import BaseSettings, Field
+
 _ERR_MSG = "Environment variable {VAR_NAME} is not defined."
 
 # Google Cloud Project Name
@@ -19,13 +21,21 @@ if not PARSED_COLLECTION_NAME:
 
 # Firestore collection of generated reports
 REPORTS_COLLECTION_NAME = os.getenv("REPORTS_COLLECTION_NAME")
-if not PARSED_COLLECTION_NAME:
+if not REPORTS_COLLECTION_NAME:
     raise ValueError(_ERR_MSG.format(VAR_NAME="REPORTS_COLLECTION_NAME"))
+
+AGGREGATE_COLLECTION_NAME = os.getenv("AGGREGATE_COLLECTION_NAME")
+if not AGGREGATE_COLLECTION_NAME:
+    raise ValueError(_ERR_MSG.format(VAR_NAME="AGGREGATE_COLLECTION_NAME"))
 
 # Cloud Storage Bucket of raw scan files
 SCANS_BUCKET_NAME = os.getenv("SCANS_BUCKET_NAME")
 if not SCANS_BUCKET_NAME:
     raise ValueError(_ERR_MSG.format(VAR_NAME="SCANS_BUCKET_NAME"))
 
-SERVICE_ACCOUNT_KEYFILE = os.getenv("SERVICE_ACCOUNT_KEYFILE")
+GOOGLE_APPLICATION_CREDENTIALS = os.getenv("GOOGLE_APPLICATION_CREDENTIALS")
+
 # We allow this to be undefined
+
+
+# URLS
