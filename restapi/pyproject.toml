@@ -14,9 +14,11 @@ fastapi = "^0.73.0"
 uvicorn = "^0.17.4"
 google-cloud-workflows = "^1.5.0"
 loguru = "^0.6.0"
-auspex-core = { path = "../core" }
 azure-mgmt-logic = "^9.0.0"
 firebase-admin = "^5.2.0"
+httpx = "^0.22.0"
+debugpy = "^1.6.0"
+auspex-core = { path = "../core", develop = true }
 
 
 [tool.poetry.dev-dependencies]
