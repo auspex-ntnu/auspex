@@ -9,11 +9,12 @@ services:
       dockerfile: ./reporter/Dockerfile
     env_file: .env
     secrets:
-      - reporter-key
+      - reporter_key
     environment:
-      SERVICE_ACCOUNT_KEYFILE: /run/secrets/reporter-key
+      GOOGLE_APPLICATION_CREDENTIALS: /run/secrets/reporter_key
     ports:
       - 8090:80
+      - 5690:5678
     networks:
       - default
 
@@ -24,16 +25,19 @@ services:
       context: .
       dockerfile: ./restapi/Dockerfile
     env_file: .env
-    # environment:
-    #   GCP_PROJECT: ntnu-student-project
-    #   WORKFLOW_REGION: europe-north1
     ports:
       - 8091:80
+      - 5691:5678
     networks:
       - default
 
   scanner:
     image: auspex/scanner:latest
+    deploy:
+      resources:
+        limits:
+          cpus: '1.00'
+          memory: 256M
     container_name: auspex_scanner
     build:
       context: ./
@@ -52,5 +56,5 @@ services:
 secrets:
   snyk_token:
     file: .keys/snyk_token
-  reporter-key:
+  reporter_key:
     file: .keys/reporter_local.json
