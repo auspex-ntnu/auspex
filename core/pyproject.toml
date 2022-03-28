@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "auspex-core"
-version = "0.1.2"
+version = "0.1.5"
 description = ""
 authors = [
     "Peder Hovdan Andresen <pedeha@stud.ntnu.no>",
@@ -15,6 +15,7 @@ firebase-admin = "^5.2.0"
 loguru = "^0.6.0"
 google-cloud-storage = "^2.1.0"
 gcloud-aio-storage = "^6.3.0"
+aiofiles = "^0.8.0"
 
 [tool.poetry.dev-dependencies]
 pytest = "^5.2"
