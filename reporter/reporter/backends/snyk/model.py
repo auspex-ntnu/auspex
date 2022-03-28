@@ -81,7 +81,7 @@ class SnykVulnerability(BaseModel):
     version: str
     nearestFixedInVersion: Optional[str]
     dockerFileInstruction: Optional[str]  # how to fix vuln
-    dockerBaseImage: str
+    dockerBaseImage: Optional[str]
 
     @validator("severity")
     def ensure_severity_equal(cls, v: str, values: dict[str, Any]) -> str:
