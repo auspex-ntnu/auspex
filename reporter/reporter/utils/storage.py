@@ -1,5 +1,11 @@
+from pathlib import Path
+from typing import Any
 from auspex_core.gcp.env import SCANS_BUCKET_NAME
-from auspex_core.gcp.storage import StorageObject, fetch_json_blob
+from auspex_core.gcp.storage import (
+    StorageObject,
+    fetch_json_blob,
+    upload_file_to_bucket,
+)
 from fastapi.exceptions import HTTPException
 from google.cloud.firestore_v1 import DocumentSnapshot
 from loguru import logger
@@ -47,3 +53,24 @@ async def get_object_from_document(
         logger.exception(msg)
         raise HTTPException(500, msg)
     return obj
+
+
+async def upload_report_to_bucket(
+    path: Path, bucket: str = "auspex-reports", delete_after: bool = True
+) -> dict[str, Any]:
+    """Uploads a report to the given bucket.
+
+    Parameters
+    ----------
+    path : `Path`
+        Path to the report to upload.
+    delete_after : `bool`, optional
+        Whether to delete the report after uploading, by default True.
+    bucket : `str`, optional
+        Cloud storage bucket to upload to, by default "auspex-reports".
+    """
+
+    status = await upload_file_to_bucket(path, bucket)
+    if delete_after:
+        path.unlink()
+    return status
