@@ -17,10 +17,15 @@ from sanitize_filename import sanitize
 from pydantic import BaseModel, ValidationError, Field
 
 
-# TODO: remove defaults??
-BUCKET_NAME = os.getenv("BUCKET_NAME", "auspex-scans")
-LOGS_COLLECTION_NAME = os.getenv("LOGS_COLLECTION_NAME", "auspex-logs")
-PROJECT_NAME = os.getenv("GCP_PROJECT", "ntnu-student-project")
+# Get from environment variables and ensure they are defined
+BUCKET_NAME = ""
+LOGS_COLLECTION_NAME = ""
+GCP_PROJECT = ""
+for var in ("BUCKET_NAME", "LOGS_COLLECTION_NAME", "GCP_PROJECT"):
+    v = os.getenv(var)
+    if not v:
+        raise ValueError(f"Environment variable '{var}' is not defined.")
+    globals()[var] = v
 
 # We get automatically authenticated with firebase with default credentials
 firebase_admin.initialize_app(
