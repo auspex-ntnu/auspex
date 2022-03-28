@@ -1,22 +1,35 @@
 from abc import ABC, abstractmethod
+from typing import Any, Protocol
 
 from pydantic import BaseModel
 
 
-class ScanResults(BaseModel, ABC):
+class ScanResultsType(Protocol):
     """Abstract base class for scan results from any backend."""
 
-    @abstractmethod
+    @property
+    def image(self) -> str:
+        """Name of the image that was scanned."""
+        ...
+
+    @property
     def ok(self) -> bool:
         """Returns success status of scan."""
         ...
 
-    @abstractmethod
-    def get_results(self) -> str:
+    @property
+    def scan(self) -> str:
         """Returns scan results as a JSON-encoded string."""
         ...
 
-    @abstractmethod
-    def get_error(self) -> str:
+    @property
+    def error(self) -> str:
         """Returns error message for scan (if any)."""
+        ...
+
+    @property
+    def backend(self) -> str:
+        ...
+
+    def dict(self) -> dict[str, Any]:
         ...
