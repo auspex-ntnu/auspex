@@ -1,31 +1,42 @@
 from collections import Counter
 from dataclasses import dataclass
+from datetime import datetime
 from functools import _lru_cache_wrapper, cache, cached_property
 from typing import Iterator, Optional, TypeVar
 
 import numpy as np
 from loguru import logger
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, validator
 
-from ..._types import MplRGBAColor
+from ...types.nptypes import MplRGBAColor
 from .model import SnykContainerScan, SnykVulnerability
 from ...utils import npmath
-from ...types.protocols import ScanType
+from ...types.protocols import ScanTypeSingle
+import time
 
 # Use dataclass here since we don't need validation
 # @dataclass
 class AggregateScan(BaseModel):
     scans: list[SnykContainerScan]
+    id: str = ""
+    scanned: datetime = Field(default_factory=datetime.now)
     # OR
     # scans: list[ScanType]
 
-    def __hash__(self) -> int:
-        return id(self)
-
     class Config:
+        # arbitrary_types_allowed = True
         extra = "allow"  # should we allow or disallow this?
         validate_assignment = True
         keep_untouched = (cached_property, _lru_cache_wrapper)
+
+    @validator("id", always=True)
+    def set_id(cls, v: str) -> str:
+        if v:
+            return v
+        return f"AggregateScan_{int(time.time())}"
+
+    def __hash__(self) -> int:
+        return id(self)
 
     @property
     def cvss_max(self) -> float:
@@ -66,7 +77,7 @@ class AggregateScan(BaseModel):
     def critical(self) -> list[SnykVulnerability]:
         return self._get_vulnerabilities_by_severity("critical")
 
-    # TODO: optimize these n_<severity> methods
+    # BACKLOG: optimize these n_<severity> methods
     @property
     def n_low(self) -> int:
         return len(self.low)
@@ -147,7 +158,7 @@ class AggregateScan(BaseModel):
             n = len(vulns)
         return vulns[:n]
 
-    # TODO: add n argument so we can get multiple per image?
+    # BACKLOG: add n argument so we can get multiple per image?
     def most_severe_per_scan(self) -> dict[str, Optional[SnykVulnerability]]:
         """Retrieves the most severe vulnerability from each scanned image.
 
