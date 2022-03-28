@@ -1,3 +1,12 @@
+"""
+This cloud function requires permissions to create buckets and write files.
+
+Required environment variables:
+    BUCKET_NAME: name of the bucket to upload to
+    LOGS_COLLECTION_NAME: Firestore collection name for scan logs
+    GCP_PROJECT: Google Cloud Project ID (automatically set by GCP)
+"""
+
 from datetime import datetime
 import time
 import os
@@ -31,7 +40,7 @@ for var in ("BUCKET_NAME", "LOGS_COLLECTION_NAME", "GCP_PROJECT"):
 firebase_admin.initialize_app(
     credentials.ApplicationDefault(),
     {
-        "projectId": PROJECT_NAME,
+        "projectId": GCP_PROJECT,
     },
 )
 
@@ -40,11 +49,12 @@ class Scan(BaseModel):
     """Model for incoming scans."""
 
     image: str  # Name of scanned image
+    backend: str  # Scanner backend tool used
     scan: str = Field(
         ..., exclude=True
     )  # Output of scanning software (not stored in DB)
     id: Optional[str] = None  #  Firestore document ID (set by function)
-    timestamp: Optional[float] = None  # Timestamp of scan (set by function)
+    timestamp: Optional[datetime] = None  # Timestamp of scan (set by function)
     url: Optional[str] = None  # URL to scan results (set by function)
     blob: Optional[str] = None  # Name of uploaded blob (set by function)
     bucket: Optional[str] = None  # Bucket blob is stored in (set by function)
@@ -56,14 +66,14 @@ class Scan(BaseModel):
 
 def log_results(scan: Scan) -> Scan:
     # Generate log filename
-    scan.timestamp = time.time()
+    scan.timestamp = datetime.utcnow()
     filename = f"{scan.image}_{str(scan.timestamp).replace('.', '_')}"
 
     # Upload JSON log blob to bucket
     blob = upload_json_blob_from_memory(scan.scan, filename)
     scan.url = blob.public_url
     scan.blob = blob.name
-    scan.bucket = blob.bucket
+    scan.bucket = blob.bucket.name
 
     # Add firestore document
     doc = add_firestore_document(scan)
@@ -107,7 +117,7 @@ def upload_json_blob_from_memory(scan_contents: str, filename: str) -> storage.B
         # See: https://pypi.org/project/gcloud-aio-storage/#:~:text=the%20session%20explicitly-,file%20encodings,-In%20some%20cases
         content_type="application/json; charset=UTF-8",
     )
-    print("{} uploaded to {}.".format(filename, BUCKET_NAME))
+    print(f"{filename} uploaded to {BUCKET_NAME}.")
     return blob
 
 
