@@ -14,13 +14,17 @@ pydantic = "^1.9.0"
 fastapi = "^0.73.0"
 uvicorn = { extras = ["standard"], version = "^0.17.0" }
 sanitize-filename = "^1.2.0"
-docker = "^5.0.3"
-auspex-core = { path = "../auspex_core", develop = true }
 loguru = "^0.6.0"
+httpx = "^0.22.0"
+backoff = "^1.11.1"
+debugpy = "^1.6.0"
+auspex-core = { path = "../core", develop = true }
 
 
 [tool.poetry.dev-dependencies]
 pytest = "^6.2.5"
+black = "^22.1.0"
+mypy = "^0.942"
 [build-system]
 requires = ["poetry-core>=1.0.0"]
 build-backend = "poetry.core.masonry.api"
