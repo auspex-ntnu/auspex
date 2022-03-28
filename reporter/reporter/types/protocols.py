@@ -1,9 +1,45 @@
-from typing import Protocol, Any, runtime_checkable
+# certain attribute names use the camelCase naming convention due to
+# data structures originally adhering to the naming scheme defined by Snyk
+# for their scans. In order to not break compatibility with existing
+# snyk classes, we maintain camelCase names.
+#
+# Protocol classes can switch to snake_case if snyk classes implement
+# properties with snake_case names that retrieve the original camelCase attribute values.
+
+from datetime import datetime
+from typing import Iterable, Protocol, Any, runtime_checkable
+from .nptypes import MplRGBAColor
+from ..backends.cve import CVSSTimeType
 
 
-# Use generics to annotate list contents
+@runtime_checkable
+class VulnerabilityType(Protocol):
+    @property
+    def cvssScore(self) -> float:
+        ...
+
+    def get_numpy_color(self) -> MplRGBAColor:
+        ...
+
+    def get_age_score_color(
+        self, timetype: CVSSTimeType
+    ) -> tuple[int, float, MplRGBAColor]:
+        ...
+
+
+# TODO: Use generics to annotate list contents
 @runtime_checkable
 class ScanType(Protocol):
+    """
+    Base interface type for scans produced by any scanning backend.
+
+    Both single image scans and aggregate scans should implement this interface.
+    """
+
+    @property
+    def id(self) -> str:
+        ...
+
     @property
     def cvss_max(self) -> float:
         """Maximum CVSS score."""
@@ -27,6 +63,31 @@ class ScanType(Protocol):
     @property
     def cvss_stdev(self) -> float:
         """Standard deviation of all CVSS scores."""
+        ...
+
+    @property
+    def low(self) -> list[VulnerabilityType]:
+        """Vulnerabilities with a severity of 'low'."""
+        ...
+
+    @property
+    def medium(self) -> list[VulnerabilityType]:
+        """Vulnerabilities with a severity of 'medium'."""
+        ...
+
+    @property
+    def high(self) -> list[VulnerabilityType]:
+        """Vulnerabilities with a severity of 'high'."""
+        ...
+
+    @property
+    def critical(self) -> list[VulnerabilityType]:
+        """Vulnerabilities with a severity of 'critical'."""
+        ...
+
+    @property
+    def vulnerabilities(self) -> Iterable[VulnerabilityType]:
+        """All vulnerabilities."""
         ...
 
     @property
@@ -58,14 +119,34 @@ class ScanType(Protocol):
         """Get most severe vulnerability"""
         ...
 
+    @property
+    def scanned(self) -> datetime:
+        ...
+
     def cvss_scores(self, ignore_zero: bool) -> list[float]:
         """Get list of CVSSv3 scores of all vulnerabilities."""
         ...
 
+    def get_distribution_by_severity(self) -> dict[str, int]:
+        """Retrieves distribution of vulnerabiltiies grouped by their
+        CVSS severity level."""
+        ...
 
-# class AggregateScanType(ScanTypeBase):
-#     pass
+
+@runtime_checkable
+class ScanTypeSingle(ScanType, Protocol):
+    """Specialization of ScanType for single image scans."""
+
+    # id: str
+    @property
+    def image(self) -> str:
+        ...
 
 
-# class ScanType(ScanTypeBase):
-#     pass
+@runtime_checkable
+class ScanTypeAggregate(ScanType, Protocol):
+    """Specialization of ScanType for aggregate scans."""
+
+    @property
+    def scans(self) -> list[ScanTypeSingle]:
+        ...
