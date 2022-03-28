@@ -1,11 +1,19 @@
 import asyncio
 import json
+from pathlib import Path
 from typing import Any, NamedTuple
+import aiofiles
+import aiohttp
+import backoff
 
+
+from google.cloud.storage import Bucket
 from gcloud.aio.storage import Blob, Storage
 from loguru import logger
+from pydantic import BaseModel
 
-from .env import SERVICE_ACCOUNT_KEYFILE
+
+from .env import GOOGLE_APPLICATION_CREDENTIALS
 
 
 class StorageObject(NamedTuple):
@@ -13,8 +21,52 @@ class StorageObject(NamedTuple):
     content: Any
 
 
-def get_storage_client() -> Storage:
-    return Storage(service_file=SERVICE_ACCOUNT_KEYFILE)
+class StorageWithBackoff(Storage):
+    """Inspired by https://github.com/talkiq/gcloud-aio/blob/master/storage/README.rst#customization
+
+    Async Google Cloud Storage client with backoff implemented for retrying failed requests.
+    """
+
+    @backoff.on_exception(
+        backoff.expo,
+        aiohttp.ClientResponseError,
+        max_tries=5,  # FIXME: make this configurable (retry policy)
+        jitter=backoff.full_jitter,
+    )
+    async def copy(self, *args: Any, **kwargs: Any):
+        return await super().copy(*args, **kwargs)
+
+    @backoff.on_exception(
+        backoff.expo,
+        aiohttp.ClientResponseError,
+        max_tries=5,
+        jitter=backoff.full_jitter,
+    )
+    async def upload(self, *args: Any, **kwargs: Any):
+        return await super().upload(*args, **kwargs)
+
+    @backoff.on_exception(
+        backoff.expo,
+        aiohttp.ClientResponseError,
+        max_tries=10,
+        jitter=backoff.full_jitter,
+    )
+    async def download(self, *args: Any, **kwargs: Any):
+        return await super().download(*args, **kwargs)
+
+    @backoff.on_exception(
+        backoff.expo,
+        aiohttp.ClientResponseError,
+        max_tries=10,
+        jitter=backoff.full_jitter,
+    )
+    async def delete(self, *args: Any, **kwargs: Any):
+        return await super().delete(*args, **kwargs)
+
+
+def get_storage_client() -> StorageWithBackoff:
+    """Returns a Google Cloud Storage client."""
+    return StorageWithBackoff(service_file=GOOGLE_APPLICATION_CREDENTIALS)
 
 
 async def fetch_json_blob(bucket_name: str, blob_name: str) -> StorageObject:
