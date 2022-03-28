@@ -4,7 +4,8 @@
 
 ```
 .
-├── auspex_core
+├── core
+│   ├── gcp
 │   └── auspex_core
 │       └── models
 ├── reporter
