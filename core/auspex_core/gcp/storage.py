@@ -91,3 +91,17 @@ async def fetch_json_blob(bucket_name: str, blob_name: str) -> StorageObject:
         )
         raise
     return StorageObject(blob=blob, content=json_content)
+
+def create_bucket(bucket_name: str) -> Bucket:
+    """Blocking function that creates a bucket with the given name.
+
+    Uses the default project ID.
+    """
+    from google.cloud import storage
+
+    logger.info(f"Creating bucket {bucket_name}")
+    # gcloud.aio.storage.Storage doesn't support creating buckets.
+    client = storage.Client()
+    bucket = client.create_bucket(bucket_name)
+    logger.info(f"Created bucket {bucket_name}")
+    return bucket
