@@ -31,3 +31,9 @@ docker compose build
 ```bash
 docker compose up -d
 ```
+
+## Environment Variables
+
+Required environment variables in .env or secrets manager:
+
+TODO: list envvars
