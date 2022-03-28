@@ -8,6 +8,19 @@
             "type": "shell",
             "command": "/bin/bash .scripts/update.sh",
             "isBackground": true
+        },
+        {
+            "label": "docker compose up",
+            "type": "shell",
+            "command": "docker",
+            "args": [
+                "compose",
+                "up",
+                "-d",
+                "--build"
+            ],
+            "isBackground": true,
+            "problemMatcher": []
         }
     ]
 }
