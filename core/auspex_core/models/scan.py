@@ -2,6 +2,18 @@ from datetime import datetime
 from typing import Optional
 from pydantic import BaseModel, Field
 
+# Very similar definition of Scan from /functions/logger/gcp/main.py
+class ScanOut(BaseModel):
+    """Model for documents in auspex-logs"""
+
+    image: str  # Name of scanned image
+    backend: str  # Scanner backend tool used
+    id: str
+    timestamp: datetime
+    url: str
+    blob: str
+    bucket: str
+
 
 class CVSSv3Distribution(BaseModel):
     critical: int = 0
@@ -22,7 +34,10 @@ class Vulnerabilities(BaseModel):
     critical: ParsedVulnerabilities
 
 
+# FIXME: RENAME TO SOMETHING MORE APPROPRIATE
 class ParsedScan(BaseModel):
+    """Models a document in the results collection."""
+
     id: str
     image: str
     scanned: datetime = Field(default_factory=datetime.now)
