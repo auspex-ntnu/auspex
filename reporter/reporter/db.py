@@ -13,14 +13,15 @@ from auspex_core.gcp.env import PARSED_COLLECTION_NAME
 from auspex_core.models.scan import ParsedScan, ParsedVulnerabilities
 from google.cloud.firestore_v1.types.write import WriteResult
 from google.api_core.exceptions import InvalidArgument
-from google.cloud import firestore
+from google.cloud import firestore  # type: ignore # mypy doesn't understand this import
 
 from .backends.cve import SEVERITIES
 from .backends.snyk.model import SnykContainerScan
+from .types import ScanType, ScanTypeSingle
 
 
 # TODO: replace arg with protocol type to support multiple backends
-async def log_scan(scan: SnykContainerScan) -> WriteResult:
+async def log_scan(scan: ScanTypeSingle) -> WriteResult:
     """Store results of parsed container scan in the database."""
     p = ParsedScan(
         image=scan.image,
@@ -30,9 +31,7 @@ async def log_scan(scan: SnykContainerScan) -> WriteResult:
         cvss_mean=scan.cvss_mean,
         cvss_median=scan.cvss_median,
         cvss_stdev=scan.cvss_stdev,
-        vulnerabilities=dict(scan.get_distribution_by_severity()),
-        # most_common_cve=scan.most_common_cve(max_n=None),
-        # critical=scan.critical,
+        vulnerabilities=scan.get_distribution_by_severity(),
         report_url=None,
     )
 
@@ -40,6 +39,7 @@ async def log_scan(scan: SnykContainerScan) -> WriteResult:
     doc = client.collection(PARSED_COLLECTION_NAME).document()
 
     # TODO: handle exceptions
+    # TODO: perform this as a transaction
 
     # Create document
     result = await doc.create(p.dict())
