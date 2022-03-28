@@ -7,13 +7,14 @@ authors = ["Peder Hovdan Andresen <pedeha@stud.ntnu.no>"]
 [tool.poetry.dependencies]
 python = "^3.9"
 PyLaTeX = "^1.4.1"
-fastapi = "^0.72.0"
+fastapi = "0.68.2"
 uvicorn = "^0.17.4"
 firebase-admin = "^5.2.0"
 loguru = "^0.6.0"
-auspex-core = {path = "../core"}
 sanitize-filename = "^1.2.0"
 matplotlib = "^3.5.1"
+debugpy = "^1.6.0"
+auspex-core = { path = "../core", develop = true }
 
 [tool.poetry.dev-dependencies]
 pytest = "7.1.0"
