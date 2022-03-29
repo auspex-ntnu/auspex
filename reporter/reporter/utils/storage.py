@@ -1,6 +1,6 @@
 from pathlib import Path
 from typing import Any
-from auspex_core.gcp.env import SCANS_BUCKET_NAME
+from auspex_core.gcp.env import BUCKET_SCANS
 from auspex_core.gcp.storage import (
     StorageObject,
     fetch_json_blob,
@@ -12,7 +12,7 @@ from loguru import logger
 
 
 async def get_object_from_document(
-    doc: DocumentSnapshot, bucket: str = SCANS_BUCKET_NAME
+    doc: DocumentSnapshot, bucket: str = BUCKET_SCANS
 ) -> StorageObject:
     """Wrapper around `auspex_core.gcp.storage.fetch_json_blob`
     that handles exceptions and logging for the service.

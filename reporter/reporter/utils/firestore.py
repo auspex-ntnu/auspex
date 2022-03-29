@@ -1,7 +1,7 @@
 from datetime import timedelta, datetime
 from typing import Any, Optional, Union
 
-from auspex_core.gcp.env import LOGS_COLLECTION_NAME
+from auspex_core.gcp.env import COLLECTION_LOGS
 from auspex_core.gcp.firestore import get_document, get_firestore_client
 from auspex_core.models.scan import ReportData
 from fastapi.exceptions import HTTPException
@@ -13,7 +13,7 @@ from ..types.protocols import ScanTypeSingle
 
 
 async def get_firestore_document(
-    document_id: str, collection: str = LOGS_COLLECTION_NAME
+    document_id: str, collection: str = COLLECTION_LOGS
 ) -> DocumentSnapshot:
     """Wrapper around `auspex_core.firestore.get_document` that handles
     exceptions and logging for the service.
@@ -51,7 +51,7 @@ async def get_firestore_document(
 
 
 async def get_firestore_documents(
-    document_ids: list[str], collection: str = LOGS_COLLECTION_NAME
+    document_ids: list[str], collection: str = COLLECTION_LOGS
 ) -> list[DocumentSnapshot]:
     """Retrieves multiple firestore documents given a list of document IDs.
 

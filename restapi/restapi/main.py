@@ -8,7 +8,7 @@ import os
 from auspex_core.models.scan import ReportData, ScanLog
 from auspex_core.models.pdf import PDFRequestIn
 from auspex_core.gcp.firestore import get_firestore_client
-from auspex_core.gcp.env import PARSED_COLLECTION_NAME
+from auspex_core.gcp.env import COLLECTION_REPORTS
 import httpx
 from loguru import logger
 from pydantic import BaseSettings, Field
@@ -194,7 +194,7 @@ async def get_reports(req: ReportRequest) -> list[ReportData]:
     client = get_firestore_client()
 
     # Query DB
-    collection = client.collection(PARSED_COLLECTION_NAME)
+    collection = client.collection(COLLECTION_REPORTS)
     query = await construct_query(collection, req)
 
     # Use generator expression to conserve memory

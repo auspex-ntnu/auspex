@@ -10,28 +10,20 @@ if not GCP_PROJECT:
     raise ValueError(_ERR_MSG.format(VAR_NAME="GCP_PROJECT"))
 
 # Firestore collection of completed scan logs
-LOGS_COLLECTION_NAME = os.getenv("LOGS_COLLECTION_NAME")
-if not LOGS_COLLECTION_NAME:
-    raise ValueError(_ERR_MSG.format(VAR_NAME="LOGS_COLLECTION_NAME"))
+COLLECTION_LOGS = os.getenv("COLLECTION_LOGS")
+if not COLLECTION_LOGS:
+    raise ValueError(_ERR_MSG.format(VAR_NAME="COLLECTION_LOGS"))
 
-# Firestore collection of parsed scan data overviews
-PARSED_COLLECTION_NAME = os.getenv("PARSED_COLLECTION_NAME")
-if not PARSED_COLLECTION_NAME:
-    raise ValueError(_ERR_MSG.format(VAR_NAME="PARSED_COLLECTION_NAME"))
+# Firestore collection of reports
+COLLECTION_REPORTS = os.getenv("COLLECTION_REPORTS")
+if not COLLECTION_REPORTS:
+    raise ValueError(_ERR_MSG.format(VAR_NAME="COLLECTION_REPORTS"))
 
-# Firestore collection of generated reports
-REPORTS_COLLECTION_NAME = os.getenv("REPORTS_COLLECTION_NAME")
-if not REPORTS_COLLECTION_NAME:
-    raise ValueError(_ERR_MSG.format(VAR_NAME="REPORTS_COLLECTION_NAME"))
-
-AGGREGATE_COLLECTION_NAME = os.getenv("AGGREGATE_COLLECTION_NAME")
-if not AGGREGATE_COLLECTION_NAME:
-    raise ValueError(_ERR_MSG.format(VAR_NAME="AGGREGATE_COLLECTION_NAME"))
 
 # Cloud Storage Bucket of raw scan files
-SCANS_BUCKET_NAME = os.getenv("SCANS_BUCKET_NAME")
-if not SCANS_BUCKET_NAME:
-    raise ValueError(_ERR_MSG.format(VAR_NAME="SCANS_BUCKET_NAME"))
+BUCKET_SCANS = os.getenv("BUCKET_SCANS")
+if not BUCKET_SCANS:
+    raise ValueError(_ERR_MSG.format(VAR_NAME="BUCKET_SCANS"))
 
 GOOGLE_APPLICATION_CREDENTIALS = os.getenv("GOOGLE_APPLICATION_CREDENTIALS")
 
@@ -39,3 +31,13 @@ GOOGLE_APPLICATION_CREDENTIALS = os.getenv("GOOGLE_APPLICATION_CREDENTIALS")
 
 
 # URLS
+
+# class AppSettings(BaseSettings):
+#     bucket_scans: str = Field(..., env="BUCKET_SCANS")
+#     bucket_reports: str = Field(..., env="REPORTS_BUCKET_NAME")
+#     bucket_aggregate: str = Field(..., env="AGGREGATE_BUCKET_NAME")
+#     project_id: str = Field(..., env="GCP_PROJECT")
+#     collection_logs: str = Field(..., env="COLLECTION_LOGS")
+#     collection_parsed: str = Field(..., env="COLLECTION_REPORTS")
+#     collection_reports: str = Field(..., env="COLLECTION_REPORTS")
+#     google_application_credentials: str = Field(..., env="GOOGLE_APPLICATION_CREDENTIALS")

@@ -3,7 +3,7 @@ This cloud function requires permissions to create buckets and write files.
 
 Required environment variables:
     BUCKET_NAME: name of the bucket to upload to
-    LOGS_COLLECTION_NAME: Firestore collection name for scan logs
+    COLLECTION_LOGS: Firestore collection name for scan logs
     GCP_PROJECT: Google Cloud Project ID (automatically set by GCP)
 """
 
@@ -28,9 +28,9 @@ from pydantic import BaseModel, ValidationError, Field
 
 # Get from environment variables and ensure they are defined
 BUCKET_NAME = ""
-LOGS_COLLECTION_NAME = ""
+COLLECTION_LOGS = ""
 GCP_PROJECT = ""
-for var in ("BUCKET_NAME", "LOGS_COLLECTION_NAME", "GCP_PROJECT"):
+for var in ("BUCKET_NAME", "COLLECTION_LOGS", "GCP_PROJECT"):
     v = os.getenv(var)
     if not v:
         raise ValueError(f"Environment variable '{var}' is not defined.")
@@ -46,7 +46,11 @@ firebase_admin.initialize_app(
 
 
 class Scan(BaseModel):
-    """Model for incoming scans."""
+    """
+    Model for incoming scans.
+
+    Represents structure of firestore document.
+    """
 
     image: str  # Name of scanned image
     backend: str  # Scanner backend tool used
@@ -86,7 +90,7 @@ def add_firestore_document(scan: Scan) -> DocumentReference:
     """Adds a firestore document."""
     # Use the application default credentials
     db = firestore.client()  # type: FirestoreClient
-    doc = db.collection(LOGS_COLLECTION_NAME).document()
+    doc = db.collection(COLLECTION_LOGS).document()
     doc.set(scan.dict(exclude={"id"}))
     return doc
 

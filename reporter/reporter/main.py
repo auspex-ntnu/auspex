@@ -7,9 +7,9 @@ import os
 from pathlib import Path
 
 from auspex_core.gcp.env import (
-    LOGS_COLLECTION_NAME,
-    SCANS_BUCKET_NAME,
-    PARSED_COLLECTION_NAME,
+    COLLECTION_LOGS,
+    BUCKET_SCANS,
+    COLLECTION_REPORTS,
 )
 from auspex_core.gcp.firestore import get_document
 from fastapi import FastAPI
@@ -69,7 +69,7 @@ async def generate_report(r: ReportRequestIn):
     await log_scan(scan)
 
     prev_scans = await get_prev_scans(
-        scan, PARSED_COLLECTION_NAME, max_age=timedelta(weeks=24), ignore_self=True
+        scan, COLLECTION_REPORTS, max_age=timedelta(weeks=24), ignore_self=True
     )
 
     doc = await create_document(scan, prev_scans)

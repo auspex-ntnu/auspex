@@ -6,14 +6,12 @@ os.environ.setdefault(
     "GOOGLE_APPLICATION_CREDENTIALS",
     "/Volumes/GoogleDrive/My Drive/Skole/2022V/Bachelor/repo/.keys/reporter_local.json",
 )
-os.environ.setdefault("LOGS_COLLECTION_NAME", "auspex-logs")
-os.environ.setdefault("SCANS_BUCKET_NAME", "auspex-scans")
+os.environ.setdefault("COLLECTION_LOGS", "auspex-logs")
+os.environ.setdefault("BUCKET_SCANS", "auspex-scans")
+os.environ.setdefault("BUCKET_REPORTS", "auspex-reports")
 os.environ.setdefault("GCP_PROJECT", "ntnu-student-project")
-os.environ.setdefault("REPORTS_COLLECTION_NAME", "auspex-reports")
-os.environ.setdefault("SCANS_COLLECTION_NAME", "auspex-scans")
-os.environ.setdefault("PARSED_COLLECTION_NAME", "auspex-parsed")
-os.environ.setdefault("AGGREGATE_COLLECTION_NAME", "auspex-aggregate")
-
+os.environ.setdefault("COLLECTION_LOGS", "auspex-logs")
+os.environ.setdefault("COLLECTION_REPORTS", "auspex-reports")
 
 from typing import Any
 
