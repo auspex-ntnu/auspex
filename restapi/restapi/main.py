@@ -5,7 +5,7 @@ from fastapi.responses import RedirectResponse, StreamingResponse
 from fastapi.exceptions import HTTPException
 import os
 
-from auspex_core.models.scan import ParsedScan, ScanOut
+from auspex_core.models.scan import ParsedScan, ScanLog
 from auspex_core.models.pdf import PDFRequestIn
 from auspex_core.gcp.firestore import get_firestore_client
 from auspex_core.gcp.env import PARSED_COLLECTION_NAME
@@ -153,15 +153,15 @@ async def _check_responses(
 
 async def _parse_scan_responses(
     responses: list[httpx.HTTPResponse], ignore_failed: bool
-) -> list[ScanOut]:
+) -> list[ScanLog]:
     """Parses the responses and returns the parsed scans."""
-    scans = []  # list[ScanOut]
+    scans = []  # list[ScanLog]
     failed = []
     for res in responses:
         try:
             j = res.json()
             logger.debug(j)
-            scans.append(ScanOut(**j))
+            scans.append(ScanLog(**j))
         except:  # TODO: specify exception
             # TODO: specify which response failed
             failed.append(res)

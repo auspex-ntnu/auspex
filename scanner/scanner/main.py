@@ -9,7 +9,7 @@ from .types import ScanResultsType
 from .scan import scan_container
 from .exceptions import APIError, UserAPIError
 import backoff
-from auspex_core.models.scan import ScanOut
+from auspex_core.models.scan import ScanLog
 from auspex_core.utils.backoff import on_backoff
 
 from pydantic import BaseModel, BaseSettings, Field, ValidationError
@@ -102,8 +102,8 @@ async def log_completed_scan(scan: ScanResultsType) -> dict[str, Any]:
         return j
 
 
-@app.post("/scan", response_model=ScanOut)
-async def scan_endpoint(scan_request: ScanIn) -> ScanOut:
+@app.post("/scan", response_model=ScanLog)
+async def scan_endpoint(scan_request: ScanIn) -> ScanLog:
     """Scans a single container image."""
     scan = await scan_container(
         image=scan_request.image,

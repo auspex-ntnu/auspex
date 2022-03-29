@@ -3,7 +3,7 @@ from typing import Optional
 from pydantic import BaseModel, Field
 
 # Very similar definition of Scan from /functions/logger/gcp/main.py
-class ScanOut(BaseModel):
+class ScanLog(BaseModel):
     """Model for documents in auspex-logs"""
 
     image: str  # Name of scanned image
