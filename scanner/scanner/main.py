@@ -10,6 +10,7 @@ from .scan import scan_container
 from .exceptions import APIError, UserAPIError
 import backoff
 from auspex_core.models.scan import ScanOut
+from auspex_core.utils.backoff import on_backoff
 
 from pydantic import BaseModel, BaseSettings, Field, ValidationError
 import httpx
@@ -78,21 +79,11 @@ def _scan_giveup_callback(details: dict[str, Any]) -> None:
     raise HTTPException(status_code=500, detail="Unable to log scan results.")
 
 
-def _backoff_callback(details: dict[str, Any]) -> None:
-    """Callback function that should be fired whenever a backoff is triggered."""
-    # Directly ripped off from https://github.com/litl/backoff#event-handlers
-    logger.warning(
-        "Backing off {wait:0.1f} seconds after {tries} tries "
-        "calling function {target} with args {args} and kwargs "
-        "{kwargs}".format(**details)
-    )
-
-
 @backoff.on_exception(
     backoff.expo,
     exception=httpx.RequestError,
     max_tries=5,
-    on_backoff=_backoff_callback,
+    on_backoff=on_backoff,
     on_giveup=_scan_giveup_callback,
 )
 async def log_completed_scan(scan: ScanResultsType) -> dict[str, Any]:
