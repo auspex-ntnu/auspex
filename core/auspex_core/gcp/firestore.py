@@ -1,5 +1,7 @@
 from functools import cache
 
+import aiohttp
+import backoff
 import firebase_admin
 from firebase_admin import credentials, firestore
 from google.cloud.firestore_v1 import DocumentSnapshot
@@ -39,6 +41,12 @@ app = firebase_admin.initialize_app(
 )
 
 
+@backoff.on_exception(
+    backoff.expo,
+    exception=aiohttp.ClientResponseError,
+    max_tries=5,
+    jitter=backoff.full_jitter,
+)
 async def get_document(collection_name: str, document_id: str) -> DocumentSnapshot:
     db = get_firestore_client()
     # Get firestore document
