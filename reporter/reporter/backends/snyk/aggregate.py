@@ -19,7 +19,7 @@ import time
 class AggregateScan(BaseModel):
     scans: list[SnykContainerScan]
     id: str = ""
-    scanned: datetime = Field(default_factory=datetime.now)
+    timestamp: datetime = Field(default_factory=datetime.now)
     # OR
     # scans: list[ScanType]
 

@@ -147,7 +147,7 @@ class LatexDocument:
         ax.set_ylabel("Value")
         ax.plot(
             [
-                (scan.timestamp - self.scan.scanned).total_seconds()
+                (scan.timestamp - self.scan.timestamp).total_seconds()
                 for scan in self.prev_scans
             ],
             [scan.cvss_mean for scan in self.prev_scans],

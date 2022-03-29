@@ -39,7 +39,7 @@ class ReportData(BaseModel):
 
     id: str
     image: str
-    scanned: datetime = Field(default_factory=datetime.now)
+    timestamp: datetime = Field(default_factory=datetime.now)
     cvss_min: float
     cvss_max: float
     cvss_mean: float

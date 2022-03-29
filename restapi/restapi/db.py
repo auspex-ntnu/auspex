@@ -1,4 +1,4 @@
-from .models import Filter, ParsedScanRequest
+from .models import Filter, ReportRequest
 from google.cloud.firestore_v1.async_query import AsyncQuery
 from google.cloud.firestore_v1.async_collection import AsyncCollectionReference
 from google.cloud import firestore
@@ -6,13 +6,13 @@ from typing import Any, AsyncGenerator, Optional
 
 
 async def construct_query(
-    collection: AsyncCollectionReference, req: ParsedScanRequest
+    collection: AsyncCollectionReference, req: ReportRequest
 ) -> AsyncQuery:  # TODO: find out if we return an AsyncQuery or a BaseQuery (thanks gcloud-aio..)
     # Filter
     query = collection.where(*(req.get_query()))
     # Sort
     if req.order_by:
-        query = query.order_by("scanned", direction=firestore.Query.DESCENDING)
+        query = query.order_by("timestamp", direction=firestore.Query.DESCENDING)
     # Limit
     if req.limit:
         query = query.limit(req.limit)

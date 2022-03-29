@@ -120,7 +120,7 @@ class ScanType(Protocol):
         ...
 
     @property
-    def scanned(self) -> datetime:
+    def timestamp(self) -> datetime:
         ...
 
     def cvss_scores(self, ignore_zero: bool) -> list[float]:

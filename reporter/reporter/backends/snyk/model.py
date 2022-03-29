@@ -221,7 +221,7 @@ class VulnerabilityList(BaseModel):
 
 # JSON: .
 class SnykContainerScan(BaseModel):
-    """Represents the output of `snyk container scan --json`"""
+    """Represents the output of `snyk container test --json`"""
 
     vulnerabilities: VulnerabilityList  # TODO: just use list[SnykVulnerability] instead?
     ok: bool
@@ -241,7 +241,7 @@ class SnykContainerScan(BaseModel):
     platform: str
     path: str
     id: str = ""  # Not snyk-native
-    scanned: datetime = Field(default_factory=datetime.now)  # Not snyk-native
+    timestamp: datetime = Field(default_factory=datetime.now)  # Not snyk-native
     image: str = ""  # Not snyk-native
 
     class Config:
@@ -249,13 +249,13 @@ class SnykContainerScan(BaseModel):
         validate_assignment = True
         keep_untouched = (cached_property, _lru_cache_wrapper)
 
-    @validator("scanned", pre=True)
+    @validator("timestamp", pre=True)
     def ensure_default_factory(
         cls, v: Optional[datetime], field: ModelField
     ) -> Optional[datetime]:
         """Hypothesis seems to pass `None` to this attribute even though
         it's not specified as Optional[datetime]. To make tests pass, we have to
-        add this validator to ensure passing `None` to `"scanned"` runs default factory."""
+        add this validator to ensure passing `None` to `"timestamp"` runs default factory."""
         if v is None and field.default_factory is not None:
             return field.default_factory()
         return v

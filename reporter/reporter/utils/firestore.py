@@ -143,13 +143,13 @@ async def get_prev_scans(
             continue
 
         # Verify that doc has a timestamp
-        scanned = d.get("scanned")  # type: Optional[datetime]
-        if not scanned:
-            logger.warning(f"Document '{doc.id}' has no key 'scanned'.")
+        timestamp = d.get("timestamp")  # type: Optional[datetime]
+        if not timestamp:
+            logger.warning(f"Document '{doc.id}' has no key 'timestamp'.")
             continue
 
         # Use timezone from doc when comparing
-        if scanned > cutoff.replace(tzinfo=scanned.tzinfo):
+        if timestamp > cutoff.replace(tzinfo=timestamp.tzinfo):
             try:
                 r = ReportData(**d)
             except ValidationError:
