@@ -3,7 +3,7 @@ from typing import Any, Optional, Union
 
 from auspex_core.gcp.env import LOGS_COLLECTION_NAME
 from auspex_core.gcp.firestore import get_document, get_firestore_client
-from auspex_core.models.scan import ParsedScan
+from auspex_core.models.scan import ReportData
 from fastapi.exceptions import HTTPException
 from google.cloud.firestore_v1 import DocumentSnapshot
 from google.cloud.firestore_v1.async_query import AsyncQuery
@@ -99,7 +99,7 @@ async def get_prev_scans(
     collection: str,
     max_age: Union[timedelta, datetime],
     ignore_self: bool = True,
-) -> list[ParsedScan]:
+) -> list[ReportData]:
     """Given a single image scan, find all previous scans going back
     to a certain date.
 
@@ -117,8 +117,8 @@ async def get_prev_scans(
 
     Returns
     -------
-    `list[ParsedScan]`
-        List of previous parsed scans.
+    `list[ReportData]`
+        List of previous scan reports.
     """
     if isinstance(max_age, timedelta):
         cutoff = datetime.now() - max_age
@@ -132,7 +132,7 @@ async def get_prev_scans(
     # Perform filtering by date client-side instead of using composite query
     # This will require more database reads and memory, but saves us from
     # having to create a composite index
-    scans = []  # type: list[ParsedScan]
+    reports = []  # type: list[ReportData]
     async for doc in query.stream():
         d = doc.to_dict()
         if not d:
@@ -151,10 +151,10 @@ async def get_prev_scans(
         # Use timezone from doc when comparing
         if scanned > cutoff.replace(tzinfo=scanned.tzinfo):
             try:
-                p = ParsedScan(**d)
+                r = ReportData(**d)
             except ValidationError:
                 logger.exception(f"Unable to parse document '{doc.id}'")
                 continue
-            scans.append(p)
+            reports.append(r)
 
-    return scans
+    return reports

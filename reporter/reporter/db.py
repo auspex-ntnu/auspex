@@ -10,7 +10,7 @@ if TYPE_CHECKING:
 
 from auspex_core.gcp.firestore import get_firestore_client
 from auspex_core.gcp.env import PARSED_COLLECTION_NAME
-from auspex_core.models.scan import ParsedScan, ParsedVulnerabilities
+from auspex_core.models.scan import ReportData, ParsedVulnerabilities
 from google.cloud.firestore_v1.types.write import WriteResult
 from google.api_core.exceptions import InvalidArgument
 from google.cloud import firestore  # type: ignore # mypy doesn't understand this import
@@ -23,7 +23,7 @@ from .types import ScanType, ScanTypeSingle
 # TODO: replace arg with protocol type to support multiple backends
 async def log_scan(scan: ScanTypeSingle) -> WriteResult:
     """Store results of parsed container scan in the database."""
-    p = ParsedScan(
+    r = ReportData(
         image=scan.image,
         id=scan.id,
         cvss_min=scan.cvss_min,
@@ -42,7 +42,7 @@ async def log_scan(scan: ScanTypeSingle) -> WriteResult:
     # TODO: perform this as a transaction
 
     # Create document
-    result = await doc.create(p.dict())
+    result = await doc.create(r.dict())
 
     # Create subcollections for vulnerabilities
     collection = doc.collection("vulnerabilities")  # type: CollectionReference

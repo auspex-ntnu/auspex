@@ -26,7 +26,7 @@ from sanitize_filename import sanitize
 matplotlib.use("agg")  # Not to use X server. For TravisCI.
 import matplotlib.pyplot as plt  # noqa
 import numpy as np
-from auspex_core.models.scan import ParsedScan
+from auspex_core.models.scan import ReportData
 
 from ...backends.cve import CVSS_DATE_BRACKETS
 from ...backends.snyk.model import SnykContainerScan
@@ -35,14 +35,14 @@ from ...utils.matplotlib import DEFAULT_CMAP
 
 
 async def create_document(
-    scan: ScanType, prev_scans: list[ParsedScan]
+    scan: ScanType, prev_scans: list[ReportData]
 ) -> "LatexDocument":
     loop = asyncio.get_event_loop()
     return await loop.run_in_executor(None, _do_create_document, scan, prev_scans)
 
 
 def _do_create_document(
-    scan: ScanType, prev_scans: list[ParsedScan]
+    scan: ScanType, prev_scans: list[ReportData]
 ) -> "LatexDocument":
     """NOTE: blocking"""
     d = LatexDocument(scan, prev_scans)
@@ -60,9 +60,9 @@ class LatexDocument:
     plots: list[str]
     doc: Document
     scan: ScanType
-    prev_scans: list[ParsedScan]
+    prev_scans: list[ReportData]
 
-    def __init__(self, scan: ScanType, prev_scans: list[ParsedScan]) -> None:
+    def __init__(self, scan: ScanType, prev_scans: list[ReportData]) -> None:
         self.filename = f"/tmp/{sanitize(scan.id)}"
         self.doc = self._init_document()  # type: Document
         self.scan = scan

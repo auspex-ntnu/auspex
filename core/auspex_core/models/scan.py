@@ -34,8 +34,7 @@ class Vulnerabilities(BaseModel):
     critical: ParsedVulnerabilities
 
 
-# FIXME: RENAME TO SOMETHING MORE APPROPRIATE
-class ParsedScan(BaseModel):
+class ReportData(BaseModel):
     """Models a document in the results collection."""
 
     id: str
@@ -49,6 +48,6 @@ class ParsedScan(BaseModel):
     vulnerabilities: CVSSv3Distribution
     # most_common_cve: dict[str, int]  # IDs of most common vulnerabilities
     report_url: Optional[str]
-    # Has subcollection
-
+    aggregate: bool = False  # Whether or not this report is an aggregate report
     schema_version: str = "1"  # to account for future schema changes
+    # Has subcollection of vulnerabilities

@@ -5,7 +5,7 @@ from fastapi.responses import RedirectResponse, StreamingResponse
 from fastapi.exceptions import HTTPException
 import os
 
-from auspex_core.models.scan import ParsedScan, ScanLog
+from auspex_core.models.scan import ReportData, ScanLog
 from auspex_core.models.pdf import PDFRequestIn
 from auspex_core.gcp.firestore import get_firestore_client
 from auspex_core.gcp.env import PARSED_COLLECTION_NAME
@@ -188,9 +188,9 @@ async def request_aggregate_report(data: dict[str, Any]) -> httpx.Response:
     return r
 
 
-# @app.get("/parsed", response_model=list[ParsedScan])  # name TBD
-@app.get("/parsed")  # name TBD
-async def get_parsed_scan(req: ParsedScanRequest) -> list[ParsedScan]:
+# @app.get("/parsed", response_model=list[ReportData])  # name TBD
+@app.get("/reports")  # name TBD
+async def get_reports(req: ReportRequest) -> list[ReportData]:
     client = get_firestore_client()
 
     # Query DB
