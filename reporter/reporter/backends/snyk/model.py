@@ -100,7 +100,7 @@ class SnykVulnerability(BaseModel):
             ),
             "nvdSeverity": CVESeverity.get(values.get("nvdSeverity", "")),
         }
-        max_severity_key = max(severities)
+        max_severity_key = max(severities, key=severities.get)  # type: ignore
         values["severity"] = values[max_severity_key]
         return values
 
