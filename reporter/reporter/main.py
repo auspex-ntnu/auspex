@@ -52,15 +52,15 @@ async def scan_from_docid(docid: str, collection: str) -> ScanTypeSingle:
     # Download blob from document
     obj = await get_object_from_document(doc)
     # Parse scan log
-    assert hasattr(obj.blob, "id")
 
     # TODO: use image from document
-    # image = doc.get("image")
+    image = doc.get("image")
     # use timestamp from document
     # use backend from document
 
+    assert hasattr(obj.blob, "id")
     # TODO: fix typing!! Why does SnykContainerScan not pass as a ScanTypeSingle type?
-    return SnykContainerScan(**obj.content, id=obj.blob.id)
+    return SnykContainerScan(**obj.content, id=obj.blob.id, image=image)
 
 
 @app.post("/report")

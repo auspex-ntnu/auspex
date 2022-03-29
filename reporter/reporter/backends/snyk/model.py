@@ -242,6 +242,7 @@ class SnykContainerScan(BaseModel):
     path: str
     id: str = ""  # Not snyk-native
     scanned: datetime = Field(default_factory=datetime.now)  # Not snyk-native
+    image: str = ""  # Not snyk-native
 
     class Config:
         extra = "allow"  # should we allow or disallow this?
@@ -272,16 +273,16 @@ class SnykContainerScan(BaseModel):
         )
         return id
 
+    @validator("image", always=True)
+    def use_path_if_not_image(cls, v: str, values: dict[str, Any]) -> str:
+        return v or values["path"]
+
     def __hash__(self) -> int:
         """Returns ID of self. Required to add object to dict."""
         return id(self)
 
     def __repr__(self) -> str:
         return f"SnykVulnerabilityScan(path={self.path}, platform={self.platform})"
-
-    @property
-    def image(self) -> str:
-        return self.path
 
     @property
     def architecture(self) -> str:
