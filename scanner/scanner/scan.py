@@ -1,4 +1,3 @@
-import docker
 import asyncio
 from loguru import logger
 
