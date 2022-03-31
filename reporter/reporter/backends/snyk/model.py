@@ -14,9 +14,10 @@ from numpy.typing import NDArray
 from pydantic import BaseModel, Field, root_validator, validator
 from pydantic.fields import ModelField
 
+from ...types.cvss import CVSS
 from ...types.nptypes import MplRGBAColor
 from ...utils.matplotlib import get_cvss_color
-from ..cve import (
+from ...cve import (
     CVSS_DATE_BRACKETS,
     DEFAULT_CVSS_TIMETYPE,
     CVSSTimeType,
@@ -112,7 +113,7 @@ class SnykVulnerability(BaseModel):
         Some CVEs have not been assigned a score, and thus Snyk reports
         their score as `None`.
 
-        Using predefined default scores for these cases based on the
+        Predefined default scores are used for these cases based on the
         vulnerability's severity level.
         """
         # TODO: use validator to set score to 0
@@ -311,6 +312,16 @@ class SnykContainerScan(BaseModel):
     @property
     def cvss_stdev(self) -> float:
         return npmath.stdev(self.cvss_scores())
+
+    @property
+    def cvss(self) -> CVSS:
+        return CVSS(
+            mean=self.cvss_mean,
+            median=self.cvss_median,
+            stdev=self.cvss_stdev,
+            min=self.cvss_min,
+            max=self.cvss_max,
+        )
 
     @property
     def most_severe(self) -> Optional[SnykVulnerability]:
@@ -516,7 +527,7 @@ class SnykContainerScan(BaseModel):
         return c
 
     def get_distribution_by_severity(self) -> dict[str, int]:
-        """Retrieves distribution of vulnerabiltiies grouped by their
+        """Retrieves distribution of vulnerabilities grouped by their
         CVSS severity level.
 
         Returns
@@ -532,10 +543,10 @@ class SnykContainerScan(BaseModel):
         ```
         """
         return {
-            "low": len(self.low),
-            "medium": len(self.medium),
-            "high": len(self.high),
-            "critical": len(self.critical),
+            "low": self.n_low,
+            "medium": self.n_medium,
+            "high": self.n_high,
+            "critical": self.n_critical,
         }
 
     def get_distribution_by_severity_and_upgradability(

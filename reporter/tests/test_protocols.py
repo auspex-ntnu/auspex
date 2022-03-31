@@ -13,17 +13,17 @@ from hypothesis import strategies as st, given, settings, HealthCheck
 @given(st.builds(SnykContainerScan))
 @settings(max_examples=10, suppress_health_check=[HealthCheck.too_slow])
 def test_snykcontainerscan_protocol(scan: SnykContainerScan) -> None:
+    takes_scantype(scan)
     assert isinstance(scan, ScanType)
     assert isinstance(scan, ScanTypeSingle)
-    takes_scantype(scan)
 
 
 @given(st.builds(AggregateScan))
 @settings(max_examples=10, suppress_health_check=[HealthCheck.too_slow])
 def test_aggregatescan_protocol(scan: AggregateScan) -> None:
+    takes_scantype(scan)
     assert isinstance(scan, ScanType)
     assert isinstance(scan, ScanTypeAggregate)
-    takes_scantype(scan)
 
 
 # Just so mypy can give intellisense warnings about missing attrs/methods

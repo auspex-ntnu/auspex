@@ -1,2 +1,2 @@
 from .snyk import *
-from .cve import *
+from ..cve import *

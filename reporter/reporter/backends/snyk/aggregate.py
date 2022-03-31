@@ -9,13 +9,13 @@ from loguru import logger
 from pydantic import BaseModel, Field, validator
 
 from ...types.nptypes import MplRGBAColor
+from ...types.cvss import CVSS
 from .model import SnykContainerScan, SnykVulnerability
 from ...utils import npmath
 from ...types.protocols import ScanTypeSingle
 import time
 
-# Use dataclass here since we don't need validation
-# @dataclass
+# TODO: move this out the snyk module
 class AggregateScan(BaseModel):
     scans: list[SnykContainerScan]
     id: str = ""
@@ -60,6 +60,16 @@ class AggregateScan(BaseModel):
     @property
     def cvss_stdev(self) -> float:
         return npmath.stdev(self.cvss_scores())
+
+    @property
+    def cvss(self) -> CVSS:
+        return CVSS(
+            mean=self.cvss_mean,
+            median=self.cvss_median,
+            stdev=self.cvss_stdev,
+            max=self.cvss_max,
+            min=self.cvss_min,
+        )
 
     @property
     def low(self) -> list[SnykVulnerability]:
@@ -108,6 +118,29 @@ class AggregateScan(BaseModel):
                 f"the following scans: {self.scans}"
             )
         return scores
+
+    def get_distribution_by_severity(self) -> dict[str, int]:
+        """Retrieves distribution of vulnerabilities grouped by their
+        CVSS severity level.
+
+        Returns
+        -------
+        `dict[str, int]`
+            Dict where keys are CVSS severity levels and values are the
+            number of vulnerabilities associated with each severity.
+
+        Example return value
+        --------------------
+        ```py
+        {'low': 88, 'medium': 659, 'high': 457, 'critical': 171}
+        ```
+        """
+        return {
+            "low": self.n_low,
+            "medium": self.n_medium,
+            "high": self.n_high,
+            "critical": self.n_critical,
+        }
 
     def _get_vulnerabilities_by_severity(
         self, severity: str

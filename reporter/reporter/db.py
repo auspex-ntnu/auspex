@@ -9,15 +9,14 @@ if TYPE_CHECKING:
     from google.cloud.firestore_v1.collection import CollectionReference
 
 from auspex_core.gcp.firestore import get_firestore_client
-from auspex_core.gcp.env import PARSED_COLLECTION_NAME
+from .config import AppConfig
 from auspex_core.models.scan import ReportData, ParsedVulnerabilities
 from google.cloud.firestore_v1.types.write import WriteResult
 from google.api_core.exceptions import InvalidArgument
 from google.cloud import firestore  # type: ignore # mypy doesn't understand this import
 
-from .backends.cve import SEVERITIES
-from .backends.snyk.model import SnykContainerScan
-from .types import ScanType, ScanTypeSingle
+from .cve import SEVERITIES
+from .types import ScanTypeSingle
 
 
 # TODO: replace arg with protocol type to support multiple backends
@@ -26,17 +25,13 @@ async def log_scan(scan: ScanTypeSingle) -> WriteResult:
     r = ReportData(
         image=scan.image,
         id=scan.id,
-        cvss_min=scan.cvss_min,
-        cvss_max=scan.cvss_max,
-        cvss_mean=scan.cvss_mean,
-        cvss_median=scan.cvss_median,
-        cvss_stdev=scan.cvss_stdev,
+        cvss=scan.cvss,
         vulnerabilities=scan.get_distribution_by_severity(),
         report_url=None,
     )
 
     client = get_firestore_client()
-    doc = client.collection(PARSED_COLLECTION_NAME).document()
+    doc = client.collection(AppConfig().collection_reports).document()
 
     # TODO: handle exceptions
     # TODO: perform this as a transaction
