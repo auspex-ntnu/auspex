@@ -1,3 +1,5 @@
+"""Module defining Google Container Registry API functions."""
+
 # https://stackoverflow.com/questions/61465794/docker-sdk-with-google-container-registry
 
 import asyncio
@@ -41,7 +43,9 @@ class ImageInfo(BaseModel):
     tag: list[str]
     created: datetime = Field(..., alias="timeCreatedMs")
     uploaded: datetime = Field(..., alias="timeUploadedMs")
-    digest: Optional[str]  # injected by us
+    digest: Optional[str]  # injected by ImageManifest (see its root_validator)
+    image: Optional[str]  # injected by get_image_info()
+    # TODO: add name:tag used to reference this image
 
     # Parse the timestamps in milliseconds to datetime objects
     _validate_created = validator("created", pre=True, allow_reuse=True)(
@@ -74,12 +78,29 @@ class ImageVersionInfo(NamedTuple):
     delimiter: Optional[str] = None
 
 
+def split_image_version(image: str) -> ImageVersionInfo:
+    """Split image name and tag/digest from image name"""
+    for c in ["@", ":"]:
+        if c in image:
+            image, tag_or_digest = image.split(c, maxsplit=1)
+            mode = ImageNameMode.DIGEST if c == "@" else ImageNameMode.TAG
+            return ImageVersionInfo(
+                image=image,
+                tag_or_digest=tag_or_digest,
+                mode=mode,
+                delimiter=c,
+            )
+    return ImageVersionInfo(image=image, mode=ImageNameMode.NONE)
+
+
 class ImageManifest(BaseModel):
     __root__: dict[str, ImageInfo]
 
     @root_validator
     def inject_digest(cls, values: dict[str, Any]) -> dict[str, Any]:
         """Inject the digest into the image info"""
+        # Each key is in the dictionary is the image's sha256 digest
+        # We assign this value to the ImageInfo object's digest attribute
         for k, v in values["__root__"].items():
             v.digest = k
         return values
@@ -87,12 +108,14 @@ class ImageManifest(BaseModel):
     def get_image_metadata(self, image_info: "ImageVersionInfo") -> ImageInfo:
         """Get the metadata for an image"""
         # Try to find image by digest
+        # Example: "repo/image@sha256:digest"
         if image_info.mode == ImageNameMode.DIGEST and image_info.tag_or_digest:
             img = self.__root__.get(image_info.tag_or_digest)
             if img is not None:
                 return img
 
         # Try to find most recent image with the given tag
+        # Example: "repo/image:tag"
         if image_info.mode == ImageNameMode.TAG:
             # create sorted list of images from most to least recent
             images = sorted(
@@ -103,9 +126,11 @@ class ImageManifest(BaseModel):
                     return img
 
         # Use latest image if no tag or digest
+        # Example: "repo/image"
         if image_info.mode == ImageNameMode.NONE:
             for img in self.__root__.values():
-                if img.tag == "latest":
+                # TODO: verify that only one image can have latest at any given time
+                if "latest" in img.tag:
                     return img
 
         raise UserAPIError(f"Image '{image_info.image}' not found in registry")
@@ -151,6 +176,8 @@ async def get_image_info(image: str) -> ImageInfo:
         logger.error(f"Failed to parse response from registry: {r.text}")
         raise APIError(f"Image '{image}' not found in registry")  # or?
     image_info = tagsresp.manifest.get_image_metadata(versioninfo)
+    # inject the image name (without tag) into the image info
+    image_info.image = versioninfo.image
     return image_info
 
 
@@ -182,18 +209,3 @@ def _do_credentials_from_file() -> Credentials:
     auth_req = google.auth.transport.requests.Request()
     credentials.refresh(auth_req)
     return credentials
-
-
-def split_image_version(image: str) -> ImageVersionInfo:
-    """Split image name and tag/digest from image name"""
-    for c in ["@", ":"]:
-        if c in image:
-            image, tag_or_digest = image.split(c, maxsplit=1)
-            mode = ImageNameMode.DIGEST if c == "@" else ImageNameMode.TAG
-            return ImageVersionInfo(
-                image=image,
-                tag_or_digest=tag_or_digest,
-                mode=mode,
-                delimiter=c,
-            )
-    return ImageVersionInfo(image=image, mode=ImageNameMode.NONE)
