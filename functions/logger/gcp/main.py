@@ -2,7 +2,7 @@
 This cloud function requires permissions to create buckets and write files.
 
 Required environment variables:
-    BUCKET_NAME: name of the bucket to upload to
+    BUCKET_SCANS: name of the bucket to upload to
     COLLECTION_LOGS: Firestore collection name for scan logs
     GCP_PROJECT: Google Cloud Project ID (automatically set by GCP)
 """
@@ -23,18 +23,27 @@ from firebase_admin import credentials, firestore
 from google.cloud import storage
 from google.cloud.firestore import DocumentReference
 from sanitize_filename import sanitize
-from pydantic import BaseModel, ValidationError, Field
+from pydantic import BaseModel, BaseSettings, ValidationError, Field
 
 
 # Get from environment variables and ensure they are defined
-BUCKET_NAME = ""
+BUCKET_SCANS = ""
 COLLECTION_LOGS = ""
 GCP_PROJECT = ""
-for var in ("BUCKET_NAME", "COLLECTION_LOGS", "GCP_PROJECT"):
+for var in ("BUCKET_SCANS", "COLLECTION_LOGS", "GCP_PROJECT"):
     v = os.getenv(var)
     if not v:
         raise ValueError(f"Environment variable '{var}' is not defined.")
     globals()[var] = v
+
+
+class AppSettings(BaseSettings):
+    """Settings for the application."""
+
+    BUCKET_SCANS: str = Field(str, env="BUCKET_SCANS")
+    COLLECTION_LOGS: str = Field(str, env="COLLECTION_LOGS")
+    GCP_PROJECT: str = Field(str, env="GCP_PROJECT")
+
 
 # We get automatically authenticated with firebase with default credentials
 firebase_admin.initialize_app(
@@ -44,6 +53,17 @@ firebase_admin.initialize_app(
     },
 )
 
+# Duplicate definition of ImageInfo from /scanner/containerregistry.py
+class ImageInfo(BaseModel):
+    image_size_bytes: str
+    layer_id: str
+    mediaType: str
+    tag: list[str]
+    created: datetime
+    uploaded: datetime
+    digest: Optional[str]  # injected by ImageManifest (see its root_validator)
+    image: Optional[str]  # injected by get_image_info()
+
 
 class Scan(BaseModel):
     """
@@ -52,7 +72,7 @@ class Scan(BaseModel):
     Represents structure of firestore document.
     """
 
-    image: str  # Name of scanned image
+    image: ImageInfo
     backend: str  # Scanner backend tool used
     scan: str = Field(
         ..., exclude=True
@@ -71,7 +91,7 @@ class Scan(BaseModel):
 def log_results(scan: Scan) -> Scan:
     # Generate log filename
     scan.timestamp = datetime.utcnow()
-    filename = f"{scan.image}_{str(scan.timestamp).replace('.', '_')}"
+    filename = f"{scan.image.image}_{str(scan.timestamp).replace('.', '_')}"
 
     # Upload JSON log blob to bucket
     blob = upload_json_blob_from_memory(scan.scan, filename)
@@ -99,10 +119,10 @@ def upload_json_blob_from_memory(scan_contents: str, filename: str) -> storage.B
     """Uploads a file to the bucket."""
     # Get client and bucket
     storage_client = storage.Client()
-    bucket = storage_client.bucket(BUCKET_NAME)
+    bucket = storage_client.bucket(BUCKET_SCANS)
     if not bucket.exists():
-        print(f"Creating bucket {BUCKET_NAME}")
-        storage_client.create_bucket(BUCKET_NAME)
+        print(f"Creating bucket {BUCKET_SCANS}")
+        storage_client.create_bucket(BUCKET_SCANS)
         # Make sure bucket exists after it has been created
         assert (
             bucket.exists()
@@ -121,7 +141,7 @@ def upload_json_blob_from_memory(scan_contents: str, filename: str) -> storage.B
         # See: https://pypi.org/project/gcloud-aio-storage/#:~:text=the%20session%20explicitly-,file%20encodings,-In%20some%20cases
         content_type="application/json; charset=UTF-8",
     )
-    print(f"{filename} uploaded to {BUCKET_NAME}.")
+    print(f"{filename} uploaded to {BUCKET_SCANS}.")
     return blob
 
 

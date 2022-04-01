@@ -16,4 +16,5 @@ gcloud functions deploy auspex_logger \
     --runtime python39 \
     --trigger-http \
     --allow-unauthenticated \
-    --entry-point handle_request
+    --entry-point handle_request \
+    --env-vars-file .env.yaml
