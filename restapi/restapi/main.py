@@ -6,7 +6,8 @@ from fastapi.exceptions import HTTPException
 import os
 
 from auspex_core.models.scan import ReportData, ScanLog
-from auspex_core.models.pdf import PDFRequestIn
+from auspex_core.models.api.report import ReportRequest
+from auspex_core.models.api.scan import ScanRequest
 from auspex_core.gcp.firestore import get_firestore_client
 from auspex_core.gcp.env import COLLECTION_REPORTS
 import httpx
@@ -16,11 +17,11 @@ import backoff
 
 
 from .db import construct_query, filter_documents
+from .config import AppConfig
 from .exceptions import install_handlers
 from .workflows.base import WorkflowRunner
 from .workflows import get_runner
 from .workflows.gcp import start_pdf_workflow
-from .models import ParsedScanRequest, ScanRequest
 
 
 app = FastAPI()
@@ -39,22 +40,14 @@ if os.getenv("DEBUG") == "1":
     # debugpy.breakpoint()
 
 
-class URLSettings(BaseSettings):
-    reporter_url: str = Field(..., env="URL_REPORTER")
-    scanner_url: str = Field(..., env="URL_SCANNER")
-
-
-settings = URLSettings()
-
-
 @app.get("/logs", response_class=RedirectResponse)
 async def logs():
     return "http://pdfurl.com"
 
 
-@app.post("/pdf/generate")
-async def generate_pdf_report(body: PDFRequestIn):
-    return await start_pdf_workflow()
+# @app.post("/pdf/generate")
+# async def generate_pdf_report(body: PDFRequestIn):
+#     return await start_pdf_workflow()
 
 
 @app.get("/")
@@ -67,12 +60,14 @@ async def scan_images(req: ScanRequest):
     # TODO: (further work) use pub/sub to submit one message for each image
     #       Spin up N cloud run instances to scan all images in parallel
 
-    url = settings.scanner_url
+    url = AppConfig().url_scanner
     if not url:
         raise HTTPException(500, "Can't contact scanner service. URL is not defined.")
-    url = f"http://{url}/scan"
+    url = f"{url}/scan"
 
-    # Instantiate async client (async with AsyncClient(...) is inconsistent when combined with asyncio.gather)
+    # Instantiate async client
+    # (async with AsyncClient(...) is inconsistent when combined with asyncio.gather)
+    # Sometimes it closes the client while some requests are still pending
     client = httpx.AsyncClient()
     # send request for each image
     # TODO: implement backoff for these requests
@@ -85,7 +80,7 @@ async def scan_images(req: ScanRequest):
     ok, failed = await _check_responses(responses, req.ignore_failed)
     scans = await _parse_scan_responses(ok, req.ignore_failed)
 
-    url = settings.reporter_url
+    url = AppConfig().url_reporter
     if not url:
         raise HTTPException(500, "Can't contact reporter service. URL is not defined.")
 
@@ -96,10 +91,10 @@ async def scan_images(req: ScanRequest):
 
     async with httpx.AsyncClient() as client:
         if len(scans) == 1:
-            r = await request_single_report(data)
+            r = await request_single_report(url, data)
         else:
-            r = await request_aggregate_report(data)
-    return r
+            r = await request_aggregate_report(url, data)
+    return r.json()
 
 
 # @backoff.on_exception(
@@ -118,7 +113,7 @@ async def send_scan_request(
     return res
 
 
-async def _handle_failed(failed: list[httpx.HTTPResponse], ignore_failed: bool):
+async def _handle_failed(failed: list[httpx.Response], ignore_failed: bool):
     """Handles failed responses."""
     # Handle failed requests
     if failed:
@@ -133,8 +128,8 @@ async def _handle_failed(failed: list[httpx.HTTPResponse], ignore_failed: bool):
 
 
 async def _check_responses(
-    responses: list[httpx.HTTPResponse], ignore_failed: bool
-) -> tuple[list[httpx.HTTPResponse], list[httpx.HTTPResponse]]:
+    responses: list[httpx.Response], ignore_failed: bool
+) -> tuple[list[httpx.Response], list[httpx.Response]]:
     """Sorts out failed or malformed responses and returns the rest."""
     failed = []
     ok = []
@@ -152,7 +147,7 @@ async def _check_responses(
 
 
 async def _parse_scan_responses(
-    responses: list[httpx.HTTPResponse], ignore_failed: bool
+    responses: list[httpx.Response], ignore_failed: bool
 ) -> list[ScanLog]:
     """Parses the responses and returns the parsed scans."""
     scans = []  # list[ScanLog]
@@ -174,16 +169,16 @@ async def _parse_scan_responses(
     return scans
 
 
-async def request_single_report(data: dict[str, Any]) -> httpx.Response:
+async def request_single_report(url: str, data: dict[str, Any]) -> httpx.Response:
     async with httpx.AsyncClient() as client:
-        url = f"http://{settings.reporter_url}/report"
+        url = f"{url}/report"
         r = await client.post(url, json=data)
     return r
 
 
-async def request_aggregate_report(data: dict[str, Any]) -> httpx.Response:
+async def request_aggregate_report(url: str, data: dict[str, Any]) -> httpx.Response:
     async with httpx.AsyncClient() as client:
-        url = f"http://{settings.reporter_url}/aggregate"
+        url = f"{url}/aggregate"
         r = await client.post(url, json=data)
     return r
 
@@ -194,7 +189,7 @@ async def get_reports(req: ReportRequest) -> list[ReportData]:
     client = get_firestore_client()
 
     # Query DB
-    collection = client.collection(COLLECTION_REPORTS)
+    collection = client.collection(AppConfig().collection_reports)
     query = await construct_query(collection, req)
 
     # Use generator expression to conserve memory
