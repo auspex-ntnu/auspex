@@ -1,25 +1,16 @@
 # NOTE: ONLY SUPPORTS GCP RIGHT NOW
 
 
-from datetime import timedelta
-import io
 import os
-from pathlib import Path
+from datetime import timedelta
 
-from auspex_core.gcp.env import (
-    COLLECTION_LOGS,
-    BUCKET_SCANS,
-    COLLECTION_REPORTS,
-)
-from auspex_core.gcp.firestore import get_document
 from fastapi import FastAPI
 from fastapi.exceptions import HTTPException
-from fastapi.responses import StreamingResponse
 from loguru import logger
 
-
-from .db import log_scan
 from .backends.snyk.model import SnykContainerScan
+from .config import AppConfig
+from .db import log_scan
 from .frontends.latex import create_document
 from .models import ReportRequestIn
 from .types.protocols import ScanTypeSingle
@@ -69,7 +60,10 @@ async def generate_report(r: ReportRequestIn):
     await log_scan(scan)
 
     prev_scans = await get_prev_scans(
-        scan, COLLECTION_REPORTS, max_age=timedelta(weeks=24), ignore_self=True
+        scan,
+        collection=AppConfig().collection_reports,
+        max_age=timedelta(weeks=24),
+        ignore_self=True,
     )
 
     doc = await create_document(scan, prev_scans)
