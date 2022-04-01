@@ -16,10 +16,20 @@ loguru = "^0.6.0"
 google-cloud-storage = "^2.1.0"
 gcloud-aio-storage = "^6.3.0"
 aiofiles = "^0.8.0"
+httpx = "^0.22.0"
 
 [tool.poetry.dev-dependencies]
-pytest = "^5.2"
 black = "^22.1.0"
+poethepoet = "^0.13.1"
+pytest-cov = "^3.0.0"
+pytest = "7.1.1"
+hypothesis = "^6.40.2"
+
+[tool.poe.tasks]
+test = "pytest"
+testcov = "pytest --cov=auspex_core"
+testcov100 = { shell = "poe test  | grep -v '100%'" }
+testhtml = { shell = "poe testcov --cov-report html:cov_html" }
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
