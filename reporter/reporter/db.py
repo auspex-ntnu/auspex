@@ -15,7 +15,8 @@ from google.cloud.firestore_v1.types.write import WriteResult
 from google.api_core.exceptions import InvalidArgument
 from google.cloud import firestore  # type: ignore # mypy doesn't understand this import
 
-from .cve import SEVERITIES
+
+from auspex_core.models.cve import SEVERITIES
 from .types import ScanTypeSingle
 
 
@@ -25,7 +26,7 @@ async def log_scan(scan: ScanTypeSingle) -> WriteResult:
     r = ReportData(
         image=scan.image,
         id=scan.id,
-        cvss=scan.cvss,
+        cvss=scan.cvss,  # TODO: use dedicated type
         vulnerabilities=scan.get_distribution_by_severity(),
         report_url=None,
     )
