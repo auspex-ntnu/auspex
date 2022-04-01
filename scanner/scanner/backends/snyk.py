@@ -12,7 +12,6 @@ DEFAULT_CMD = "snyk"
 
 
 class SnykScanResults(BaseModel):
-    image: str
     scan: str
     error: str
     backend: str = Field("snyk", const=True)
@@ -23,10 +22,9 @@ class SnykScanResults(BaseModel):
 
     @classmethod
     def from_subprocess(
-        cls, process: CompletedProcess[str], image: str
+        cls, process: CompletedProcess[str]
     ) -> "SnykScanResults":  # TODO: FIX ANNOTATION
         return cls(
-            image=image,
             scan=process.stdout,
             error=process.stderr,
             process=process,
@@ -64,4 +62,4 @@ def run_snyk_scan(image: str) -> SnykScanResults:
         capture_output=True,
         text=True,
     )
-    return SnykScanResults.from_subprocess(p, image)
+    return SnykScanResults.from_subprocess(p)
