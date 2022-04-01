@@ -8,8 +8,11 @@
 
 from datetime import datetime
 from typing import Iterable, Protocol, Any, runtime_checkable
+
 from .nptypes import MplRGBAColor
-from ..backends.cve import CVSSTimeType
+
+from auspex_core.models.gcr import ImageInfo
+from auspex_core.models.cve import CVSS, CVETimeType
 
 
 @runtime_checkable
@@ -22,7 +25,7 @@ class VulnerabilityType(Protocol):
         ...
 
     def get_age_score_color(
-        self, timetype: CVSSTimeType
+        self, timetype: CVETimeType
     ) -> tuple[int, float, MplRGBAColor]:
         ...
 
@@ -41,28 +44,7 @@ class ScanType(Protocol):
         ...
 
     @property
-    def cvss_max(self) -> float:
-        """Maximum CVSS score."""
-        ...
-
-    @property
-    def cvss_min(self) -> float:
-        """Minimum CVSS score."""
-        ...
-
-    @property
-    def cvss_median(self) -> float:
-        """Median of all CVSS scores."""
-        ...
-
-    @property
-    def cvss_mean(self) -> float:
-        """Mean of all CVSS scores."""
-        ...
-
-    @property
-    def cvss_stdev(self) -> float:
-        """Standard deviation of all CVSS scores."""
+    def cvss(self) -> CVSS:
         ...
 
     @property
@@ -139,7 +121,7 @@ class ScanTypeSingle(ScanType, Protocol):
 
     # id: str
     @property
-    def image(self) -> str:
+    def image(self) -> ImageInfo:
         ...
 
 

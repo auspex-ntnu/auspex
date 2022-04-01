@@ -7,6 +7,7 @@ from datetime import datetime
 from functools import _lru_cache_wrapper, cache, cached_property
 from os import PathLike
 from typing import Any, Iterator, Optional, Union
+from auspex_core.models.gcr import ImageInfo
 
 import numpy as np
 from loguru import logger
@@ -241,7 +242,7 @@ class SnykContainerScan(BaseModel):
     path: str
     id: str = ""  # Not snyk-native
     timestamp: datetime = Field(default_factory=datetime.now)  # Not snyk-native
-    image: dict[str, Any] = ""  # Not snyk-native
+    image: ImageInfo  # Not snyk-native
 
     class Config:
         extra = "allow"  # should we allow or disallow this?
