@@ -14,18 +14,16 @@ from numpy.typing import NDArray
 from pydantic import BaseModel, Field, root_validator, validator
 from pydantic.fields import ModelField
 
-from ...types.cvss import CVSS
+from auspex_core.models.cve import CVETimeType, CVESeverity, CVSS
+
 from ...types.nptypes import MplRGBAColor
 from ...utils.matplotlib import get_cvss_color
 from ...cve import (
     CVSS_DATE_BRACKETS,
     DEFAULT_CVSS_TIMETYPE,
-    CVSSTimeType,
     DateDescription,
     UpgradabilityCounter,
-    CVESeverity,
 )
-
 from ...utils import npmath
 
 # JSON: .vulnerabilities[n].identifiers
@@ -133,7 +131,7 @@ class SnykVulnerability(BaseModel):
 
     def get_age_score_color(
         self,
-        timetype: CVSSTimeType = DEFAULT_CVSS_TIMETYPE,
+        timetype: CVETimeType = DEFAULT_CVSS_TIMETYPE,
     ) -> tuple[int, float, MplRGBAColor]:
         """
         Retrieves the vulnerability's age (in days), score and numpy color (determined by its CVSS score).
@@ -243,7 +241,7 @@ class SnykContainerScan(BaseModel):
     path: str
     id: str = ""  # Not snyk-native
     timestamp: datetime = Field(default_factory=datetime.now)  # Not snyk-native
-    image: str = ""  # Not snyk-native
+    image: dict[str, Any] = ""  # Not snyk-native
 
     class Config:
         extra = "allow"  # should we allow or disallow this?
@@ -433,16 +431,16 @@ class SnykContainerScan(BaseModel):
         return [v for v in self.vulnerabilities if v.malicious]
 
     def get_vulns_by_date(
-        self, time_type: CVSSTimeType
+        self, time_type: CVETimeType
     ) -> dict[DateDescription, list[SnykVulnerability]]:
         """
         Retrieves all vulnerabilities grouped by time period.
 
         Parameters
         ----------
-        time_type : `CVSSTimeType`
+        time_type : `CVETimeType`
            Which CVE time to group by.
-           See `CVSSTimeType` for possible options.
+           See `CVETimeType` for possible options.
 
         Returns
         -------
