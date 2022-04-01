@@ -8,11 +8,6 @@ class ScanResultsType(Protocol):
     """Abstract base class for scan results from any backend."""
 
     @property
-    def image(self) -> str:
-        """Name of the image that was scanned."""
-        ...
-
-    @property
     def ok(self) -> bool:
         """Returns success status of scan."""
         ...
