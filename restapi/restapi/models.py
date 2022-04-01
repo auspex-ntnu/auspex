@@ -5,6 +5,7 @@ from typing import Any, Iterable, NamedTuple, Optional
 from pydantic import BaseModel, Field, validator
 from google.cloud import firestore
 
+
 DEFAULT_FORMAT = os.getenv("REPORTER_DEFAULT_FORMAT") or "latex"
 
 
@@ -14,6 +15,7 @@ class InvalidQueryString(Exception):
 
 class ScanRequest(BaseModel):
     images: list[str] = Field(default_factory=list)
+    repository: Optional[str] = None
     format: str = DEFAULT_FORMAT  # support multiple formats?
     backend: str = "snyk"
     ignore_failed: bool = False
@@ -70,7 +72,7 @@ class Filter(BaseModel):
                 yield (k, v)
 
 
-class ParsedScanRequest(BaseModel):
+class ReportRequest(BaseModel):
     image: str
     filter: Optional[Filter] = None
     limit: Optional[int] = None
