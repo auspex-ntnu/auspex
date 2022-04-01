@@ -1,12 +1,15 @@
 from datetime import datetime
-from typing import Optional
+from typing import Any, Optional
 from pydantic import BaseModel, Field
+
+from .gcr import ImageInfo
+from .cve import CVSS
 
 # Very similar definition of Scan from /functions/logger/gcp/main.py
 class ScanLog(BaseModel):
     """Model for documents in auspex-logs"""
 
-    image: str  # Name of scanned image
+    image: ImageInfo
     backend: str  # Scanner backend tool used
     id: str
     timestamp: datetime
@@ -38,13 +41,9 @@ class ReportData(BaseModel):
     """Models a document in the results collection."""
 
     id: str
-    image: str
+    image: ImageInfo
     timestamp: datetime = Field(default_factory=datetime.now)
-    cvss_min: float
-    cvss_max: float
-    cvss_mean: float
-    cvss_median: float
-    cvss_stdev: float
+    cvss: CVSS  # TDOO: add shared pydantic model for this field
     vulnerabilities: CVSSv3Distribution
     # most_common_cve: dict[str, int]  # IDs of most common vulnerabilities
     report_url: Optional[str]
