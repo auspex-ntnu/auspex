@@ -3,6 +3,7 @@ from enum import Enum
 from typing import Any, Callable, NamedTuple
 import operator
 from pydantic import BaseModel
+from auspex_core.models.cve import CVETimeType
 
 
 class DateDescription(NamedTuple):
@@ -51,14 +52,7 @@ class UpgradabilityCounter(BaseModel):
     not_upgradable: int = 0
 
 
-class CVSSTimeType(Enum):
-    CREATION_TIME = "creationTime"
-    MODIFICATION_TIME = "modificationTime"
-    PUBLICATION_TIME = "publicationTime"
-    DISCLOSURE_TIME = "disclosureTime"
-
-
-DEFAULT_CVSS_TIMETYPE = CVSSTimeType.CREATION_TIME
+DEFAULT_CVSS_TIMETYPE = CVETimeType.CREATION_TIME
 
 # NOTE: _Must_ be in descending order (high->low)
 CVSS_DATE_BRACKETS = [
@@ -68,22 +62,3 @@ CVSS_DATE_BRACKETS = [
     DateDescription(timedelta(days=30), ">30 days"),
     DateDescription(timedelta(days=0), "Last month"),
 ]
-
-
-class CVESeverity(Enum):
-    CRITICAL = 4
-    HIGH = 3
-    MEDIUM = 2
-    LOW = 1
-    UNDEFINED = 0
-
-    @classmethod
-    def get(cls, severity: str) -> int:
-        # Can omit this type checking for performance reasons.
-        # Pydantic should guarantee severity is always a string.
-        if not isinstance(severity, str):
-            return cls.UNDEFINED.value
-        return cls.__members__.get(severity.upper(), cls.UNDEFINED).value
-
-
-SEVERITIES = ("low", "medium", "high", "critical")
