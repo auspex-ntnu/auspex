@@ -4,7 +4,6 @@ import os
 from typing import Any, Iterable, NamedTuple, Optional
 from pydantic import BaseModel, Field, validator
 from google.cloud import firestore
-from ..validators import ensure_nonnegative
 
 
 class FirestoreQuery(NamedTuple):
