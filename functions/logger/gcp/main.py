@@ -25,30 +25,22 @@ from sanitize_filename import sanitize
 from pydantic import BaseModel, BaseSettings, ValidationError, Field, AnyHttpUrl
 
 
-# Get from environment variables and ensure they are defined
-BUCKET_SCANS = ""
-COLLECTION_LOGS = ""
-GCP_PROJECT = ""
-for var in ("BUCKET_SCANS", "COLLECTION_LOGS", "GCP_PROJECT"):
-    v = os.getenv(var)
-    if not v:
-        raise ValueError(f"Environment variable '{var}' is not defined.")
-    globals()[var] = v
-
-
-class AppSettings(BaseSettings):
-    """Settings for the application."""
+class AppConfig(BaseSettings):
+    """Config for the application.
+    Retrieves values from environment variables."""
 
     BUCKET_SCANS: str = Field(str, env="BUCKET_SCANS")
     COLLECTION_LOGS: str = Field(str, env="COLLECTION_LOGS")
     GCP_PROJECT: str = Field(str, env="GCP_PROJECT")
 
 
+config = AppConfig()
+
 # We get automatically authenticated with firebase with default credentials
 firebase_admin.initialize_app(
     credentials.ApplicationDefault(),
     {
-        "projectId": GCP_PROJECT,
+        "projectId": config.GCP_PROJECT,
     },
 )
 
@@ -109,7 +101,7 @@ def add_firestore_document(scan: Scan) -> DocumentReference:
     """Adds a firestore document."""
     # Use the application default credentials
     db = firestore.client()  # type: FirestoreClient
-    doc = db.collection(COLLECTION_LOGS).document()
+    doc = db.collection(config.COLLECTION_LOGS).document()
     doc.set(scan.dict(exclude={"id"}))
     return doc
 
@@ -118,10 +110,10 @@ def upload_json_blob_from_memory(scan_contents: str, filename: str) -> storage.B
     """Uploads a file to the bucket."""
     # Get client and bucket
     storage_client = storage.Client()
-    bucket = storage_client.bucket(BUCKET_SCANS)
+    bucket = storage_client.bucket(config.BUCKET_SCANS)
     if not bucket.exists():
-        print(f"Creating bucket {BUCKET_SCANS}")
-        storage_client.create_bucket(BUCKET_SCANS)
+        print(f"Creating bucket {config.BUCKET_SCANS}")
+        storage_client.create_bucket(config.BUCKET_SCANS)
         # Make sure bucket exists after it has been created
         assert (
             bucket.exists()
@@ -140,7 +132,7 @@ def upload_json_blob_from_memory(scan_contents: str, filename: str) -> storage.B
         # See: https://pypi.org/project/gcloud-aio-storage/#:~:text=the%20session%20explicitly-,file%20encodings,-In%20some%20cases
         content_type="application/json; charset=UTF-8",
     )
-    print(f"{filename} uploaded to {BUCKET_SCANS}.")
+    print(f"{filename} uploaded to {config.BUCKET_SCANS}.")
     return blob
 
 
