@@ -1,8 +1,8 @@
 import asyncio
 import json
+import os
 from pathlib import Path
-from typing import Any, NamedTuple
-import aiofiles
+from typing import Any, NamedTuple, Optional
 import aiohttp
 import backoff
 
@@ -11,9 +11,6 @@ from google.cloud.storage import Bucket
 from gcloud.aio.storage import Blob, Storage
 from loguru import logger
 from pydantic import BaseModel
-
-
-from .env import GOOGLE_APPLICATION_CREDENTIALS
 
 
 class StorageObject(NamedTuple):
@@ -64,17 +61,21 @@ class StorageWithBackoff(Storage):
         return await super().delete(*args, **kwargs)
 
 
-def get_storage_client() -> StorageWithBackoff:
+def get_storage_client(service_file: Optional[str]) -> StorageWithBackoff:
     """Returns a Google Cloud Storage client."""
-    return StorageWithBackoff(service_file=GOOGLE_APPLICATION_CREDENTIALS)
+    return StorageWithBackoff(service_file=service_file)
 
 
-async def fetch_json_blob(bucket_name: str, blob_name: str) -> StorageObject:
+async def fetch_json_blob(
+    bucket_name: str, blob_name: str, service_file: Optional[str] = None
+) -> StorageObject:
     """Fetches a JSON blob from the given bucket.
 
     Returns a StorageObject with the blob and the parsed JSON content.
     """
-    async with get_storage_client() as client:
+    if not service_file:
+        service_file = os.getenv("GOOGLE_APPLICATION_CREDENTIALS")
+    async with get_storage_client(service_file) as client:
         # TODO: handle missing bucket
         bucket = client.get_bucket(bucket_name)
         blob = await bucket.get_blob(blob_name)
@@ -99,14 +100,18 @@ async def fetch_json_blob(bucket_name: str, blob_name: str) -> StorageObject:
 
 
 # TODO: add backoff?
-async def upload_file_to_bucket(path: Path, bucket_name: str) -> "ObjectStatus":
+async def upload_file_to_bucket(
+    path: Path, bucket_name: str, service_file: Optional[str] = None
+) -> "ObjectStatus":
     """Uploads a file to the given bucket.
 
     Returns the metadata of the uploaded blob.
     """
+    if not service_file:
+        service_file = os.getenv("GOOGLE_APPLICATION_CREDENTIALS")
     # TODO: don't nest try/excepts
     try:
-        async with get_storage_client() as client:
+        async with get_storage_client(service_file) as client:
 
             try:
                 # Check if bucket exists
