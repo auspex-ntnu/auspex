@@ -8,7 +8,6 @@ Required environment variables:
 """
 
 from datetime import datetime
-import time
 import os
 
 from typing import TYPE_CHECKING, Optional, Tuple, Union
@@ -23,7 +22,7 @@ from firebase_admin import credentials, firestore
 from google.cloud import storage
 from google.cloud.firestore import DocumentReference
 from sanitize_filename import sanitize
-from pydantic import BaseModel, BaseSettings, ValidationError, Field
+from pydantic import BaseModel, BaseSettings, ValidationError, Field, AnyHttpUrl
 
 
 # Get from environment variables and ensure they are defined
@@ -61,8 +60,8 @@ class ImageInfo(BaseModel):
     tag: list[str]
     created: datetime
     uploaded: datetime
-    digest: Optional[str]  # injected by ImageManifest (see its root_validator)
-    image: Optional[str]  # injected by get_image_info()
+    digest: Optional[str]  # injected by auspex_core.models.ImageManifest
+    image: Optional[str]  # injected by auspex_core.gcp.get_image_info()
 
 
 class Scan(BaseModel):
