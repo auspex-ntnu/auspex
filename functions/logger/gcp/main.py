@@ -73,15 +73,15 @@ class Scan(BaseModel):
     """
 
     image: ImageInfo
-    backend: str  # Scanner backend tool used
+    backend: str = Field(min_length=1)  # Scanner backend tool used
     scan: str = Field(
         ..., exclude=True
     )  # Output of scanning software (not stored in DB)
-    id: Optional[str] = None  #  Firestore document ID (set by function)
-    timestamp: Optional[datetime] = None  # Timestamp of scan (set by function)
-    url: Optional[str] = None  # URL to scan results (set by function)
-    blob: Optional[str] = None  # Name of uploaded blob (set by function)
-    bucket: Optional[str] = None  # Bucket blob is stored in (set by function)
+    id: Optional[str] = None  #  Firestore document ID (set by log_results())
+    timestamp: Optional[datetime] = None  # Timestamp of scan (set by log_results())
+    url: Optional[AnyHttpUrl] = None  # URL to scan results (set by log_results())
+    blob: Optional[str] = None  # Name of uploaded blob (set by log_results())
+    bucket: Optional[str] = None  # Bucket blob is stored in (set by log_results())
 
     class Config:
         extra = "allow"  # we account for future additions to schema
