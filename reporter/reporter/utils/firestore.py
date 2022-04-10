@@ -1,7 +1,6 @@
-from datetime import timedelta, datetime
+from datetime import datetime, timedelta
 from typing import Any, Optional, Union
 
-from auspex_core.gcp.env import COLLECTION_LOGS
 from auspex_core.gcp.firestore import get_document, get_firestore_client
 from auspex_core.models.scan import ReportData
 from fastapi.exceptions import HTTPException
@@ -9,12 +8,12 @@ from google.cloud.firestore_v1 import DocumentSnapshot
 from google.cloud.firestore_v1.async_query import AsyncQuery
 from loguru import logger
 from pydantic import ValidationError
+
+from ..config import AppConfig
 from ..types.protocols import ScanTypeSingle
 
 
-async def get_firestore_document(
-    document_id: str, collection: str = COLLECTION_LOGS
-) -> DocumentSnapshot:
+async def get_firestore_document(document_id: str, collection: str) -> DocumentSnapshot:
     """Wrapper around `auspex_core.firestore.get_document` that handles
     exceptions and logging for the service.
 
@@ -50,8 +49,9 @@ async def get_firestore_document(
     return doc
 
 
+# FIXME: unused. Delete?!
 async def get_firestore_documents(
-    document_ids: list[str], collection: str = COLLECTION_LOGS
+    document_ids: list[str], collection: str = AppConfig().collection_logs
 ) -> list[DocumentSnapshot]:
     """Retrieves multiple firestore documents given a list of document IDs.
 
