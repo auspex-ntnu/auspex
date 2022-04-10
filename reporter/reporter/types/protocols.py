@@ -7,11 +7,11 @@
 # properties with snake_case names that retrieve the original camelCase attribute values.
 
 from datetime import datetime
-from typing import Iterable, Protocol, Any, runtime_checkable
+from typing import Iterable, Protocol, Any, Sequence, runtime_checkable
 
 from .nptypes import MplRGBAColor
 
-from auspex_core.models.gcr import ImageInfo
+from auspex_core.models.gcr import ImageInfo, ImageTimeMode
 from auspex_core.models.cve import CVSS, CVETimeType
 
 
@@ -39,8 +39,19 @@ class ScanType(Protocol):
     Both single image scans and aggregate scans should implement this interface.
     """
 
+    # This is not read-only so that it can be replaced by a timezone-aware datetime
+    timestamp: datetime  # MUST be UTC timestamp.
+    # TODO: implement init check to ensure datetime timezone
+
     @property
     def id(self) -> str:
+        ...
+
+    def get_timestamp(
+        self, image: bool = True, mode: ImageTimeMode = ImageTimeMode.CREATED
+    ) -> datetime:
+        """Returns the timestamp of the scan.
+        The parameter `image` can be specified to return the timestamp of the image."""
         ...
 
     @property

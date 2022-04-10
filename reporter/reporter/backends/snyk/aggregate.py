@@ -38,6 +38,14 @@ class AggregateScan(BaseModel):
     def __hash__(self) -> int:
         return id(self)
 
+    def get_timestamp(
+        self, image: bool = True, mode: ImageTimeMode = ImageTimeMode.CREATED
+    ) -> datetime:
+        """Returns timestamp of when aggregate scan was created.
+        Parameters `image` and `mode` have no effect, and are implemented
+        to conform to `ScanType` protocol."""
+        return self.timestamp
+
     @property
     def cvss_max(self) -> float:
         return max(self.cvss_scores(), default=0.0)

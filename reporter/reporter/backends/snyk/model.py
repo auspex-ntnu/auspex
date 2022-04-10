@@ -3,11 +3,11 @@
 import json
 import time
 from collections import Counter
-from datetime import datetime
+from datetime import datetime, timezone
 from functools import _lru_cache_wrapper, cache, cached_property
 from os import PathLike
-from typing import Any, Iterator, Optional, Union
-from auspex_core.models.gcr import ImageInfo
+from typing import Any, Iterator, Optional, Sequence, Union
+from auspex_core.models.gcr import ImageInfo, ImageTimeMode
 
 import numpy as np
 from loguru import logger
@@ -18,6 +18,7 @@ from pydantic.fields import ModelField
 from auspex_core.models.cve import CVETimeType, CVESeverity, CVSS
 
 from ...types.nptypes import MplRGBAColor
+from ...types.protocols import VulnerabilityType
 from ...utils.matplotlib import get_cvss_color
 from ...cve import (
     CVSS_DATE_BRACKETS,
@@ -241,7 +242,7 @@ class SnykContainerScan(BaseModel):
     platform: str
     path: str
     id: str = ""  # Not snyk-native
-    timestamp: datetime = Field(default_factory=datetime.now)  # Not snyk-native
+    timestamp: datetime = Field(default_factory=datetime.utcnow)  # Not snyk-native
     image: ImageInfo  # Not snyk-native
 
     class Config:
@@ -283,6 +284,18 @@ class SnykContainerScan(BaseModel):
 
     def __repr__(self) -> str:
         return f"SnykVulnerabilityScan(path={self.path}, platform={self.platform})"
+
+    def get_timestamp(
+        self, image: bool = True, mode: ImageTimeMode = ImageTimeMode.CREATED
+    ) -> datetime:
+        """Returns (UTC) timestamp of the scan or of the image if `image` is `True`."""
+        # TODO: ensure UTC somewhere else?
+        if image:
+            ts = self.image.get_timestamp(mode)
+        else:
+            ts = self.timestamp
+        ts = ts.replace(tzinfo=timezone.utc)
+        return ts
 
     @property
     def architecture(self) -> str:
