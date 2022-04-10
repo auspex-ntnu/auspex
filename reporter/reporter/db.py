@@ -34,6 +34,7 @@ async def log_scan(scan: ScanTypeSingle) -> WriteResult:
     client = get_firestore_client()
     doc = client.collection(AppConfig().collection_reports).document()
 
+    # TODO: Delete or update existing documents with the same image digest
     # TODO: handle exceptions
     # TODO: perform this as a transaction
 
@@ -63,6 +64,11 @@ async def log_scan(scan: ScanTypeSingle) -> WriteResult:
                 # they can't be stored in a firestore document, but known vulnerable
                 # images like "vulhub/php:5.4.1-cgi" do trigger this exception,
                 # hence we have to account for it happening and handle it + log it.
+
+                # This is a limitation of the firestore maximum document size.
+                # It could be mitigated by creating subcollections of N size,
+                # where N is a known safe number of vulnerabilities to store that
+                # does not exceed the maximum document size.
                 await collection.document(severity).set(data.dict())
             else:
                 raise
