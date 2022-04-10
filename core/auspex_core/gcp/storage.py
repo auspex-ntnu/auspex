@@ -7,6 +7,7 @@ import aiohttp
 import backoff
 
 
+from google.cloud import storage
 from google.cloud.storage import Bucket
 from gcloud.aio.storage import Blob, Storage
 from loguru import logger
@@ -143,7 +144,6 @@ def create_bucket(bucket_name: str) -> Bucket:
 
     Uses the default project ID.
     """
-    from google.cloud import storage
 
     logger.info(f"Creating bucket {bucket_name}")
     # gcloud.aio.storage.Storage doesn't support creating buckets.
