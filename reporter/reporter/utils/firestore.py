@@ -99,6 +99,7 @@ async def get_prev_scans(
     collection: str,
     max_age: Union[timedelta, datetime],
     ignore_self: bool = True,
+    by_image: bool = True,
 ) -> list[ReportData]:
     """Given a single image scan, find all previous scans going back
     to a certain date.
@@ -114,6 +115,8 @@ async def get_prev_scans(
         Can be an absolute point in time (datetime) or a maximum age (timedelta).
     ignore_self : `bool`, optional
         If true, does not include the input scan in the returned list, by default True
+    by_image : `bool`, optional
+        If true, returns reports by image creation date instead of scan date, by default True
 
     Returns
     -------
@@ -127,7 +130,7 @@ async def get_prev_scans(
 
     client = get_firestore_client()
     col = client.collection(collection)
-    query = col.where("image", "==", scan.image)  # type: AsyncQuery
+    query = col.where("image.image", "==", scan.image.image)  # type: AsyncQuery
 
     # Perform filtering by date client-side instead of using composite query
     # This will require more database reads and memory, but saves us from
@@ -135,17 +138,23 @@ async def get_prev_scans(
     reports = []  # type: list[ReportData]
     async for doc in query.stream():
         d = doc.to_dict()
-        if not d:
+        if not d:  # always check for falsey values
             continue
 
-        # Ignore self
+        # Ignore self when searching for previous scans
         if ignore_self and d.get("id") == scan.id:
             continue
 
-        # Verify that doc has a timestamp
-        timestamp = d.get("timestamp")  # type: Optional[datetime]
+        # Verify that doc has a timestamp and retrieve it
+        if by_image:
+            # XXX: use doc.get instead for nested fields? Is that an extra read?
+            img = d.get("image", {})  # type: dict[str, Any]
+            timestamp = img.get("created")  # type: Optional[datetime]
+        else:
+            timestamp = d.get("timestamp")
         if not timestamp:
-            logger.warning(f"Document '{doc.id}' has no key 'timestamp'.")
+            k = "image.created" if by_image else "timestamp"
+            logger.warning(f"Document '{doc.id}' has no key '{k}'.")
             continue
 
         # Use timezone from doc when comparing
@@ -157,4 +166,5 @@ async def get_prev_scans(
                 continue
             reports.append(r)
 
+    # TODO: assert no duplicate ids?
     return reports
