@@ -3,7 +3,10 @@
 # https://stackoverflow.com/questions/61465794/docker-sdk-with-google-container-registry
 
 import asyncio
+from ensurepip import version
 import os
+from datetime import datetime
+import time
 
 import google.auth
 import google.auth.transport.requests
@@ -57,13 +60,15 @@ def get_registry(image_info: ImageVersionInfo) -> str:
     return "docker.io"  # fall back on DockerHub URL (or?)
 
 
+async def get_image_info(image: str, project: str) -> ImageInfo:
+    """Get information about a container image.
 
     Example:
         >>> get_image_info("gcr.io/ntnu-student-project/auspex:latest")
         ImageInfo(
             image_size_bytes='0',
             layer_id='',
-            mediaType='application/vnd.docker.distribution.manifest.v2+json',
+            media_type='application/vnd.docker.distribution.manifest.v2+json',
             tag=['latest'],
             created=datetime.datetime(2020, 4, 23, 14, 0, 0, tzinfo=tzutc()),
             uploaded=datetime.datetime(2020, 4, 23, 14, 0, 0, tzinfo=tzutc()),
@@ -71,28 +76,101 @@ def get_registry(image_info: ImageVersionInfo) -> str:
             image='gcr.io/ntnu-student-project/auspex'
         )
     """
-    # resp = await get_repositories("ntnu-student-project")
+    # Determine image version (tag or digest) from its name
     versioninfo = split_image_version(image)
-    # repo = resp.get_repository(image)
 
-    # TODO: determine repository to search through
+    # Given the image's name, we can find its registry
+    registry = get_registry(versioninfo)
+
+    # FIXME: add support for other registries
+    # Right now we just mock docker.io
+    if registry == "docker.io":
+        return mock_dockerhub_imageinfo(versioninfo)
+
+    imgpath = get_image_path(versioninfo.image, project, registry)
 
     credentials = await credentials_from_file()
+    url = f"https://{registry}/v2/{project}/{imgpath}/tags/list"
     async with httpx.AsyncClient() as client:
-        r = await client.get(
-            "https://eu.gcr.io/v2/ntnu-student-project/auspex/scanner/tags/list",
-            auth=("_token", credentials.token),
+        r = await client.get(url, auth=("_token", credentials.token))
+    if not r.is_success:
+        logger.error(
+            f"Failed to get image info for {image}. "
+            f"Status code: {r.status_code} "
+            f"Response: {r.text}"
         )
+        raise ValueError(f"Failed to get image info for {image}")
 
     try:
         tagsresp = TagsResponse.parse_obj(r.json())
     except ValidationError:
         logger.error(f"Failed to parse response from registry: {r.text}")
         raise ValueError(f"Image '{image}' not found in registry")  # or?
+
+    # Parse tags response and retrieve image info
     image_info = tagsresp.manifest.get_image_metadata(versioninfo)
+
     # inject the image name (without tag) into the image info
-    image_info.image = versioninfo.image
+    # TODO: this needs a lot of testing. This whole function should be refactored.
+    if registry not in versioninfo.image or project not in versioninfo.image:
+        image_info.image = (
+            f"{registry.strip('/')}/{project.strip('/')}/{imgpath.strip('/')}"
+        )
+    else:
+        image_info.image = versioninfo.image
     return image_info
+
+
+def get_image_path(image: str, project: str, registry: str) -> str:
+    """Get the image part of a path to an image in a container registry.
+
+    Example:
+        >>> _get_image_path("gcr.io/ntnu-student-project/auspex/scanner", "ntnu-student-project", "gcr.io")
+        'auspex/scanner'
+
+
+    Parameters
+    ----------
+    image : `str`
+        Full name of the image (possibly including its registry and/or project)
+    project : `str`
+        Name of the project the image belongs to.
+    registry : `str`
+        Name of the registry the image belongs to.
+
+    Returns
+    -------
+    `str`
+        URL path segment for the image.
+    """
+    if registry in image:
+        imgpath = image.split(registry, maxsplit=1)[1]
+    if project in imgpath:
+        image = image.split(project, maxsplit=1)[1]
+    return image.strip("/")  # remove leading and trailing slashes
+
+
+def mock_dockerhub_imageinfo(versioninfo: ImageVersionInfo) -> ImageInfo:
+    """Mock image info for dockerhub. This is a hack to 'support' Dockerhub images."""
+    if versioninfo.mode == ImageNameMode.TAG and versioninfo.tag_or_digest is not None:
+        tag = versioninfo.tag_or_digest
+    else:
+        tag = ""
+
+    if "docker.io" not in versioninfo.image:
+        image = f"docker.io/{versioninfo.image}"
+    else:
+        image = versioninfo.image
+
+    return ImageInfo(
+        image_size_bytes="0",
+        layer_id="",
+        media_type="application/vnd.docker.distribution.manifest.v2+json",
+        tag=[tag],
+        created=time.time() * 1000,  # type: ignore
+        uploaded=time.time() * 1000,  # type: ignore
+        image=image,
+    )
 
 
 # list repositories
