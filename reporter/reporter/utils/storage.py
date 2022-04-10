@@ -1,6 +1,6 @@
 from pathlib import Path
 from typing import Any
-from auspex_core.gcp.env import BUCKET_SCANS
+
 from auspex_core.gcp.storage import (
     StorageObject,
     fetch_json_blob,
@@ -10,9 +10,11 @@ from fastapi.exceptions import HTTPException
 from google.cloud.firestore_v1 import DocumentSnapshot
 from loguru import logger
 
+from ..config import AppConfig
+
 
 async def get_object_from_document(
-    doc: DocumentSnapshot, bucket: str = BUCKET_SCANS
+    doc: DocumentSnapshot, bucket: str = AppConfig().bucket_scans
 ) -> StorageObject:
     """Wrapper around `auspex_core.gcp.storage.fetch_json_blob`
     that handles exceptions and logging for the service.
@@ -39,6 +41,8 @@ async def get_object_from_document(
     """
     # Get scan file from bucket
     blobname = doc.get("blob")
+    # FIXME: document bucket will ALWAYS shadow the bucket argument
+    #        Do it the other way around? e.g. `bucket = bucket or doc.get("bucket")`
     bucket = doc.get("bucket") or bucket
     if not blobname:
         raise HTTPException(
@@ -56,7 +60,7 @@ async def get_object_from_document(
 
 
 async def upload_report_to_bucket(
-    path: Path, bucket: str = "auspex-reports", delete_after: bool = True
+    path: Path, bucket: str, delete_after: bool = True
 ) -> dict[str, Any]:
     """Uploads a report to the given bucket.
 
@@ -64,13 +68,13 @@ async def upload_report_to_bucket(
     ----------
     path : `Path`
         Path to the report to upload.
+    bucket : `str`
+        Cloud storage bucket to upload to
     delete_after : `bool`, optional
         Whether to delete the report after uploading, by default True.
-    bucket : `str`, optional
-        Cloud storage bucket to upload to, by default "auspex-reports".
     """
-
     status = await upload_file_to_bucket(path, bucket)
     if delete_after:
-        path.unlink()
+        # Ignore if the file doesn't exist somehow (it should)
+        path.unlink(missing_ok=True)
     return status
