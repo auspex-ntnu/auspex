@@ -3,6 +3,7 @@
 
 import os
 from datetime import timedelta
+import time
 
 from fastapi import FastAPI
 from fastapi.exceptions import HTTPException
@@ -49,29 +50,27 @@ async def scan_from_docid(docid: str, collection: str) -> ScanTypeSingle:
     # use timestamp from document
     # use backend from document
 
-    assert hasattr(obj.blob, "id")
-    # TODO: fix typing!! Why does SnykContainerScan not pass as a ScanTypeSingle type?
-    return SnykContainerScan(**obj.content, id=obj.blob.id, image=image)
+    # assert hasattr(obj.blob, "id")
+    id = f"{doc.id}-{obj.blob.id}-{int(time.time())}"
+    return SnykContainerScan(**obj.content, id=id, image=image)
 
 
 @app.post("/report")
 async def generate_report(r: ReportRequestIn):
-    scan = await scan_from_docid(r.document_id[0], r.collection)
+    scan = await scan_from_docid(r.document_id[0], AppConfig().collection_logs)
     await log_scan(scan)
 
     prev_scans = await get_prev_scans(
         scan,
         collection=AppConfig().collection_reports,
-        max_age=timedelta(weeks=24),
+        max_age=timedelta(weeks=AppConfig().trend_weeks),
         ignore_self=True,
     )
 
     doc = await create_document(scan, prev_scans)
     if not doc.path.exists():
         raise HTTPException(500, "Failed to generate report.")
-    status = await upload_report_to_bucket(
-        doc.path, "auspex-reports"
-    )  # FIXME: use env var
+    status = await upload_report_to_bucket(doc.path, AppConfig().bucket_reports)
 
     return {"request": r.dict(), "status": status}
 
@@ -82,7 +81,7 @@ async def generate_aggregate_report(r: ReportRequestIn):
     scans = []  # type: list[ScanTypeSingle]
     for docid in r.document_id:
         try:
-            scan = await scan_from_docid(docid, r.collection)
+            scan = await scan_from_docid(docid, AppConfig().collection_logs)
         except Exception:
             logger.exception(f"Failed to retrieve document with ID {docid}")
             failed.append(docid)
