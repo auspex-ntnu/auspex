@@ -24,7 +24,7 @@ from .types import ScanTypeSingle
 async def log_scan(scan: ScanTypeSingle) -> WriteResult:
     """Store results of parsed container scan in the database."""
     r = ReportData(
-        image=scan.image,
+        image=scan.image.dict(),
         id=scan.id,
         cvss=scan.cvss,  # TODO: use dedicated type
         vulnerabilities=scan.get_distribution_by_severity(),
