@@ -1,6 +1,6 @@
 from datetime import datetime
 from enum import Enum, auto
-from typing import Any, NamedTuple, Optional
+from typing import Any, NamedTuple, Optional, Union
 
 from pydantic import BaseModel, Field, root_validator, validator
 
@@ -25,12 +25,33 @@ class CatalogResponse(BaseModel):
         raise ValueError(f"Image '{image}' not found in registry")
 
 
+def _validate_imageinfo_ts(timestamp_ms: Union[str, int, datetime]) -> datetime:
+    """Convert a timestamp (in milliseconds) to a datetime object"""
+    # Hacks to make serializing to/from JSON str timestamps work
+
+    # We already have a datetime object, so we don't need to convert
+    if isinstance(timestamp_ms, datetime):
+        return timestamp_ms
+    # Treat string as ISO timestamp if string is not all digits
+    elif isinstance(timestamp_ms, str) and not timestamp_ms.isdigit():
+        return datetime.fromisoformat(timestamp_ms)
+    # Fall back on treating as timestamp in milliseconds
+    return timestamp_ms_to_datetime(timestamp_ms)
+
+
+class ImageTimeMode(Enum):
+    """Time mode for a Docker image"""
+
+    CREATED = "created"
+    UPLOADED = "uploaded"
+
+
 class ImageInfo(BaseModel):
     """Represents information about a single Docker image."""
 
     image_size_bytes: str = Field(..., alias="imageSizeBytes")
     layer_id: str = Field(..., alias="layerId")
-    mediaType: str = Field(..., alias="mediaType")
+    media_type: str = Field(..., alias="mediaType")
     tag: list[str]
     created: datetime = Field(..., alias="timeCreatedMs")
     uploaded: datetime = Field(..., alias="timeUploadedMs")
@@ -40,18 +61,24 @@ class ImageInfo(BaseModel):
 
     # Parse the timestamps in milliseconds to datetime objects
     _validate_created = validator("created", pre=True, allow_reuse=True)(
-        timestamp_ms_to_datetime
+        _validate_imageinfo_ts
     )
     _validate_uploaded = validator("uploaded", pre=True, allow_reuse=True)(
-        timestamp_ms_to_datetime
+        _validate_imageinfo_ts
     )
 
+    def get_timestamp(self, mode: ImageTimeMode = ImageTimeMode.CREATED) -> datetime:
+        """Get the timestamp for the image in the given mode"""
+        if mode == ImageTimeMode.CREATED:
+            return self.created
+        elif mode == ImageTimeMode.UPLOADED:
+            return self.uploaded
+        else:
+            raise ValueError(f"Invalid mode '{mode}'")
 
-class ImageTimeMode(Enum):
-    """Time mode for a Docker image"""
-
-    CREATED = "created"
-    UPLOADED = "uploaded"
+    class Config:
+        # Allow population using both camelCase and snake_case
+        allow_population_by_field_name = True
 
 
 class ImageNameMode(Enum):
