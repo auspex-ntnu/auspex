@@ -47,8 +47,16 @@ def split_image_version(image: str) -> ImageVersionInfo:
     return ImageVersionInfo(image=image, mode=ImageNameMode.NONE)
 
 
-async def get_image_info(image: str) -> ImageInfo:
-    """Get information about a Container image from Google Container Registry.
+def get_registry(image_info: ImageVersionInfo) -> str:
+    """Get the registry from an image name."""
+    base_url = image_info.image.split("/")[0]
+    supported = ["eu.gcr.io", "us.gcr.io", "docker.io"]
+    if base_url in supported:
+        return base_url
+    # NOTE: what about gcr.io?
+    return "docker.io"  # fall back on DockerHub URL (or?)
+
+
 
     Example:
         >>> get_image_info("gcr.io/ntnu-student-project/auspex:latest")
