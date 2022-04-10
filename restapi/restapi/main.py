@@ -1,5 +1,5 @@
 import asyncio
-from typing import Any
+from typing import Any, Optional
 from fastapi import FastAPI
 from fastapi.responses import RedirectResponse, StreamingResponse
 from fastapi.exceptions import HTTPException
@@ -66,7 +66,7 @@ async def scan_images(req: ScanRequest):
     url = f"{url}/scan"
 
     # Instantiate async client
-    # (async with AsyncClient(...) is inconsistent when combined with asyncio.gather)
+    # (`async with AsyncClient(...)` is inconsistent when combined with asyncio.gather)
     # Sometimes it closes the client while some requests are still pending
     client = httpx.AsyncClient()
     # send request for each image
@@ -169,15 +169,19 @@ async def _parse_scan_responses(
     return scans
 
 
+REPORTER_TIMEOUT: Optional[float] = None
+
+
 async def request_single_report(url: str, data: dict[str, Any]) -> httpx.Response:
-    async with httpx.AsyncClient() as client:
+    # TODO: investigate what a sane timeout is
+    async with httpx.AsyncClient(timeout=REPORTER_TIMEOUT) as client:
         url = f"{url}/report"
         r = await client.post(url, json=data)
     return r
 
 
 async def request_aggregate_report(url: str, data: dict[str, Any]) -> httpx.Response:
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(timeout=REPORTER_TIMEOUT) as client:
         url = f"{url}/aggregate"
         r = await client.post(url, json=data)
     return r
