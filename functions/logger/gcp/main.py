@@ -8,9 +8,8 @@ Required environment variables:
 """
 
 from datetime import datetime
-import os
 
-from typing import TYPE_CHECKING, Optional, Tuple, Union
+from typing import TYPE_CHECKING, Any, Optional, Tuple, Union
 
 if TYPE_CHECKING:
     import flask
@@ -48,7 +47,7 @@ firebase_admin.initialize_app(
 class ImageInfo(BaseModel):
     image_size_bytes: str
     layer_id: str
-    mediaType: str
+    media_type: str
     tag: list[str]
     created: datetime
     uploaded: datetime
@@ -139,7 +138,7 @@ def upload_json_blob_from_memory(scan_contents: str, filename: str) -> storage.B
 @functions_framework.http
 def handle_request(
     request: "flask.Request",
-) -> Tuple[Union[dict, str], int]:  # msg, status code
+) -> Tuple[Union[dict[str, Any], str], int]:  # msg, status code
     """Responds to any HTTP request.
     Args:
         request (flask.Request): HTTP request object.

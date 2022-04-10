@@ -26,7 +26,7 @@ class MockDocumentReference(DocumentReference):
         r = {
             "image_size_bytes": "12345",
             "layer_id": "12345",
-            "mediaType": "12345",
+            "media_type": "12345",
             "tag": ["12345"],
             "created": "12345",
             "uploaded": "12345",
@@ -80,7 +80,7 @@ def test_add_firestore_document(scan: main.Scan):
         "image",
         "image_size_bytes",
         "layer_id",
-        "mediaType",
+        "media_type",
         "tag",
         "created",
         "uploaded",

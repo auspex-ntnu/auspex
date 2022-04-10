@@ -7,7 +7,7 @@ def test_imageinfo(info: main.ImageInfo) -> None:
     # TODO: add better tests
     assert info.image_size_bytes is not None
     assert info.layer_id is not None
-    assert info.mediaType is not None
+    assert info.media_type is not None
     assert info.tag is not None
     assert info.created is not None
     assert info.uploaded is not None
