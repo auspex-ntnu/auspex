@@ -59,22 +59,22 @@ class ScanType(Protocol):
         ...
 
     @property
-    def low(self) -> list[VulnerabilityType]:
+    def low(self) -> Sequence[VulnerabilityType]:
         """Vulnerabilities with a severity of 'low'."""
         ...
 
     @property
-    def medium(self) -> list[VulnerabilityType]:
+    def medium(self) -> Sequence[VulnerabilityType]:
         """Vulnerabilities with a severity of 'medium'."""
         ...
 
     @property
-    def high(self) -> list[VulnerabilityType]:
+    def high(self) -> Sequence[VulnerabilityType]:
         """Vulnerabilities with a severity of 'high'."""
         ...
 
     @property
-    def critical(self) -> list[VulnerabilityType]:
+    def critical(self) -> Sequence[VulnerabilityType]:
         """Vulnerabilities with a severity of 'critical'."""
         ...
 
