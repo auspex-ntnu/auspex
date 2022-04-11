@@ -13,6 +13,7 @@ from google.api_core.exceptions import InvalidArgument
 from google.cloud.firestore import SERVER_TIMESTAMP
 from google.cloud.firestore_v1.async_document import AsyncDocumentReference
 from google.cloud.firestore_v1.async_query import AsyncQuery
+from google.cloud.firestore_v1.async_client import AsyncClient
 from google.cloud.firestore_v1.types import WriteResult
 from google.cloud.firestore_v1.types.write import WriteResult
 from pydantic import ValidationError
@@ -31,7 +32,22 @@ from .types.protocols import ScanTypeSingle
 # ) -> WriteResult:
 
 
-async def log_scan(scan: ScanTypeSingle) -> WriteResult:
+async def log_scan(scan: ScanTypeSingle) -> None:
+    """Store results of parsed container scan in the database and mark
+    existing reports as historical."""
+    client = get_firestore_client()
+    doc = client.collection(AppConfig().collection_reports).document()
+
+    scanres = await _log_scan(client, AppConfig().collection_reports, scan)
+    logger.debug(f"Logged scan with ID '{scan.id}', result: {scanres}")
+
+    hisres = await mark_scans_historical(client, AppConfig().collection_reports, scan)
+    logger.debug(f"Marked historical scans: {hisres}")
+
+
+async def _log_scan(
+    client: AsyncClient, collection: str, scan: ScanTypeSingle
+) -> WriteResult:
     """Store results of parsed container scan in the database."""
     r = ReportData(
         image=scan.image.dict(),
@@ -41,8 +57,7 @@ async def log_scan(scan: ScanTypeSingle) -> WriteResult:
         report_url=None,
     )
 
-    client = get_firestore_client()
-    doc = client.collection(AppConfig().collection_reports).document()
+    doc = client.collection(collection).document()
 
     # TODO: Delete or update existing documents with the same image digest
     # TODO: handle exceptions
@@ -52,14 +67,14 @@ async def log_scan(scan: ScanTypeSingle) -> WriteResult:
     result = await doc.create(r.dict())
 
     # Create subcollections for vulnerabilities
-    collection = doc.collection("vulnerabilities")  # type: CollectionReference
+    col = doc.collection("vulnerabilities")  # type: CollectionReference
     for severity in SEVERITIES:
         try:
             data = ParsedVulnerabilities(
                 vulnerabilities=getattr(scan, severity),
                 ok=True,
             )
-            await collection.document(severity).set(data.dict())
+            await col.document(severity).set(data.dict())
         except InvalidArgument as e:
             if e.args and "exceeds the maximum allowed size" in e.args[0]:
                 logger.error(
@@ -79,7 +94,7 @@ async def log_scan(scan: ScanTypeSingle) -> WriteResult:
                 # It could be mitigated by creating subcollections of N size,
                 # where N is a known safe number of vulnerabilities to store that
                 # does not exceed the maximum document size.
-                await collection.document(severity).set(data.dict())
+                await col.document(severity).set(data.dict())
             else:
                 raise
 
@@ -168,3 +183,65 @@ async def get_prev_scans(
     # TODO: assert no duplicate ids?
     return reports
 
+
+async def mark_scans_historical(
+    client: AsyncClient, collection: str, scan: ScanTypeSingle
+) -> dict[str, int]:
+    """Mark all older reports with the same image as historical.
+
+    Parameters
+    ----------
+    scan : `ScanTypeSingle`
+        The scan to use as a reference for finding older reports.
+    collection : `str`
+        The collection to search for reports in.
+
+    Returns
+    -------
+    `dict[str, int]`
+        A dictionary of updated, skipped, and failed counts.
+    """
+
+    # This would be massively sped up by using a composite index
+    # https://cloud.google.com/firestore/docs/query-data/composite-index
+    client = get_firestore_client()
+    col = client.collection(collection)
+    query = col.where("image.image", "==", scan.image.image)  # type: AsyncQuery
+    # if using composite index: query = query.where("historical", "==", False)
+
+    res = {"updated": 0, "skipped": 0, "failed": 0}
+    async for doc in query.stream():
+        d = doc.to_dict()
+        if not d:
+            res["skipped"] += 1
+            continue
+
+        # We don't have to update existing historical documents
+        if d.get("historical") == True:
+            res["skipped"] += 1
+            continue
+
+        # Update any documents that are not historical that are older than our scan
+        if not (timestamp := d.get("timestamp")) or not isinstance(timestamp, datetime):
+            logger.warning(
+                f"Document '{doc.id}' has no key 'timestamp' or is not a valid datetime object."
+            )
+            res["failed"] += 1
+            continue
+
+        if d.get("timestamp") < scan.timestamp.replace(tzinfo=timestamp.tzinfo):
+            try:
+                await _mark_historical(doc.reference)
+            except:
+                logger.exception(f"Failed to mark document '{doc.id}' as historical")
+                res["failed"] += 1
+                continue
+            else:
+                res["updated"] += 1
+    return res
+
+
+async def _mark_historical(docref: AsyncDocumentReference) -> WriteResult:
+    """Marks a document as historical, meaning the document does not represent
+    the most recent report for the given `image@sha256:hash`."""
+    return await docref.update({"historical": True, "updated": SERVER_TIMESTAMP})
