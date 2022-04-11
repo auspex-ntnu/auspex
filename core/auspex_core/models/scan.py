@@ -38,15 +38,21 @@ class Vulnerabilities(BaseModel):
 
 
 class ReportData(BaseModel):
-    """Models a document in the results collection."""
+    """Models a document in the reports collection."""
 
     id: str
     image: ImageInfo
-    timestamp: datetime = Field(default_factory=datetime.now)
+    timestamp: datetime = Field(default_factory=datetime.utcnow)
     cvss: CVSS  # TDOO: add shared pydantic model for this field
     vulnerabilities: CVSSv3Distribution
-    # most_common_cve: dict[str, int]  # IDs of most common vulnerabilities
     report_url: Optional[str]
     aggregate: bool = False  # Whether or not this report is an aggregate report
-    schema_version: str = "1"  # to account for future schema changes
+    schema_version: str = "1"  # Schema version to account for future schema changes
+    historical: bool = (
+        False  # Whether or not this report is historical (i.e. not the latest)
+    )
+    updated: datetime = Field(
+        default_factory=datetime.utcnow
+    )  # When the document was updated
+
     # Has subcollection of vulnerabilities
