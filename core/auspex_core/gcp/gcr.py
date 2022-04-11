@@ -3,9 +3,7 @@
 # https://stackoverflow.com/questions/61465794/docker-sdk-with-google-container-registry
 
 import asyncio
-from ensurepip import version
 import os
-from datetime import datetime
 import time
 
 import google.auth
@@ -20,8 +18,8 @@ from ..models.gcr import (
     CatalogResponse,
     ImageInfo,
     ImageNameMode,
-    TagsResponse,
     ImageVersionInfo,
+    TagsResponse,
 )
 
 
