@@ -1,4 +1,5 @@
 from functools import cache
+import os
 
 import aiohttp
 import backoff
@@ -8,7 +9,9 @@ from google.cloud.firestore_v1 import DocumentSnapshot
 from google.cloud.firestore_v1.async_client import AsyncClient
 from loguru import logger
 
-from .env import GCP_PROJECT
+
+# TODO: refactor. Pass this in as a parameter where required.
+GCP_PROJECT = os.getenv("GCP_PROJECT")
 
 
 @cache
