@@ -1,6 +1,8 @@
 import asyncio
+from datetime import timezone
 from pathlib import Path
 from typing import Union
+from auspex_core.models.gcr import ImageTimeMode
 from loguru import logger
 
 import matplotlib
@@ -25,24 +27,29 @@ from sanitize_filename import sanitize
 
 matplotlib.use("agg")  # Not to use X server. For TravisCI.
 import matplotlib.pyplot as plt  # noqa
+import matplotlib.dates as mdates
 import numpy as np
 from auspex_core.models.scan import ReportData
 
-from ...backends.cve import CVSS_DATE_BRACKETS
+from ...cve import CVSS_DATE_BRACKETS
 from ...backends.snyk.model import SnykContainerScan
-from ...types import ScanType
+from ...types import ScanType, ScanTypeSingle
 from ...utils.matplotlib import DEFAULT_CMAP
+
+import random
+
+# TODO: support aggregate scans
 
 
 async def create_document(
-    scan: ScanType, prev_scans: list[ReportData]
+    scan: ScanTypeSingle, prev_scans: list[ReportData]
 ) -> "LatexDocument":
     loop = asyncio.get_event_loop()
     return await loop.run_in_executor(None, _do_create_document, scan, prev_scans)
 
 
 def _do_create_document(
-    scan: ScanType, prev_scans: list[ReportData]
+    scan: ScanTypeSingle, prev_scans: list[ReportData]
 ) -> "LatexDocument":
     """NOTE: blocking"""
     d = LatexDocument(scan, prev_scans)
@@ -59,11 +66,14 @@ class LatexDocument:
     filename: str
     plots: list[str]
     doc: Document
-    scan: ScanType
+    scan: ScanTypeSingle
     prev_scans: list[ReportData]
 
-    def __init__(self, scan: ScanType, prev_scans: list[ReportData]) -> None:
-        self.filename = f"/tmp/{sanitize(scan.id)}"
+    def __init__(self, scan: ScanTypeSingle, prev_scans: list[ReportData]) -> None:
+        # NOTE: Very important to not have spaces in the filename
+        # otherwise the PDF will not be generated.
+        # PyLatex (or LaTeX itself) does not handle it well.
+        self.filename = f"/tmp/{sanitize(scan.id)}".replace(" ", "_")
         self.doc = self._init_document()  # type: Document
         self.scan = scan
         self.prev_scans = prev_scans
@@ -90,9 +100,11 @@ class LatexDocument:
 
     def generate_pdf(self) -> Document:
         self.add_preamble()
-        self.add_statistics_box()
-        self.add_trend_plot()
+        # self.add_statistics_box()
+        self.add_header()
+        self.add_mean_trend_plot()
         self.doc.generate_pdf(compiler_args=["-f"])
+        logger.debug("Generated PDF: {}", self.path)
 
         # Delete plots after generating PDF
         # Depending on how (non-)ephemeral these containers are, we could risk
@@ -102,7 +114,7 @@ class LatexDocument:
             Path(plot).unlink()
 
     def add_preamble(self) -> None:
-        self.doc.preamble.append(Command("title", self.scan.image))
+        self.doc.preamble.append(Command("title", self.scan.image.image))
         self.doc.preamble.append(Command("author", "Auspex"))
         self.doc.preamble.append(Command("date", NoEscape(r"\today")))
         self.doc.append(NoEscape(r"\maketitle"))
@@ -135,24 +147,71 @@ class LatexDocument:
         self.doc.preamble.append(header)
         self.doc.change_document_style("header")
 
-    def add_trend_plot(self) -> None:
+    def add_mean_trend_plot(self) -> None:
+        """Adds a mean CVSSv3 score trend plot to the document."""
+
         if not self.prev_scans:
             logger.info("No previous scans to compare to.")
             return
+        # clear any previous matplotlib plots
+        # TODO: check if we need to do it differently when using the
+        # object oriented interface
+        plt.clf()
 
-        fig = plt.figure(figsize=(8, 6))
-        ax = fig.add_subplot(111)
-        ax.set_title("Trend")
+        fig, ax = plt.subplots()
+
+        # Set up axes and labels
+        ax.set_title("CVSSv3 Mean Score Over Time")
         ax.set_xlabel("Time")
-        ax.set_ylabel("Value")
-        ax.plot(
-            [
-                (scan.timestamp - self.scan.timestamp).total_seconds()
-                for scan in self.prev_scans
-            ],
-            [scan.cvss_mean for scan in self.prev_scans],
-        )
-        fig.tight_layout()
+        ax.set_ylabel("CVSSv3 Mean Score")
+        ax.set_ylim(0, 10)
+
+        # Plot data
+        s = []  # type: list[ScanType]
+        # TODO: move this timezone fixing to a separate function
+        for scan in self.prev_scans + [self.scan]:  # type: ScanType
+            if scan.timestamp.tzinfo is None:
+                scan.timestamp = scan.timestamp.replace(tzinfo=timezone.utc)
+            s.append(scan)
+        s = sorted(s, key=lambda x: x.timestamp)
+
+        ## IMPORTANT NOTE REGARDING DATES:
+        #
+        # We are plotting the mean CVSSv3 score over time using the CREATION TIME
+        # of each image, not the time of when the scan took place.
+        # This is because we want to be able to support re-scanning older images,
+        # without it influencing the CVSS score trend of newer images.
+
+        # time = [scan.timestamp for scan in s]
+        time = [
+            scan.get_timestamp(image=True, mode=ImageTimeMode.CREATED) for scan in s
+        ]
+        # time = []
+        # for scan in s:
+        #     ts = scan.timestamp.replace(
+        #         month=random.randint(1, 6), day=random.randint(1, 28)
+        #     )
+        #     time.append(ts)
+        # score = [random.uniform(0, 10) for _ in range(len(time))]
+
+        score = [scan.cvss.mean for scan in s]
+        ax.scatter(time, score)
+
+        # Format dates
+        # Make ticks on occurrences of each month:
+        ax.xaxis.set_major_locator(mdates.MonthLocator())
+        # Get only the month to show in the x-axis:
+        ax.xaxis.set_major_formatter(mdates.DateFormatter("%b"))
+        # '%b' means month as locale’s abbreviated name
+
+        # Trend line
+        time_ts = [t.timestamp() for t in time]
+        z = np.polyfit(time_ts, score, 1)
+        p = np.poly1d(z)
+        plt.plot(time, p(time_ts), color="r")
+
+        plt.legend(["Score"])
+        plt.grid(True)
 
         # Save fig and store its filename
         fig_filename = f"{self.filename}_plot_trend.pdf"
@@ -166,10 +225,6 @@ class LatexDocument:
                 # plot.add_plot(width=NoEscape(r"0.5\textwidth"), *args, **kwargs)
                 plot.add_caption("I am a caption.")
             self.doc.append("Created using matplotlib.")
-
-        # fig.savefig(f"{self.filename}_trend.png")
-        # self.plots.append(f"{self.filename}_trend.png")
-        # self.doc.append(Figure(f"{self.filename}_trend.png"))
 
     def add_statistics_box(self) -> None:
         # with self.doc.create(Section("Vulnerability Distribution")):
@@ -193,19 +248,19 @@ class LatexDocument:
             ) as table:
                 table.add_row(
                     "Median CVSS Score:",
-                    format_decimal(self.scan.cvss_median),
+                    format_decimal(self.scan.cvss.median),
                 )
                 table.add_row(
                     "Mean CVSS Score:",
-                    format_decimal(self.scan.cvss_mean),
+                    format_decimal(self.scan.cvss.mean),
                 )
                 table.add_row(
                     "Standard Deviation:",
-                    format_decimal(self.scan.cvss_stdev),
+                    format_decimal(self.scan.cvss.stdev),
                 ),
                 table.add_row(
                     "Max CVSS Score:",
-                    format_decimal(self.scan.cvss_max),
+                    format_decimal(self.scan.cvss.max),
                 ),
                 table.add_row(
                     "Highest severity:",
