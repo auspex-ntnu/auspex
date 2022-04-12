@@ -38,6 +38,12 @@ with suppress(ImportError):
     app.include_router(mockrouter)
 
 
+@app.on_event("startup")
+async def on_app_startup():
+    # instantiate config to check that all envvars are defined
+    AppConfig()
+
+
 async def scan_from_docid(docid: str, collection: str) -> ScanTypeSingle:
     # DB Document
     doc = await get_firestore_document(docid, collection)
