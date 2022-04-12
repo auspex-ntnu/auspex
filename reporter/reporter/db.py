@@ -1,5 +1,5 @@
 from datetime import datetime, timedelta
-from typing import TYPE_CHECKING, Any, Optional, Union
+from typing import TYPE_CHECKING, Any, Optional, Union, cast
 
 from loguru import logger
 
@@ -206,8 +206,11 @@ async def mark_scans_historical(
     # https://cloud.google.com/firestore/docs/query-data/composite-index
     client = get_firestore_client()
     col = client.collection(collection)
-    query = col.where("image.image", "==", scan.image.image)  # type: AsyncQuery
+    query = col.where("image.image", "==", scan.image.image)
     # if using composite index: query = query.where("historical", "==", False)
+
+    # cast to AsyncQuery due to missing stubs/overload for AsyncCollectionReference.where()
+    query = cast(AsyncQuery, query)
 
     res = {"updated": 0, "skipped": 0, "failed": 0}
     async for doc in query.stream():
