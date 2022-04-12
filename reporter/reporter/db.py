@@ -10,10 +10,11 @@ from auspex_core.gcp.firestore import get_firestore_client
 from auspex_core.models.cve import SEVERITIES
 from auspex_core.models.scan import ParsedVulnerabilities, ReportData
 from google.api_core.exceptions import InvalidArgument
-from google.cloud.firestore import SERVER_TIMESTAMP
+from google.cloud.firestore import SERVER_TIMESTAMP, async_transactional
 from google.cloud.firestore_v1.async_document import AsyncDocumentReference
 from google.cloud.firestore_v1.async_query import AsyncQuery
 from google.cloud.firestore_v1.async_client import AsyncClient
+from google.cloud.firestore_v1.async_transaction import AsyncTransaction
 from google.cloud.firestore_v1.types import WriteResult
 from google.cloud.firestore_v1.types.write import WriteResult
 from pydantic import ValidationError
@@ -22,31 +23,38 @@ from .config import AppConfig
 from .types import ScanTypeSingle
 from .types.protocols import ScanTypeSingle
 
-# TODO: replace arg with protocol type to support multiple backends
 
-# async def log_scan(scan: ScanTypeSingle) -> WriteResult:
+# async def log_report(scan: ScanTypeSingle) -> WriteResult:
 #     client = get_firestore_client()
 #     transaction = client.transaction()
-# async def _log_scan(
+# async def _log_report(
 #     transaction: firestore.AsyncTransaction, scan: ScanTypeSingle
 # ) -> WriteResult:
 
 
-async def log_scan(scan: ScanTypeSingle) -> None:
+async def log_report(scan: ScanTypeSingle, report_url: Optional[str] = None) -> None:
     """Store results of parsed container scan in the database and mark
     existing reports as historical."""
     client = get_firestore_client()
-    doc = client.collection(AppConfig().collection_reports).document()
 
-    scanres = await _log_scan(client, AppConfig().collection_reports, scan)
-    logger.debug(f"Logged scan with ID '{scan.id}', result: {scanres}")
+    # TODO: perform the two steps below as transaction
+    # transaction = client.transaction()
+    # How to write then read (then write) in a transaction?
 
-    hisres = await mark_scans_historical(client, AppConfig().collection_reports, scan)
-    logger.debug(f"Marked historical scans: {hisres}")
+    scanres = await _log_report(
+        client, AppConfig().collection_reports, scan, report_url
+    )
+    logger.debug(f"Logged report with ID '{scan.id}', result: {scanres}")
+
+    hisres = await mark_reports_historical(client, AppConfig().collection_reports, scan)
+    logger.debug(f"Marked historical reports: {hisres}")
 
 
-async def _log_scan(
-    client: AsyncClient, collection: str, scan: ScanTypeSingle
+async def _log_report(
+    client: AsyncClient,
+    collection: str,
+    scan: ScanTypeSingle,
+    report_url: Optional[str],
 ) -> WriteResult:
     """Store results of parsed container scan in the database."""
     r = ReportData(
@@ -54,7 +62,7 @@ async def _log_scan(
         id=scan.id,
         cvss=scan.cvss,  # TODO: use dedicated type
         vulnerabilities=scan.get_distribution_by_severity(),
-        report_url=None,
+        report_url=report_url,
     )
 
     doc = client.collection(collection).document()
@@ -184,7 +192,7 @@ async def get_prev_scans(
     return reports
 
 
-async def mark_scans_historical(
+async def mark_reports_historical(
     client: AsyncClient, collection: str, scan: ScanTypeSingle
 ) -> dict[str, int]:
     """Mark all older reports with the same image as historical.

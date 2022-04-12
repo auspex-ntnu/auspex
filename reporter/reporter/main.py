@@ -11,7 +11,7 @@ from loguru import logger
 
 from .backends.snyk.model import SnykContainerScan
 from .config import AppConfig
-from .db import log_scan, get_prev_scans
+from .db import log_report, get_prev_scans
 from .frontends.latex import create_document
 from .models import ReportRequestIn
 from .types.protocols import ScanTypeSingle
@@ -77,6 +77,12 @@ async def generate_report(r: ReportRequestIn):
     if not doc.path.exists():
         raise HTTPException(500, "Failed to generate report.")
     status = await upload_report_to_bucket(doc.path, AppConfig().bucket_reports)
+
+    try:
+        await log_report(scan, status.mediaLink)
+    except Exception as e:
+        logger.error(f"Failed to log scan: {e}")
+        raise HTTPException(500, f"Failed to log scan: {e}")
 
     return {"request": r.dict(), "status": status}
 
