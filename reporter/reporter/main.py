@@ -45,20 +45,24 @@ async def on_app_startup():
 
 
 async def scan_from_docid(docid: str, collection: str) -> ScanTypeSingle:
+    # TODO: move to appropriate module (backends, db, or utils)
+
     # DB Document
     doc = await get_firestore_document(docid, collection)
     # Download blob from document
     obj = await get_object_from_document(doc)
-    # Parse scan log
 
-    # TODO: use image from document
-    image = doc.get("image")
-    # use timestamp from document
-    # use backend from document
+    backends = {
+        "snyk": SnykContainerScan,
+    }
+    backend = doc.get("backend")
+    if backend not in backends:
+        raise ValueError(f"Backend {backend} not supported")
+    backend_class = backends[backend]
 
-    # assert hasattr(obj.blob, "id")
     id = f"{doc.id}-{obj.blob.id}-{int(time.time())}"
-    return SnykContainerScan(**obj.content, id=id, image=image)
+    image = doc.get("image")
+    return backend_class(**obj.content, id=id, image=image)
 
 
 @app.post("/report")
