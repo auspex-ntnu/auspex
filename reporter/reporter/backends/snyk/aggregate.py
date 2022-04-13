@@ -219,6 +219,7 @@ class AggregateScan(BaseModel):
             vulns[scan.id] = most_severe
         return vulns
 
+    @property
     def upgrade_paths(self) -> list[str]:
         """Retrieves upgrade paths for all vulnerabilities in all scans."""
         # BACKLOG: could make this more efficient with a chain.from_iterable() call

@@ -63,7 +63,7 @@ async def _log_report(
         cvss=scan.cvss,  # TODO: use dedicated type
         vulnerabilities=scan.get_distribution_by_severity(),
         report_url=report_url,
-        upgrade_paths=scan.upgrade_paths(remove_duplicates=True),
+        upgrade_paths=scan.upgrade_paths,
     )
 
     doc = client.collection(collection).document()

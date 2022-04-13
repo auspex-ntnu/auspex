@@ -126,6 +126,7 @@ class ScanType(Protocol):
         """Get most severe vulnerability"""
         ...
 
+    @property
     def upgrade_paths(self) -> list[str]:
         """
         Return a list of upgrade paths for all vulnerabilities.

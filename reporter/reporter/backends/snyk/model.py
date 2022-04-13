@@ -470,6 +470,7 @@ class SnykContainerScan(BaseModel):
     def malicious(self) -> list[SnykVulnerability]:
         return [v for v in self.vulnerabilities if v.malicious]
 
+    @property
     def upgrade_paths(self) -> list[str]:
         """
         Return a list of upgrade paths for all vulnerabilities with
