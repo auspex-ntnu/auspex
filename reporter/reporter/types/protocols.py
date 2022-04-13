@@ -51,11 +51,25 @@ class ScanType(Protocol):
         self, image: bool = True, mode: ImageTimeMode = ImageTimeMode.CREATED
     ) -> datetime:
         """Returns the timestamp of the scan.
-        The parameter `image` can be specified to return the timestamp of the image."""
+
+        Parameters
+        ----------
+        image : `bool`, optional
+            If True, the timestamp of the scan's image is returned.
+            If False, the timestamp of the scan is returned.
+        mode : `ImageTimeMode`, optional
+            The mode of the timestamp to retrieve. Only applies if `image` is True.
+
+        Returns
+        -------
+        `datetime`
+            The timestamp of the scan (or image).
+        """
         ...
 
     @property
     def cvss(self) -> CVSS:
+        """CVSS object for the scan."""
         ...
 
     @property
