@@ -76,7 +76,7 @@ class SnykVulnerability(BaseModel):
     semver: Semver
     exploit: str
     from_: list[str] = Field(..., alias="from")
-    upgradePath: list[Any]  # don't know
+    upgradePath: list[Any]  # don't know (seems to be tuple[bool, str])
     isUpgradable: bool
     isPatchable: bool
     name: str
@@ -130,6 +130,11 @@ class SnykVulnerability(BaseModel):
 
     def get_numpy_color(self) -> MplRGBAColor:
         return get_cvss_color(self.cvssScore)
+
+    def get_upgrade_path(self) -> Optional[str]:
+        if len(self.upgradePath) == 2:
+            return self.upgradePath[1]
+        return None
 
     def get_age_score_color(
         self,
@@ -243,7 +248,7 @@ class SnykContainerScan(BaseModel):
     path: str
     id: str = ""  # Not snyk-native
     timestamp: datetime = Field(default_factory=datetime.utcnow)  # Not snyk-native
-    image: ImageInfo  # Not snyk-native
+    image: ImageInfo = Field(default_factory=ImageInfo.init_empty)
 
     class Config:
         extra = "allow"  # should we allow or disallow this?
@@ -274,9 +279,14 @@ class SnykContainerScan(BaseModel):
         )
         return id
 
-    @validator("image", always=True)
-    def use_path_if_not_image(cls, v: str, values: dict[str, Any]) -> str:
-        return v or values["path"]
+    @validator("image", always=True, pre=True)
+    def ensure_image_info(
+        cls, v: Optional[dict[str, Any]], field: ModelField
+    ) -> ImageInfo:
+        """Fix for hypothesis failing to call default factory properly when nesting models."""
+        if not v and field.default_factory:
+            return field.default_factory()
+        return v
 
     def __hash__(self) -> int:
         """Returns ID of self. Required to add object to dict."""
@@ -288,7 +298,21 @@ class SnykContainerScan(BaseModel):
     def get_timestamp(
         self, image: bool = True, mode: ImageTimeMode = ImageTimeMode.CREATED
     ) -> datetime:
-        """Returns (UTC) timestamp of the scan or of the image if `image` is `True`."""
+        """Returns the timestamp of the scan.
+
+        Parameters
+        ----------
+        image : `bool`, optional
+            If True, the timestamp of the scan's image is returned.
+            If False, the timestamp of the scan is returned.
+        mode : `ImageTimeMode`, optional
+            The mode of the timestamp to retrieve. Only applies if `image` is True.
+
+        Returns
+        -------
+        `datetime`
+            The timestamp of the scan (or image).
+        """
         # TODO: ensure UTC somewhere else?
         if image:
             ts = self.image.get_timestamp(mode)
@@ -351,6 +375,8 @@ class SnykContainerScan(BaseModel):
         if n and len(v) > n:
             return v[:n]
         return v
+
+    # def most_severe_of_severity(self, severity: Severity) -> Optional[SnykVulnerability]:
 
     @property
     def least_severe(self) -> Optional[SnykVulnerability]:
@@ -443,6 +469,20 @@ class SnykContainerScan(BaseModel):
     @property
     def malicious(self) -> list[SnykVulnerability]:
         return [v for v in self.vulnerabilities if v.malicious]
+
+    def upgrade_paths(self) -> list[str]:
+        """
+        Return a list of upgrade paths for all vulnerabilities with
+        duplicates removed.
+        """
+        return list(  # cast to list
+            set(  # remove duplicates
+                filter(  # filter out empty strings
+                    None.__ne__,
+                    (p.get_upgrade_path() for p in self.vulnerabilities),
+                )
+            )
+        )
 
     def get_vulns_by_date(
         self, time_type: CVETimeType

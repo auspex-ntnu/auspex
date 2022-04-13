@@ -219,6 +219,14 @@ class AggregateScan(BaseModel):
             vulns[scan.id] = most_severe
         return vulns
 
+    def upgrade_paths(self) -> list[str]:
+        """Retrieves upgrade paths for all vulnerabilities in all scans."""
+        # BACKLOG: could make this more efficient with a chain.from_iterable() call
+        paths = []
+        for scan in self.scans:
+            paths.extend(scan.upgrade_paths())
+        return paths
+
     def most_common_cve(self, n: int) -> list[tuple[str, int]]:
         c: Counter[str] = Counter()
         for scan in self.scans:

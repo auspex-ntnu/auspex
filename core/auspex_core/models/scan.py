@@ -43,7 +43,7 @@ class ReportData(BaseModel):
     id: str
     image: ImageInfo
     timestamp: datetime = Field(default_factory=datetime.utcnow)
-    cvss: CVSS  # TDOO: add shared pydantic model for this field
+    cvss: CVSS
     vulnerabilities: CVSSv3Distribution
     report_url: Optional[str]
     aggregate: bool = False  # Whether or not this report is an aggregate report
@@ -54,5 +54,6 @@ class ReportData(BaseModel):
     updated: datetime = Field(
         default_factory=datetime.utcnow
     )  # When the document was updated
+    upgrade_paths: list[str] = Field(default_factory=list)
 
     # Has subcollection of vulnerabilities

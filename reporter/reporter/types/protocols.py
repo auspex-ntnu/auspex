@@ -7,7 +7,7 @@
 # properties with snake_case names that retrieve the original camelCase attribute values.
 
 from datetime import datetime
-from typing import Iterable, Protocol, Any, Sequence, runtime_checkable
+from typing import Iterable, Optional, Protocol, Any, Sequence, runtime_checkable
 
 from .nptypes import MplRGBAColor
 
@@ -126,6 +126,10 @@ class ScanType(Protocol):
         """Get most severe vulnerability"""
         ...
 
+    def upgrade_paths(self) -> list[str]:
+        """
+        Return a list of upgrade paths for all vulnerabilities.
+        """
     @property
     def timestamp(self) -> datetime:
         ...
@@ -156,4 +160,14 @@ class ScanTypeAggregate(ScanType, Protocol):
 
     @property
     def scans(self) -> list[ScanTypeSingle]:
+        ...
+
+
+@runtime_checkable
+class Plottable(Protocol):
+    """
+    Interface for objects that can be plotted.
+    """
+
+    def get_age_and_mean_score(self) -> tuple[datetime, float]:
         ...
