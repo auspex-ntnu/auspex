@@ -76,6 +76,20 @@ class ImageInfo(BaseModel):
         else:
             raise ValueError(f"Invalid mode '{mode}'")
 
+    @classmethod
+    def init_empty(cls) -> "ImageInfo":
+        """Initialize an empty ImageInfo object"""
+        return cls(
+            image_size_bytes="",
+            layer_id="",
+            media_type="",
+            tag=[],
+            created=datetime.utcnow(),
+            uploaded=datetime.utcnow(),
+            digest=None,
+            image=None,
+        )
+
     class Config:
         # Allow population using both camelCase and snake_case
         allow_population_by_field_name = True
