@@ -64,6 +64,7 @@ async def _log_report(
         vulnerabilities=scan.get_distribution_by_severity(),
         report_url=report_url,
         upgrade_paths=scan.upgrade_paths,
+        dockerfile_instructions=scan.dockerfile_instructions,
     )
 
     doc = client.collection(collection).document()

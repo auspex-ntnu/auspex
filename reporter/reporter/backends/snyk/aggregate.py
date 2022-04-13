@@ -223,10 +223,19 @@ class AggregateScan(BaseModel):
     def upgrade_paths(self) -> list[str]:
         """Retrieves upgrade paths for all vulnerabilities in all scans."""
         # BACKLOG: could make this more efficient with a chain.from_iterable() call
-        paths = []
+        u = []  # type: list[str]
         for scan in self.scans:
-            paths.extend(scan.upgrade_paths())
-        return paths
+            u.extend(scan.upgrade_paths)
+        return u
+
+    @property
+    def dockerfile_instructions(self) -> list[str]:
+        """Retrieves Dockerfile instructions for all vulnerabilities in all scans."""
+        # BACKLOG: could make this more efficient with a chain.from_iterable() call
+        d = []  # type: list[str]
+        for scan in self.scans:
+            d.extend(scan.dockerfile_instructions)
+        return d
 
     def most_common_cve(self, n: int) -> list[tuple[str, int]]:
         c: Counter[str] = Counter()

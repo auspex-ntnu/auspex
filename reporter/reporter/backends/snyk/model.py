@@ -82,7 +82,7 @@ class SnykVulnerability(BaseModel):
     name: str
     version: str
     nearestFixedInVersion: Optional[str]
-    dockerFileInstruction: Optional[str]  # how to fix vuln
+    dockerfileInstruction: Optional[str]  # how to fix vuln
     dockerBaseImage: Optional[str]
 
     @root_validator
@@ -481,6 +481,21 @@ class SnykContainerScan(BaseModel):
                 filter(  # filter out empty strings
                     None.__ne__,
                     (p.get_upgrade_path() for p in self.vulnerabilities),
+                )
+            )
+        )
+
+    @property
+    def dockerfile_instructions(self) -> list[str]:
+        """
+        Return a list of dockerfile instructions for all vulnerabilities with
+        duplicates removed.
+        """
+        return list(  # cast to list
+            set(  # remove duplicates
+                filter(  # filter out empty strings
+                    None.__ne__,
+                    (p.dockerfileInstruction for p in self.vulnerabilities),
                 )
             )
         )

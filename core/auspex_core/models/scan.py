@@ -55,5 +55,6 @@ class ReportData(BaseModel):
         default_factory=datetime.utcnow
     )  # When the document was updated
     upgrade_paths: list[str] = Field(default_factory=list)
+    dockerfile_instructions: list[str] = Field(default_factory=list)
 
     # Has subcollection of vulnerabilities
