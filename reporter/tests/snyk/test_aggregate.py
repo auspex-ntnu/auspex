@@ -18,7 +18,7 @@ def test_AggregateScan_from_file() -> None:
 @given(st.builds(AggregateScan))
 def test_fuzz_AggregateScan(ag: AggregateScan) -> None:
     N = 5
-    most_severe = ag.most_severe(n=N)
+    most_severe = ag.most_severe_n(n=N)
     assert len(most_severe) <= N
     assert most_severe == sorted(most_severe, key=lambda v: v.cvssScore)
 
