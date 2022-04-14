@@ -1,4 +1,4 @@
-FROM python:3.10-slim as scanner-requirements
+FROM python:3.10.4-slim-buster as scanner-requirements
 
 WORKDIR /tmp
 
@@ -13,7 +13,7 @@ COPY ./core/pyproject.toml /core/pyproject.toml
 # Generate requirements.txt
 RUN poetry export -f requirements.txt --output requirements.txt --without-hashes
 
-FROM python:3.10-slim
+FROM python:3.10.4-slim-buster
 
 ENV PYTHONOPTIMIZE=1
 ENV USER_ID=1234

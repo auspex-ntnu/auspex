@@ -1,23 +1,21 @@
 # Utilizing multi stage builds to automatically generate requirements from Poetry
 # source: https://fastapi.tiangolo.com/deployment/docker/#docker-image-with-poetry
-FROM python:3.10-slim as restapi-requirements
+FROM python:3.10.4-slim-buster as restapi-requirements
 
 WORKDIR /tmp
 
 # Install poetry and copy poetry files
 RUN pip install poetry 
 COPY ./restapi/pyproject.toml /tmp/
-# TODO: find out why lock file won't work
-# COPY ./restapi/pyproject.toml ./reporter/poetry.lock* /tmp/
 
-# Copy core module
+# Copy core module requirements file
 COPY ./core/pyproject.toml /core/pyproject.toml
 
 # Generate requirements.txt
 RUN poetry export -f requirements.txt --output requirements.txt --without-hashes
 
 # Build application using generated requirements
-FROM python:3.10-slim
+FROM python:3.10.4-slim-buster
 
 ENV PYTHONOPTIMIZE=1
 

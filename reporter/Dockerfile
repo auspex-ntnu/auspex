@@ -1,4 +1,4 @@
-FROM python:3.10-slim as reporter-requirements
+FROM python:3.10.4-slim-buster as reporter-requirements
 
 WORKDIR /tmp
 
@@ -17,7 +17,7 @@ FROM texlive/texlive:latest
 ENV PYTHONOPTIMIZE=1
 
 
-# Install Python + Pip
+# Install Pip
 RUN : \
     && apt-get update \
     && DEBIAN_FRONTEND=noninteractive apt-get install -y \
