@@ -37,7 +37,7 @@ services:
       resources:
         limits:
           cpus: '1.00'
-          memory: 256M
+          memory: "1024M"
     container_name: auspex_scanner
     build:
       context: ./
