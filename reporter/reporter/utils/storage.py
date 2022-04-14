@@ -2,6 +2,7 @@ from pathlib import Path
 from typing import Any
 
 from auspex_core.gcp.storage import (
+    ObjectStatus,
     StorageObject,
     fetch_json_blob,
     upload_file_to_bucket,
@@ -61,7 +62,7 @@ async def get_object_from_document(
 
 async def upload_report_to_bucket(
     path: Path, bucket: str, delete_after: bool = True
-) -> dict[str, Any]:
+) -> ObjectStatus:
     """Uploads a report to the given bucket.
 
     Parameters
@@ -72,6 +73,18 @@ async def upload_report_to_bucket(
         Cloud storage bucket to upload to
     delete_after : `bool`, optional
         Whether to delete the report after uploading, by default True.
+
+    Returns
+    -------
+    `ObjectStatus`
+        Status of the upload.
+        See: `auspex_core.gcp.storage.ObjectStatus`
+
+    Raises
+    ------
+    `HTTPException`
+        FastAPI HTTPException that is propagated to the user in the event
+        of a failure.
     """
     status = await upload_file_to_bucket(path, bucket)
     if delete_after:
