@@ -1,5 +1,13 @@
 #!/usr/bin/env bash
 
+# This script reads secrets files and sets environment variables
+
+# Example: 
+#
+# SNYK_TOKEN_FILE=/run/secrets/snyk_token
+# Automatically becomes:
+# SNYK_TOKEN=`cat $SNYK_TOKEN_FILE`
+
 set -e
 
 file_env() {
