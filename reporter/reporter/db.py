@@ -197,7 +197,10 @@ async def get_prev_scans(
 async def mark_reports_historical(
     client: AsyncClient, collection: str, scan: ScanTypeSingle
 ) -> dict[str, int]:
-    """Mark all older reports with the same image as historical.
+    """Mark all older reports with the same image as the input scan as historical.
+
+    See: _mark_historical
+
 
     Parameters
     ----------
@@ -212,8 +215,12 @@ async def mark_reports_historical(
         A dictionary of updated, skipped, and failed counts.
     """
 
+    # TODO: use composite query instead of iterating over all docs
+    #
     # This would be massively sped up by using a composite index
     # https://cloud.google.com/firestore/docs/query-data/composite-index
+    # Furthermore, it would reduce the number of reads required.
+
     client = get_firestore_client()
     col = client.collection(collection)
     query = col.where("image.image", "==", scan.image.image)
@@ -234,7 +241,7 @@ async def mark_reports_historical(
             res["skipped"] += 1
             continue
 
-        # Update any documents that are not historical that are older than our scan
+        # Check for presence of timestamp (if not, skip)
         if not (timestamp := d.get("timestamp")) or not isinstance(timestamp, datetime):
             logger.warning(
                 f"Document '{doc.id}' has no key 'timestamp' or is not a valid datetime object."
@@ -242,6 +249,7 @@ async def mark_reports_historical(
             res["failed"] += 1
             continue
 
+        # If doc's timestamp is older than scan's timestamp, mark it as historical
         if d.get("timestamp") < scan.timestamp.replace(tzinfo=timestamp.tzinfo):
             try:
                 await _mark_historical(doc.reference)
