@@ -1,0 +1,20 @@
+# Git
+.git
+
+# Python cache
+*/__pycache__
+*.pyc
+*/.mypy_cache
+
+# Testing
+*/.coverage
+*/.hypothesis
+*/.pytest_cache
+*/tests
+*/html_cov
+*/cov_html
+
+# Other filetypes
+*.pdf
+*.html
+*/Dockerfile
