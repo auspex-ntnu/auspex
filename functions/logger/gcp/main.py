@@ -4,7 +4,7 @@ This cloud function requires permissions to create buckets and write files.
 Required environment variables:
     BUCKET_SCANS: name of the bucket to upload to
     COLLECTION_LOGS: Firestore collection name for scan logs
-    GCP_PROJECT: Google Cloud Project ID (automatically set by GCP)
+    GOOGLE_CLOUD_PROJECT: Google Cloud Project ID (automatically set by GCP)
 """
 
 from datetime import datetime
@@ -30,7 +30,7 @@ class AppConfig(BaseSettings):
 
     BUCKET_SCANS: str = Field(str, env="BUCKET_SCANS")
     COLLECTION_LOGS: str = Field(str, env="COLLECTION_LOGS")
-    GCP_PROJECT: str = Field(str, env="GCP_PROJECT")
+    GOOGLE_CLOUD_PROJECT: str = Field(str, env="GOOGLE_CLOUD_PROJECT")
 
 
 config = AppConfig()
@@ -39,7 +39,7 @@ config = AppConfig()
 firebase_admin.initialize_app(
     credentials.ApplicationDefault(),
     {
-        "projectId": config.GCP_PROJECT,
+        "projectId": config.GOOGLE_CLOUD_PROJECT,
     },
 )
 

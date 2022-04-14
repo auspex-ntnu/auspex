@@ -48,4 +48,4 @@ The function will store any key:value pairs in the firestore collection (with th
 
 `COLLECTION_LOGS`: Name of Firestore collection to store scan logs in.
 
-`GCP_PROJECT`: Project that function is deployed to. (Automatically set by GCP, but needs to be specified when run locally (?))
+`GOOGLE_CLOUD_PROJECT`: Project that function is deployed to. (Automatically set by GCP, but needs to be specified when run locally (?))

@@ -11,7 +11,7 @@ from loguru import logger
 
 
 # TODO: refactor. Pass this in as a parameter where required.
-GCP_PROJECT = os.getenv("GCP_PROJECT")
+GOOGLE_CLOUD_PROJECT = os.getenv("GOOGLE_CLOUD_PROJECT")
 
 
 @cache
@@ -31,7 +31,7 @@ def get_firestore_client() -> firestore.firestore.AsyncClient:
     """
 
     return AsyncClient(
-        project=GCP_PROJECT,
+        project=GOOGLE_CLOUD_PROJECT,
     )
 
 
@@ -39,7 +39,7 @@ def get_firestore_client() -> firestore.firestore.AsyncClient:
 app = firebase_admin.initialize_app(
     credentials.ApplicationDefault(),
     {
-        "projectId": GCP_PROJECT,
+        "projectId": GOOGLE_CLOUD_PROJECT,
     },
 )
 

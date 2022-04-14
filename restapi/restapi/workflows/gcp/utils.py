@@ -19,7 +19,7 @@ from pydantic import BaseSettings, Field
 
 
 class WorkflowSettings(BaseSettings):
-    project: str = Field("", env="GCP_PROJECT")
+    project: str = Field("", env="GOOGLE_CLOUD_PROJECT")
     region: str = Field("", env="WORKFLOW_REGION")
 
 

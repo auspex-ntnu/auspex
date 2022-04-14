@@ -4,12 +4,12 @@ import os
 # TODO fix this
 os.environ.setdefault(
     "GOOGLE_APPLICATION_CREDENTIALS",
-    "/Volumes/GoogleDrive/My Drive/Skole/2022V/Bachelor/repo/.keys/reporter_local.json",
+    "/Users/Peder-MAC/Documents/Bachelor/repo/.keys/reporter_local.json",
 )
 os.environ.setdefault("COLLECTION_LOGS", "auspex-logs")
 os.environ.setdefault("BUCKET_SCANS", "auspex-scans")
 os.environ.setdefault("BUCKET_REPORTS", "auspex-reports")
-os.environ.setdefault("GCP_PROJECT", "ntnu-student-project")
+os.environ.setdefault("GOOGLE_CLOUD_PROJECT", "ntnu-student-project")
 os.environ.setdefault("COLLECTION_LOGS", "auspex-logs")
 os.environ.setdefault("COLLECTION_REPORTS", "auspex-reports")
 
