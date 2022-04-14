@@ -180,7 +180,18 @@ class AggregateScan(BaseModel):
             for vuln in scan.vulnerabilities:
                 yield vuln
 
-    def most_severe(self, n: int = 5) -> list[SnykVulnerability]:
+    @property
+    def most_severe(self) -> Optional[SnykVulnerability]:
+        """The most severe vulnerability (if any)"""
+        return max(
+            self.most_severe_n(),
+            default=None,
+            # mypy doesn't understand that None takes presedence over key (?)
+            # hence the guard against None here
+            key=lambda v: v.cvssScore if v is not None else 0.0,
+        )
+
+    def most_severe_n(self, n: Optional[int] = 5) -> list[SnykVulnerability]:
         """Retrieves the N most severe vulnerabilities across all images scanned.
 
         Parameters
@@ -195,7 +206,7 @@ class AggregateScan(BaseModel):
         """
         vulns = list(self.vulnerabilities)
         vulns.sort(key=lambda v: v.cvssScore, reverse=True)
-        if n > len(vulns):  # make sure we don't go out of bounds
+        if n and n > len(vulns):  # make sure we don't go out of bounds
             n = len(vulns)
         return vulns[:n]
 
