@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Any
 
 from hypothesis import HealthCheck, given, settings, strategies as st
-from reporter.backends.cve import CVSSTimeType, DateDescription, UpgradabilityCounter
+from reporter.cve import CVETimeType, DateDescription, UpgradabilityCounter
 from reporter.backends.snyk.model import (
     Identifiers,
     Semver,
@@ -111,7 +111,7 @@ def test_fuzz_SnykContainerScan(scan: SnykContainerScan) -> None:
     # TODO: test returned data
     # TODO:
     if len(scan.vulnerabilities) > 0:
-        for t in CVSSTimeType:
+        for t in CVETimeType:
             n = 0
             by_date = scan.get_vulns_by_date(t)
             for bracket, vulns in by_date.items():
@@ -167,7 +167,7 @@ def test_fuzz_SnykVulnerability(vuln: SnykVulnerability) -> None:
     vuln.publicationTime = datetime.now()
     vuln.modificationTime = datetime.now()
 
-    for val in CVSSTimeType:
+    for val in CVETimeType:
         age, score, color = vuln.get_age_score_color(val)
 
 
