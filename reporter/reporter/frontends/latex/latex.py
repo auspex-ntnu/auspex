@@ -1,7 +1,7 @@
 import asyncio
-from datetime import timezone
+from datetime import datetime, timezone
 from pathlib import Path
-from typing import Union
+from typing import Any, ContextManager, Union
 from auspex_core.models.gcr import ImageTimeMode
 from loguru import logger
 
@@ -35,6 +35,7 @@ from ...cve import CVSS_DATE_BRACKETS
 from ...backends.snyk.model import SnykContainerScan
 from ...types import ScanType, ScanTypeSingle
 from ...utils.matplotlib import DEFAULT_CMAP
+from ...config import AppConfig
 
 import random
 
@@ -60,6 +61,9 @@ def _do_create_document(
 # TODO: move this function to a more appropriate module
 def format_decimal(n: Union[int, float]) -> str:
     return f"{n:.2f}"
+
+
+SectionContext = ContextManager[Any]
 
 
 class LatexDocument:
@@ -99,19 +103,31 @@ class LatexDocument:
         )
 
     def generate_pdf(self) -> Document:
-        self.add_preamble()
-        # self.add_statistics_box()
-        self.add_header()
-        self.add_mean_trend_plot()
-        self.doc.generate_pdf(compiler_args=["-f"])
-        logger.debug("Generated PDF: {}", self.path)
+        try:
+            self.add_preamble()
+            self.add_header()
+            self.add_mean_trend_plot()
+            # self.add_statistics_box()
+            # self.add_vulnerability_piechart()
+            # self.add_vulnerability_scatterplot()
+            # self.add_vulnerability_table()
+            # self.add_vulnerability_table_by_severity()
+            # self.add_vulnerability_table_by_package()
 
+            self.doc.generate_pdf(compiler_args=["-f"])
+            logger.debug("Generated PDF: {}", self.path)
+        finally:
+            # NOTE: we could implement __enter__ and __exit__ to ensure
+            # ALL temporary files are cleaned up (including generated pdf)
+            self.delete_temp_files()
+
+    def delete_temp_files(self) -> None:
         # Delete plots after generating PDF
         # Depending on how (non-)ephemeral these containers are, we could risk
         # using all 512MB of memory by carelessly writing to the in-memory filesystem.
         # As a precautionary measure, we make sure all temporary files are cleaned up.
         for plot in self.plots:
-            Path(plot).unlink()
+            Path(plot).unlink(missing_ok=True)
 
     def add_preamble(self) -> None:
         self.doc.preamble.append(Command("title", self.scan.image.image))
@@ -148,11 +164,28 @@ class LatexDocument:
         self.doc.change_document_style("header")
 
     def add_mean_trend_plot(self) -> None:
-        """Adds a mean CVSSv3 score trend plot to the document."""
+        """Attempts to add a mean CVSSv3 score trend plot to the document."""
+        section = self.doc.create(Section("Trend"))
+        if self.prev_scans:
+            # Actually add the plot if we have previous scans to compare to
+            self._do_add_mean_trend_plot(section)
+        else:
+            # Otherwise, just add a placeholder
+            self._do_add_mean_trend_plot_none(section)
 
-        if not self.prev_scans:
-            logger.info("No previous scans to compare to.")
-            return
+    def _do_add_mean_trend_plot_none(self, section: SectionContext) -> None:
+        logger.info("No previous scans to compare to.")
+        with section:
+            self.doc.append(
+                NoEscape(
+                    r"\begin{center} \textbf{No previous scans to compare to.} \end{center}"
+                )
+            )
+
+    def _do_add_mean_trend_plot(self, section: SectionContext) -> None:
+        """Adds a mean CVSSv3 score trend plot to the document by comparing
+        the current scan to the previous scans and creating a scatter plot."""
+
         # clear any previous matplotlib plots
         # TODO: check if we need to do it differently when using the
         # object oriented interface
@@ -162,39 +195,33 @@ class LatexDocument:
 
         # Set up axes and labels
         ax.set_title("CVSSv3 Mean Score Over Time")
-        ax.set_xlabel("Time")
+        ax.set_xlabel("Image Creation Time")
         ax.set_ylabel("CVSSv3 Mean Score")
         ax.set_ylim(0, 10)
 
         # Plot data
-        s = []  # type: list[ScanType]
+        scans = []  # type: list[ScanType]
         # TODO: move this timezone fixing to a separate function
         for scan in self.prev_scans + [self.scan]:  # type: ScanType
             if scan.timestamp.tzinfo is None:
                 scan.timestamp = scan.timestamp.replace(tzinfo=timezone.utc)
-            s.append(scan)
-        s = sorted(s, key=lambda x: x.timestamp)
+            scans.append(scan)
+        scans = sorted(scans, key=lambda x: x.timestamp)
 
         ## IMPORTANT NOTE REGARDING DATES:
         #
         # We are plotting the mean CVSSv3 score over time using the CREATION TIME
-        # of each image, not the time of when the scan took place.
-        # This is because we want to be able to support re-scanning older images,
-        # without it influencing the CVSS score trend of newer images.
-
-        # time = [scan.timestamp for scan in s]
+        # of each image as the X-axis values, NOT the time of when the scan took place.
+        #
+        # This is because we want to be able to support re-scanning older images
+        # without these images changing position on the X-axis (time) on the plot,
+        # and thus influencing the CVSS score trend line.
         time = [
-            scan.get_timestamp(image=True, mode=ImageTimeMode.CREATED) for scan in s
+            scan.get_timestamp(image=True, mode=ImageTimeMode.CREATED) for scan in scans
         ]
-        # time = []
-        # for scan in s:
-        #     ts = scan.timestamp.replace(
-        #         month=random.randint(1, 6), day=random.randint(1, 28)
-        #     )
-        #     time.append(ts)
-        # score = [random.uniform(0, 10) for _ in range(len(time))]
-
-        score = [scan.cvss.mean for scan in s]
+        score = [scan.cvss.mean for scan in scans]
+        if AppConfig().debug:
+            time, score = self._mock_scan_values(score_min=3, score_max=7)
         ax.scatter(time, score)
 
         # Format dates
@@ -210,6 +237,7 @@ class LatexDocument:
         p = np.poly1d(z)
         plt.plot(time, p(time_ts), color="r")
 
+        # Add legend and grid
         plt.legend(["Score"])
         plt.grid(True)
 
@@ -218,13 +246,25 @@ class LatexDocument:
         plt.savefig(fig_filename)
         self.plots.append(fig_filename)
 
-        with self.doc.create(Section("Trend")):
-            self.doc.append("Take a look at this beautiful plot:")
+        with section:
+            self.doc.append(
+                f"Mean CVSSv3 score trend for the {len(scans)} most recent scans"
+            )
             with self.doc.create(Figure(position="htbp")) as plot:
                 plot.add_image(fig_filename, width=NoEscape(r"\textwidth"))
                 # plot.add_plot(width=NoEscape(r"0.5\textwidth"), *args, **kwargs)
                 plot.add_caption("I am a caption.")
             self.doc.append("Created using matplotlib.")
+
+    def _mock_scan_values(
+        self, n: int = 50, score_min: int = 0, score_max: int = 10
+    ) -> tuple[list[datetime], list[float]]:
+        time = [
+            datetime(year=2022, month=random.randint(1, 6), day=random.randint(1, 28))
+            for _ in range(n)
+        ]
+        score = [random.uniform(score_min, score_max) for _ in range(len(time))]
+        return time, score
 
     def add_statistics_box(self) -> None:
         # with self.doc.create(Section("Vulnerability Distribution")):
