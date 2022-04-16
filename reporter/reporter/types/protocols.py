@@ -131,8 +131,11 @@ class ScanType(Protocol):
         """
         Return a list of upgrade paths for all vulnerabilities.
         """
+        ...
+
     @property
-    def timestamp(self) -> datetime:
+    def dockerfile_instructions(self) -> list[str]:
+        """Get list of Dockerfile instructions for all vulnerabilities."""
         ...
 
     def cvss_scores(self, ignore_zero: bool) -> list[float]:
