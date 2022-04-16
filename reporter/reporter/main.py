@@ -67,20 +67,23 @@ async def scan_from_docid(docid: str, collection: str) -> ScanTypeSingle:
 
 @app.post("/report")
 async def generate_report(r: ReportRequestIn):
-    scan = await scan_from_docid(r.document_id[0], AppConfig().collection_logs)
-    await log_scan(scan)
+    scan = await scan_from_docid(r.document_id[0], AppConfig().collection_scans)
 
     prev_scans = await get_prev_scans(
         scan,
         collection=AppConfig().collection_reports,
         max_age=timedelta(weeks=AppConfig().trend_weeks),
         ignore_self=True,
+        skip_historical=False,  # FIXME: set to True & should be envvar
     )
 
     doc = await create_document(scan, prev_scans)
     if not doc.path.exists():
         raise HTTPException(500, "Failed to generate report.")
     status = await upload_report_to_bucket(doc.path, AppConfig().bucket_reports)
+
+    # FIXME: we don't mark the previous scans historical until here
+    #    because we create the report, THEN log and mark the previous scans
 
     try:
         await log_report(scan, status.mediaLink)
@@ -97,7 +100,7 @@ async def generate_aggregate_report(r: ReportRequestIn):
     scans = []  # type: list[ScanTypeSingle]
     for docid in r.document_id:
         try:
-            scan = await scan_from_docid(docid, AppConfig().collection_logs)
+            scan = await scan_from_docid(docid, AppConfig().collection_scans)
         except Exception:
             logger.exception(f"Failed to retrieve document with ID {docid}")
             failed.append(docid)

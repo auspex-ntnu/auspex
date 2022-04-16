@@ -7,7 +7,7 @@ from .cve import CVSS
 
 # Very similar definition of Scan from /functions/logger/gcp/main.py
 class ScanLog(BaseModel):
-    """Model for documents in auspex-logs"""
+    """Model for documents in scanner's collection"""
 
     image: ImageInfo
     backend: str  # Scanner backend tool used

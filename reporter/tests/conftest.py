@@ -6,11 +6,11 @@ os.environ.setdefault(
     "GOOGLE_APPLICATION_CREDENTIALS",
     "/Users/Peder-MAC/Documents/Bachelor/repo/.keys/reporter_local.json",
 )
-os.environ.setdefault("COLLECTION_LOGS", "auspex-logs")
+os.environ.setdefault("COLLECTION_SCANS", "auspex-scans")
 os.environ.setdefault("BUCKET_SCANS", "auspex-scans")
 os.environ.setdefault("BUCKET_REPORTS", "auspex-reports")
 os.environ.setdefault("GOOGLE_CLOUD_PROJECT", "ntnu-student-project")
-os.environ.setdefault("COLLECTION_LOGS", "auspex-logs")
+os.environ.setdefault("COLLECTION_SCANS", "auspex-scans")
 os.environ.setdefault("COLLECTION_REPORTS", "auspex-reports")
 
 from typing import Any

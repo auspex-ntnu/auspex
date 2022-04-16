@@ -47,7 +47,7 @@ async def get_firestore_document(document_id: str, collection: str) -> DocumentS
 
 # FIXME: unused. Delete?!
 async def get_firestore_documents(
-    document_ids: list[str], collection: str = AppConfig().collection_logs
+    document_ids: list[str], collection: str = AppConfig().collection_scans
 ) -> list[DocumentSnapshot]:
     """Retrieves multiple firestore documents given a list of document IDs.
 

@@ -30,7 +30,7 @@ async def log_scan(scan: ScanResultsType, image: ImageInfo) -> ScanLog:
     )
 
     # Add firestore document
-    doc = await add_document(AppConfig().collection_logs, scanlog.dict(exclude={"id"}))
+    doc = await add_document(AppConfig().collection_scans, scanlog.dict(exclude={"id"}))
 
     scanlog.id = doc.id
 
