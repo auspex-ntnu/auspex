@@ -8,6 +8,7 @@ steps:
 - name: 'gcr.io/cloud-builders/docker'
   args: ['push', '${_IMAGE_NAME}']
 # Deploy container image to Cloud Run
+# TODO: replace with script or bake deploy_scanner.sh into this file
 - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
   entrypoint: gcloud
   args: ['run', 'deploy', '${_SERVICE_NAME}', '--image', '${_IMAGE_NAME}', '--region', 'europe-north1']
