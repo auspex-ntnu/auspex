@@ -12,6 +12,7 @@ from google.cloud.storage import Bucket
 from gcloud.aio.storage import Blob, Storage
 from loguru import logger
 from pydantic import BaseModel
+from sanitize_filename import sanitize
 
 
 class StorageObject(NamedTuple):
@@ -110,7 +111,11 @@ async def upload_file_to_bucket(
     """
     if not service_file:
         service_file = os.getenv("GOOGLE_APPLICATION_CREDENTIALS")
+
     # TODO: don't nest try/excepts
+    # TODO: refactor. Handle exceptions with backoff.
+    # TODO: Don't create bucket here. Create bucket in startup script.
+
     try:
         async with get_storage_client(service_file) as client:
 
@@ -139,6 +144,31 @@ async def upload_file_to_bucket(
     return ObjectStatus.construct(**status)
 
 
+async def upload_json_blob_from_memory(
+    scan_contents: str,
+    filename: str,
+    bucket: str,
+    credentials_file: Optional[str] = None,
+    content_type: str = "application/json; charset=UTF-8",
+) -> "ObjectStatus":
+    """Uploads a file to the bucket."""
+    async with get_storage_client(credentials_file) as client:
+        # Upload file with .json suffix
+        if not filename.endswith(".json"):
+            filename = f"{filename}.json"
+        filename = sanitize(filename)
+
+        status = await client.upload(
+            bucket,
+            filename,
+            scan_contents,
+            content_type=content_type,
+        )
+
+        logger.debug(f"{filename} uploaded to {bucket}.")
+        return ObjectStatus.construct(**status)
+
+
 def create_bucket(bucket_name: str) -> Bucket:
     """Blocking function that creates a bucket with the given name.
 
@@ -146,7 +176,7 @@ def create_bucket(bucket_name: str) -> Bucket:
     """
 
     logger.info(f"Creating bucket {bucket_name}")
-    # gcloud.aio.storage.Storage doesn't support creating buckets.
+    # gcloud.aio.storage.Storage doesn't support creating buckets (it seems)
     client = storage.Client()
     bucket = client.create_bucket(bucket_name)
     logger.info(f"Created bucket {bucket_name}")
@@ -154,7 +184,7 @@ def create_bucket(bucket_name: str) -> Bucket:
 
 
 class ObjectStatus(BaseModel):
-    # TODO: investigate which fields can be cast to int/float/datetime
+    # BACKLOG: investigate which fields can be cast to int/float/datetime
     kind: str
     id: str
     selfLink: str
