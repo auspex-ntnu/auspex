@@ -80,17 +80,20 @@ async def get_image_info(image: str, project: str) -> ImageInfo:
     # Given the image's name, we can find its registry
     registry = get_registry(versioninfo)
 
-    # FIXME: add support for other registries
+    # TODO: add support for other registries
     # Right now we just mock docker.io
     if registry == "docker.io":
         return mock_dockerhub_imageinfo(versioninfo)
 
     imgpath = get_image_path(versioninfo.image, project, registry)
 
-    credentials = await credentials_from_file()
+    credentials = await get_gcr_credentials()
+
     url = f"https://{registry}/v2/{project}/{imgpath}/tags/list"
+    logger.debug("Fetching image info from {}", url)
     async with httpx.AsyncClient() as client:
         r = await client.get(url, auth=("_token", credentials.token))
+
     if not r.is_success:
         logger.error(
             f"Failed to get image info for {image}. "
@@ -174,7 +177,7 @@ def mock_dockerhub_imageinfo(versioninfo: ImageVersionInfo) -> ImageInfo:
 # list repositories
 async def get_repositories(project_id: str = None) -> CatalogResponse:
     """Get a list of repositories in a project."""
-    credentials = await credentials_from_file()
+    credentials = await get_gcr_credentials()
     async with httpx.AsyncClient() as client:
         r = await client.get(
             "https://eu.gcr.io/v2/_catalog", auth=("_token", credentials.token)
@@ -184,19 +187,22 @@ async def get_repositories(project_id: str = None) -> CatalogResponse:
     # TODO determine which project to use
 
 
-async def credentials_from_file() -> Credentials:
+async def get_gcr_credentials() -> Credentials:
     """Get credentials from a service account file and prime it with a token."""
     loop = asyncio.get_event_loop()
-    return await loop.run_in_executor(None, _do_credentials_from_file)
+    return await loop.run_in_executor(None, _do_get_gcr_credentials)
 
 
-def _do_credentials_from_file() -> Credentials:
-    """Get credentials from a service account file and prime it with a token."""
+def _do_get_gcr_credentials() -> Credentials:
+    """Get credentials (optionally from a service account file) and prime it with a token."""
     # https://stackoverflow.com/a/67069710
-    credentials = service_account.Credentials.from_service_account_file(
-        os.getenv("GOOGLE_APPLICATION_CREDENTIALS"),
-        scopes=["https://www.googleapis.com/auth/cloud-platform"],
-    )
+    scopes = ["https://www.googleapis.com/auth/cloud-platform"]
+    if creds := os.getenv("GOOGLE_APPLICATION_CREDENTIALS"):
+        credentials = service_account.Credentials.from_service_account_file(
+            creds, scopes=scopes
+        )
+    else:
+        credentials, _ = google.auth.default(scopes=scopes)
     auth_req = google.auth.transport.requests.Request()
     credentials.refresh(auth_req)
     return credentials
