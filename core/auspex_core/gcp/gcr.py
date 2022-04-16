@@ -5,6 +5,7 @@
 import asyncio
 import os
 import time
+from typing import Any, Optional, Union
 
 import google.auth
 import google.auth.transport.requests
@@ -87,7 +88,10 @@ async def get_image_info(image: str, project: str) -> ImageInfo:
 
     imgpath = get_image_path(versioninfo.image, project, registry)
 
-    credentials = await get_gcr_credentials()
+    if registry in ["gcr.io", "eu.gcr.io", "us.gcr.io"]:
+        credentials = await get_gcr_token()
+    else:
+        credentials = None
 
     url = f"https://{registry}/v2/{project}/{imgpath}/tags/list"
     logger.debug("Fetching image info from {}", url)
@@ -177,32 +181,38 @@ def mock_dockerhub_imageinfo(versioninfo: ImageVersionInfo) -> ImageInfo:
 # list repositories
 async def get_repositories(project_id: str = None) -> CatalogResponse:
     """Get a list of repositories in a project."""
-    credentials = await get_gcr_credentials()
+    # TODO: support other container registries apart from gcr.io
+    credentials = await get_gcr_token()
     async with httpx.AsyncClient() as client:
-        r = await client.get(
-            "https://eu.gcr.io/v2/_catalog", auth=("_token", credentials.token)
-        )
+        r = await client.get("https://eu.gcr.io/v2/_catalog", auth=credentials)
         resp = CatalogResponse.parse_obj(r.json())
         return resp
     # TODO determine which project to use
 
 
-async def get_gcr_credentials() -> Credentials:
+async def get_gcr_token() -> tuple[str, Union[bytes, Any]]:
     """Get credentials from a service account file and prime it with a token."""
     loop = asyncio.get_event_loop()
-    return await loop.run_in_executor(None, _do_get_gcr_credentials)
+    credentials_file = os.getenv("GOOGLE_APPLICATION_CREDENTIALS")
+    credentials = await loop.run_in_executor(
+        None, _get_gcr_credentials, credentials_file
+    )
+    return ("_token", credentials.token)  # only return the token from the credentials
 
 
-def _do_get_gcr_credentials() -> Credentials:
+def _get_gcr_credentials(credentials_file: Optional[str]) -> Credentials:
     """Get credentials (optionally from a service account file) and prime it with a token."""
     # https://stackoverflow.com/a/67069710
     scopes = ["https://www.googleapis.com/auth/cloud-platform"]
-    if creds := os.getenv("GOOGLE_APPLICATION_CREDENTIALS"):
+
+    if credentials_file:
         credentials = service_account.Credentials.from_service_account_file(
-            creds, scopes=scopes
+            credentials_file, scopes=scopes
         )
     else:
         credentials, _ = google.auth.default(scopes=scopes)
+
+    # Create the request object and generate a token
     auth_req = google.auth.transport.requests.Request()
     credentials.refresh(auth_req)
     return credentials
