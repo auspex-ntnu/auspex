@@ -1,0 +1,23 @@
+steps:
+# Build the container image
+- name: 'gcr.io/cloud-builders/docker'
+  env:
+    - DOCKER_BUILDKIT=1
+  args: ['build', '-t', '${_IMAGE_NAME}', '-f', 'scanner/Dockerfile', '.']
+# Push the container image to Container Registry
+- name: 'gcr.io/cloud-builders/docker'
+  args: ['push', '${_IMAGE_NAME}']
+# Deploy container image to Cloud Run
+- name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+  entrypoint: gcloud
+  args: ['run', 'deploy', '${_SERVICE_NAME}', '--image', '${_IMAGE_NAME}', '--region', 'europe-north1']
+
+images:
+- ${_IMAGE_NAME}
+
+# https://cloud.google.com/build/docs/configuring-builds/substitute-variable-values#dynamic_substitutions
+substitutions:
+    _IMAGE_NAME: 'eu.gcr.io/${PROJECT_ID}/auspex/scanner'
+    _SERVICE_NAME: 'scanner'
+options:
+    dynamic_substitutions: true
