@@ -51,7 +51,7 @@ def split_image_version(image: str) -> ImageVersionInfo:
 def get_registry(image_info: ImageVersionInfo) -> str:
     """Get the registry from an image name."""
     base_url = image_info.image.split("/")[0]
-    supported = ["eu.gcr.io", "us.gcr.io", "docker.io"]
+    supported = ["gcr.io", "eu.gcr.io", "us.gcr.io", "docker.io"]
     if base_url in supported:
         return base_url
     # NOTE: what about gcr.io?
