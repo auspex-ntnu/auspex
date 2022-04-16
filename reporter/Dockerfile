@@ -3,7 +3,7 @@ FROM python:3.10.4-slim-buster as reporter-requirements
 WORKDIR /tmp
 
 # Install poetry and copy poetry files
-RUN pip install poetry 
+RUN pip install poetry
 COPY ./reporter/pyproject.toml /tmp/
 
 # Copy core module

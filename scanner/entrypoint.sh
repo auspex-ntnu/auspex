@@ -2,7 +2,7 @@
 
 # This script reads secrets files and sets environment variables
 
-# Example: 
+# Example:
 #
 # SNYK_TOKEN_FILE=/run/secrets/snyk_token
 # Automatically becomes:
