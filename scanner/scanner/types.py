@@ -26,5 +26,5 @@ class ScanResultsType(Protocol):
     def backend(self) -> str:
         ...
 
-    def dict(self) -> dict[str, Any]:
+    def dict(self, *args, **kwargs) -> dict[str, Any]:
         ...

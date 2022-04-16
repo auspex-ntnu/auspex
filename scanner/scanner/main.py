@@ -18,6 +18,7 @@ from .exceptions import APIError, UserAPIError
 from .scan import scan_container
 from .types import ScanResultsType
 from .models import CompletedScan, ScanIn
+from .db import log_scan
 
 if os.getenv("DEBUG") == "1":
     import debugpy
@@ -29,6 +30,12 @@ if os.getenv("DEBUG") == "1":
     # debugpy.breakpoint()
 
 app = FastAPI()
+
+
+@app.on_event("startup")
+async def on_app_startup():
+    # instantiate config to check that all envvars are defined
+    AppConfig()
 
 
 # TODO: improve exception handlers
@@ -57,58 +64,11 @@ async def handle_user_api_error(request: Request, exc: UserAPIError):
     return JSONResponse(status_code=500, content=exc.args)
 
 
-def _scan_giveup_callback(details: dict[str, Any]) -> None:
-    """Callback function that is fired when the results of a scan cannot be logged."""
-    logger.error(
-        "Gave up after {tries} tries calling function {target} "
-        "with args {args} and kwargs {kwargs}".format(**details)
-    )
-    raise HTTPException(status_code=500, detail="Unable to log scan results.")
-
-
-def merge_scan_and_imageinfo(
-    scan: ScanResultsType, image_info: ImageInfo
-) -> CompletedScan:
-    # TODO: rename function to something more descriptive
-    """Merges the scan results with the image info."""
-    return CompletedScan(
-        image=image_info,
-        backend=scan.backend,
-        scan=scan.scan,
-    )
-
-
-@backoff.on_exception(
-    backoff.expo,
-    exception=(httpx.RequestError, httpx.HTTPStatusError),
-    max_tries=5,
-    on_backoff=on_backoff,
-    on_giveup=_scan_giveup_callback,
-)
-async def log_completed_scan(
-    scan: ScanResultsType, image_info: ImageInfo
-) -> dict[str, Any]:
-    # Merge scan data and image_info
-    s = merge_scan_and_imageinfo(scan, image_info)
-    async with httpx.AsyncClient() as client:
-        res = await client.post(AppConfig().logger_url, json=s.dict())
-        res.raise_for_status()
-        try:
-            j = res.json()  # type: dict[str, Any]
-        except:  # TODO: specify which exception
-            msg = "Unable to deserialize JSON response"
-            logger.error(msg, res.text)
-            raise APIError(
-                msg
-            )  # this will not be caught by backoff and abort immediately
-        return j
-
-
 @app.post("/scan", response_model=ScanLog)
 async def scan_endpoint(scan_request: ScanIn) -> ScanLog:
     """Scans a single container image."""
     image_info = await get_image_info(scan_request.image, AppConfig().project)
-
+    logger.debug(image_info)
     # NOTE: use image name from image_info instead?
     scan = await scan_container(
         image=scan_request.image,
@@ -120,7 +80,7 @@ async def scan_endpoint(scan_request: ScanIn) -> ScanLog:
         # FIXME: add detail message
         raise HTTPException(status_code=500, detail=msg)
 
-    s = await log_completed_scan(scan, image_info)
+    s = await log_scan(scan, image_info)
 
     # use scan
     return s
