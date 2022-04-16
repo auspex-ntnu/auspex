@@ -23,6 +23,11 @@ from ..models.gcr import (
     TagsResponse,
 )
 
+GCR_REGISTRIES = ["gcr.io", "eu.gcr.io", "us.gcr.io"]
+DOCKER_REGISTRIES = ["docker.io", "registry.hub.docker.com"]
+SUPPORTED_REGISTRIES = GCR_REGISTRIES + DOCKER_REGISTRIES
+DEFAULT_REGISTRY = "docker.io"
+
 
 def split_image_version(image: str) -> ImageVersionInfo:
     """Split name and tag/digest from an image name.
@@ -52,11 +57,10 @@ def split_image_version(image: str) -> ImageVersionInfo:
 def get_registry(image_info: ImageVersionInfo) -> str:
     """Get the registry from an image name."""
     base_url = image_info.image.split("/")[0]
-    supported = ["gcr.io", "eu.gcr.io", "us.gcr.io", "docker.io"]
-    if base_url in supported:
+    if base_url in SUPPORTED_REGISTRIES:
         return base_url
     # NOTE: what about gcr.io?
-    return "docker.io"  # fall back on DockerHub URL (or?)
+    return DEFAULT_REGISTRY  # fall back on DockerHub URL (or?)
 
 
 async def get_image_info(image: str, project: str) -> ImageInfo:
@@ -82,13 +86,13 @@ async def get_image_info(image: str, project: str) -> ImageInfo:
     registry = get_registry(versioninfo)
 
     # TODO: add support for other registries
-    # Right now we just mock docker.io
-    if registry == "docker.io":
+    # Right now we just mock docker.io and return early
+    if registry in DOCKER_REGISTRIES:
         return mock_dockerhub_imageinfo(versioninfo)
 
     imgpath = get_image_path(versioninfo.image, project, registry)
 
-    if registry in ["gcr.io", "eu.gcr.io", "us.gcr.io"]:
+    if registry in GCR_REGISTRIES:
         credentials = await get_gcr_token()
     else:
         credentials = None
@@ -96,7 +100,7 @@ async def get_image_info(image: str, project: str) -> ImageInfo:
     url = f"https://{registry}/v2/{project}/{imgpath}/tags/list"
     logger.debug("Fetching image info from {}", url)
     async with httpx.AsyncClient() as client:
-        r = await client.get(url, auth=("_token", credentials.token))
+        r = await client.get(url, auth=credentials)
 
     if not r.is_success:
         logger.error(
