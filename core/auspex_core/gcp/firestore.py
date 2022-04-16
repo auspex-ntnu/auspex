@@ -1,5 +1,6 @@
 from functools import cache
 import os
+from typing import Any
 
 import aiohttp
 import backoff
@@ -7,6 +8,7 @@ import firebase_admin
 from firebase_admin import credentials, firestore
 from google.cloud.firestore_v1 import DocumentSnapshot
 from google.cloud.firestore_v1.async_client import AsyncClient
+from google.cloud.firestore_v1.async_document import AsyncDocumentReference
 from loguru import logger
 
 
@@ -60,3 +62,19 @@ async def get_document(collection_name: str, document_id: str) -> DocumentSnapsh
     if not doc.exists:
         raise ValueError("Document not found.")
     return doc
+
+
+@backoff.on_exception(
+    backoff.expo,
+    exception=aiohttp.ClientResponseError,
+    max_tries=5,
+    jitter=backoff.full_jitter,
+)
+async def add_document(
+    collection_name: str, data: dict[str, Any]
+) -> AsyncDocumentReference:
+    db = get_firestore_client()
+    d = db.collection(collection_name).document()
+    await d.set(data)
+    logger.debug(f"Added {collection_name}/{d.id}")
+    return d
