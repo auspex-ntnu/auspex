@@ -46,7 +46,7 @@ class ReportQuery(BaseModel):
 
     field: CVSSField = Field(
         CVSSField.MEAN,
-        description="Field to order results by. Defaults to CVSS mean.",
+        description="Field to compare CVSS score with.",
     )
 
     # Limit number of results
