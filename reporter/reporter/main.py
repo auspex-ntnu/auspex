@@ -24,7 +24,7 @@ from .models import ReportRequestIn
 from .types.protocols import ScanTypeSingle
 from .utils.firestore import get_firestore_document
 from .utils.storage import get_object_from_document, upload_report_to_bucket
-from auspex_core.models.api.report import Filter, OrderBy, ReportQuery, ReportRequest
+from auspex_core.models.api.report import ReportQuery
 
 if os.getenv("DEBUG") == "1":
     import debugpy
