@@ -2,7 +2,7 @@ from datetime import datetime, timedelta
 from typing import Any, AsyncGenerator, Optional, Union, cast
 
 from auspex_core.gcp.firestore import get_firestore_client
-from auspex_core.models.api.report import CVSSField, Filter, ReportQuery, ReportRequest
+from auspex_core.models.api.report import CVSSField, ReportQuery
 from auspex_core.models.cve import SEVERITIES
 from auspex_core.models.scan import ParsedVulnerabilities, ReportData
 from google.api_core.exceptions import InvalidArgument
