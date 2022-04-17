@@ -4,19 +4,27 @@
 import os
 from datetime import timedelta
 import time
+from typing import Optional
+from auspex_core.gcp.firestore import get_firestore_client
+from auspex_core.models.scan import ReportData
 
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI, Query
 from fastapi.exceptions import HTTPException
 from loguru import logger
 
 from .backends.snyk.model import SnykContainerScan
 from .config import AppConfig
-from .db import log_report, get_prev_scans
+from .db import (
+    get_reports_filtered,
+    log_report,
+    get_prev_scans,
+)
 from .frontends.latex import create_document
 from .models import ReportRequestIn
 from .types.protocols import ScanTypeSingle
 from .utils.firestore import get_firestore_document
 from .utils.storage import get_object_from_document, upload_report_to_bucket
+from auspex_core.models.api.report import Filter, OrderBy, ReportQuery, ReportRequest
 
 if os.getenv("DEBUG") == "1":
     import debugpy
@@ -117,3 +125,14 @@ async def generate_aggregate_report(r: ReportRequestIn):
     return r
 
     # Make aggregate report
+
+
+@app.get("/reports")  # name TBD
+async def get_reports(
+    params: ReportQuery = Depends(),
+) -> list[ReportData]:
+    try:
+        return await get_reports_filtered(params)
+    except Exception as e:
+        logger.exception("Failed to retrieve reports", e)
+        raise HTTPException(500, "Failed to retrieve reports")

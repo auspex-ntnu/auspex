@@ -1,22 +1,17 @@
 import asyncio
 from typing import Any, Optional
-from fastapi import FastAPI
-from fastapi.responses import RedirectResponse, StreamingResponse
+from fastapi import Depends, FastAPI, Request
 from fastapi.exceptions import HTTPException
 import os
 
 from auspex_core.models.scan import ReportData, ScanLog
-from auspex_core.models.api.report import ReportRequest
+from auspex_core.models.api.report import ReportQuery
 from auspex_core.models.api.scan import ScanRequest
-from auspex_core.gcp.firestore import get_firestore_client
-from auspex_core.gcp.env import COLLECTION_REPORTS
 import httpx
 from loguru import logger
-from pydantic import BaseSettings, Field
 import backoff
 
 
-from .db import construct_query, filter_documents
 from .config import AppConfig
 from .exceptions import install_handlers
 from .workflows.base import WorkflowRunner
@@ -189,15 +184,19 @@ async def request_aggregate_report(url: str, data: dict[str, Any]) -> httpx.Resp
 
 # @app.get("/parsed", response_model=list[ReportData])  # name TBD
 @app.get("/reports")  # name TBD
-async def get_reports(req: ReportRequest) -> list[ReportData]:
-    client = get_firestore_client()
-
-    # Query DB
-    collection = client.collection(AppConfig().collection_reports)
-    query = await construct_query(collection, req)
-
-    # Use generator expression to conserve memory
-    docs = (doc.to_dict() async for doc in query.stream())
-    if req.filter:
-        docs = filter_documents(docs, req.filter)
-    return [d async for d in docs]
+async def get_reports(
+    request: Request,
+    params: ReportQuery = Depends(),  # can we only include this in the schema somehow?
+) -> list[ReportData]:
+    """Get reports for a given image."""
+    async with httpx.AsyncClient() as client:
+        res = await client.get(
+            AppConfig().url_reporter + "/reports",
+            params=request.query_params,
+        )
+        res.raise_for_status()  # Is this a bad idea
+    # TODO: handle error from reporter
+    try:
+        return res.json()
+    except:
+        raise HTTPException(status_code=500, detail="Failed to parse response.")

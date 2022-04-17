@@ -1,28 +1,28 @@
 from datetime import datetime, timedelta
-from typing import TYPE_CHECKING, Any, Optional, Union, cast
-
-from loguru import logger
-
-if TYPE_CHECKING:
-    from google.cloud.firestore_v1.collection import CollectionReference
+from typing import Any, AsyncGenerator, Optional, Union, cast
 
 from auspex_core.gcp.firestore import get_firestore_client
+from auspex_core.models.api.report import CVSSField, Filter, ReportQuery, ReportRequest
 from auspex_core.models.cve import SEVERITIES
 from auspex_core.models.scan import ParsedVulnerabilities, ReportData
 from google.api_core.exceptions import InvalidArgument
+from google.cloud import firestore
 from google.cloud.firestore import SERVER_TIMESTAMP, async_transactional
+from google.cloud.firestore_v1 import DocumentSnapshot
+from google.cloud.firestore_v1.async_client import AsyncClient
+from google.cloud.firestore_v1.async_collection import AsyncCollectionReference
 from google.cloud.firestore_v1.async_document import AsyncDocumentReference
 from google.cloud.firestore_v1.async_query import AsyncQuery
-from google.cloud.firestore_v1.async_client import AsyncClient
 from google.cloud.firestore_v1.async_transaction import AsyncTransaction
+from google.cloud.firestore_v1.collection import CollectionReference
 from google.cloud.firestore_v1.types import WriteResult
 from google.cloud.firestore_v1.types.write import WriteResult
+from loguru import logger
 from pydantic import ValidationError
 
 from .config import AppConfig
 from .types import ScanTypeSingle
 from .types.protocols import ScanTypeSingle
-
 
 # async def log_report(scan: ScanTypeSingle) -> WriteResult:
 #     client = get_firestore_client()
@@ -266,3 +266,138 @@ async def _mark_historical(docref: AsyncDocumentReference) -> WriteResult:
     """Marks a document as historical, meaning the document does not represent
     the most recent report for the given `image@sha256:hash`."""
     return await docref.update({"historical": True, "updated": SERVER_TIMESTAMP})
+
+
+# async def get_documents_query
+
+
+async def get_reports_filtered(params: ReportQuery) -> list[dict[str, Any]]:
+    """Get reports filtered by query parameters.
+
+    Parameters
+    ----------
+    params : `ReportQuery`
+        Query parameters.
+
+    Returns
+    -------
+    `list[dict[str, Any]]`
+        List of reports.
+    """
+    # TODO: move this to a separate function in db.py?
+    client = get_firestore_client()
+
+    collection = client.collection(AppConfig().collection_reports)
+    query = await construct_query(collection, params)
+
+    # Query DB
+    return [d async for d in filter_documents(query.stream(), params)]
+
+
+async def construct_query(
+    collection: AsyncCollectionReference, params: ReportQuery
+) -> AsyncQuery:  # TODO: find out if we return an AsyncQuery or a BaseQuery (thanks gcloud-aio..)
+    """Constructs an async query from a request.
+
+    Args
+    ----
+    collection : `AsyncCollectionReference`
+        The collection to query.
+    req : `ReportRequest`
+        The request query params to construct the Firestore query from.
+
+    Returns
+    -------
+    `AsyncQuery`
+        The constructed query.
+    """
+    # Filter
+    query = collection.where("image.image", "==", params.image)
+    # Sort
+    if params.order_by:
+        query = query.order_by(params.order_by, direction=params.direction.value)
+    # Limit
+    if params.limit:
+        query = query.limit(params.limit)
+    # have to convince mypy that it's an AsyncQuery
+    # See: AsyncCollectionReference._query
+    query = cast(AsyncQuery, query)
+    return query
+
+
+async def filter_documents(
+    docs: AsyncGenerator[DocumentSnapshot, None], params: ReportQuery
+) -> AsyncGenerator[dict[str, Any], None]:
+    """Filter a stream of documents given a user-defined document filter.
+
+    Parameters
+    ----------
+    docs : AsyncGenerator[DocumentSnapshot, None]
+        Async generator of DocumentSnapshot objects.
+    params : `ReportQuery`
+        The query params to filter the documents by.
+
+    Returns
+    -------
+    AsyncGenerator[dict[str, Any], None]
+        Returns an async generator of filtered documents converted to dicts.
+    """
+    async for doc in docs:
+        if doc is None:  # filter None (should never happen?)
+            continue
+
+        # Get dict here to avoid re-reading from the database
+        # This is the concession we make to avoid creating multiple composite indexes
+        d = doc.to_dict()
+        if not d:  # always check for falsey values (missing or empty)
+            continue
+
+        # Get value for the given cvss field
+        field_value = await _get_cvss_value(doc, d, params.field)
+        if field_value is None:
+            continue
+
+        # Filter min/max score
+        if params.le is not None:
+            if field_value > params.le:
+                continue
+        if params.ge is not None:
+            if field_value < params.ge:
+                continue
+
+        # TODO: add max_age handling
+
+        yield d
+
+
+async def _get_cvss_value(
+    doc: DocumentSnapshot, values: dict[str, Any], field: CVSSField
+) -> Optional[float]:
+    """Get the CVSS value for the given field.
+
+    Parameters
+    ----------
+    doc : `DocumentSnapshot`
+        The document to get the CVSS value from.
+    values : `dict[str, Any]`
+        The values of the document.
+    field : `CVSSField`
+        The field to get the CVSS value for.
+
+    Returns
+    -------
+    Optional[float]
+        The CVSS value for the given field.
+    """
+    # Get value for the given cvss field
+    try:
+        val = values["cvss"][field.value]
+        if not isinstance(val, float):
+            # log a warning if the value is not a float and return None
+            logger.warning(
+                f"Found non-float value for CVSS field '{field.vaue}' in document {doc.id}"
+            )
+            return None
+    except KeyError:
+        return None
+    return val

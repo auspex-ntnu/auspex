@@ -37,4 +37,7 @@ class CVESeverity(Enum):
         return cls.__members__.get(severity.upper(), cls.UNDEFINED).value
 
 
+# TODO: accomodate for future versions of CVSS where score range or severity levels change
+CVSS_MIN_SCORE = 0.0
+CVSS_MAX_SCORE = 10.0
 SEVERITIES = ("low", "medium", "high", "critical")

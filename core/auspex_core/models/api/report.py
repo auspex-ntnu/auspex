@@ -1,8 +1,7 @@
-from datetime import datetime
 from enum import Enum
-import os
 from typing import Any, Iterable, NamedTuple, Optional
-from pydantic import BaseModel, Field, validator
+from auspex_core.models.cve import CVSS, CVSS_MAX_SCORE, CVSS_MIN_SCORE
+from pydantic import BaseModel, Field, root_validator, validator
 from google.cloud import firestore
 
 
@@ -17,12 +16,70 @@ class Direction(Enum):
     DESCENDING = firestore.Query.DESCENDING
 
 
-class OrderBy(BaseModel):
-    field: str
-    direction: Direction = Direction.DESCENDING  # TODO: decide on default direction
+class CVSSField(Enum):
+    # NOTE: could we use the schema of auspex_core.models.cve.CVSS here?
+    MEAN = "mean"
+    MEDIAN = "median"
+    STDEV = "stdev"
+    MIN = "min"
+    MAX = "max"
 
-    @validator("direction", pre=True)
-    def validate_direction(cls, v: Any) -> str:
+
+class ReportQuery(BaseModel):
+    image: str = Field(..., description="Image to search for.")
+
+    # Minimum CVSS score
+    ge: Optional[float] = Field(
+        None,
+        ge=CVSS_MIN_SCORE,
+        le=CVSS_MAX_SCORE,
+        description="Minimum CVSS score.",
+    )
+
+    # Maximum CVSS score
+    le: Optional[float] = Field(
+        None,
+        ge=CVSS_MIN_SCORE,
+        le=CVSS_MAX_SCORE,
+        description="Maximum CVSS score.",
+    )
+
+    field: CVSSField = Field(
+        CVSSField.MEAN,
+        description="Field to order results by. Defaults to CVSS mean.",
+    )
+
+    # Limit number of results
+    limit: Optional[int] = Field(
+        None,
+        gt=0,
+        description="Limit the number of results.",
+    )
+
+    # Field to order by
+    order_by: Optional[str] = Field(
+        None,
+        description="Order results by field.",
+    )
+
+    # Order by direction
+    direction: Direction = Field(
+        Direction.DESCENDING,
+        description="Direction of ordering. Has no effect if `order_by` is not specified.",
+    )
+
+    # TODO: add has_report
+    # has_report: bool = Field(False, description="Whether or not the report has been generated.")
+
+    # TODO: add max_age
+    # max_age: Optional[int] = Field(None, gt=0, description="Maximum age of reports in days.")
+
+    @validator("direction")
+    def validate_direction(cls, v: Any) -> Direction:
+        """Validator that accepts multiple values for `direction`."""
+        if isinstance(v, Direction):
+            return v
+
         valid = {
             Direction.ASCENDING: ["asc", "ascending", "ascend"],
             Direction.DESCENDING: ["desc", "descending", "descend"],
@@ -32,37 +89,17 @@ class OrderBy(BaseModel):
 
         v = v.lower()
         if v in valid[Direction.ASCENDING]:
-            return Direction.ASCENDING.value
+            return Direction.ASCENDING
         elif v in valid[Direction.DESCENDING]:
-            return Direction.DESCENDING.value
+            return Direction.DESCENDING
         raise ValueError(
             f"Invalid argument for 'direction'. Accepted arguments: {valid}"
         )
 
-
-class Filter(BaseModel):
-    cvss_mean: Optional[float] = Field(None, ge=0.0, le=10.0)
-    cvss_median: Optional[float] = Field(None, ge=0.0, le=10.0)
-    critical: Optional[int] = Field(None, ge=0)
-
-    def get_filters(self) -> Iterable[tuple[str, Any]]:
-        """Generator that yields all attributes whose values are not None."""
-        for k, v in self.dict().items():
-            if v is not None:
-                yield (k, v)
-
-
-class ReportRequest(BaseModel):
-    image: str
-    filter: Optional[Filter] = None
-    limit: Optional[int] = Field(None, gt=0)
-    order_by: Optional[OrderBy] = None
-
-    @validator("image")
-    def ensure_not_empty(cls, v: str) -> str:
-        if len(v) == 0:
-            raise ValueError("Image cannot be an empty string.")
-        return v
-
-    def get_query(self) -> FirestoreQuery:
-        return FirestoreQuery(field="image", operator="==", value=self.image)
+    @root_validator
+    def validate_le_ge(cls, values: dict[str, Any]) -> dict[str, Any]:
+        """Validator that ensures that `le` is not greater than `ge`."""
+        if values["le"] is not None and values["ge"] is not None:
+            if values["le"] < values["ge"]:
+                raise ValueError("`le` must be greater than `ge`.")
+        return values
