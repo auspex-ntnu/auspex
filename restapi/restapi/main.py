@@ -35,9 +35,17 @@ if os.getenv("DEBUG") == "1":
     # debugpy.breakpoint()
 
 
-@app.get("/logs", response_class=RedirectResponse)
-async def logs():
-    return "http://pdfurl.com"
+@app.get("/scans/{scan_id}", response_model=ScanLog)
+async def get_scan(scan_id: str) -> ScanLog:
+    """Get a scan by its ID."""
+    async with httpx.AsyncClient() as client:
+        res = await client.get(f"{AppConfig().url_scanner}/{scan_id}")
+    res.raise_for_status()
+    try:
+        return res.json()
+    except Exception as e:
+        logger.error(f"Could not parse response: {e}")
+        raise HTTPException(status_code=500, detail="Could not parse scan response.")
 
 
 # @app.post("/pdf/generate")

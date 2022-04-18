@@ -1,5 +1,7 @@
+from functools import partial
 import os
 from typing import Any
+from auspex_core.gcp.firestore import get_document, check_db_exists
 
 import backoff
 import httpx
@@ -7,11 +9,12 @@ from auspex_core.models.scan import ScanLog
 from auspex_core.utils.backoff import on_backoff
 from fastapi import FastAPI, Request
 from fastapi.exceptions import HTTPException
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, PlainTextResponse
 from loguru import logger
-from pydantic import BaseModel, ValidationError
+from pydantic import BaseModel, Field, ValidationError
 from auspex_core.models.gcr import ImageInfo
 from auspex_core.gcp.gcr import get_image_info
+from auspex_core.models.status import ServiceStatus, ServiceStatusCode
 
 from .config import AppConfig
 from .exceptions import APIError, UserAPIError
@@ -84,6 +87,33 @@ async def scan_endpoint(scan_request: ScanIn) -> ScanLog:
 
     # use scan
     return s
+
+
+@app.get("/scans", response_model=list[ScanLog])
+async def get_scans(image: str = "") -> list[ScanLog]:
+    pass
+
+
+@app.get("/scans/{scan_id}", response_model=ScanLog)
+async def get_scan(scan_id: str) -> ScanLog:
+    """Retrieve scan for a given scan ID.
+
+    Args
+    ----
+    scan_id: `str`
+        The scan ID to retrieve.
+        A scan ID is the ID of a Firestore document.
+
+    Returns
+    -------
+    `ScanLog`
+        The scan log for the given scan ID.
+    """
+    try:
+        doc = await get_document(AppConfig().collection_scans, scan_id)
+    except ValueError:
+        raise HTTPException(status_code=404, detail="Scan not found")
+    return ScanLog(**doc.to_dict())
 
 
 @app.get("/status", response_model=ServiceStatus)
