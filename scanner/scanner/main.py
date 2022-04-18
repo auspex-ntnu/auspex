@@ -84,3 +84,19 @@ async def scan_endpoint(scan_request: ScanIn) -> ScanLog:
 
     # use scan
     return s
+
+
+@app.get("/status", response_model=ServiceStatus)
+async def get_service_status(request: Request) -> ServiceStatus:
+    """Get the status of the server."""
+    # TODO: expand with more heuristics to determine if the service is OK
+    status = partial(ServiceStatus, url=request.url)
+    if await check_db_exists(AppConfig().collection_scans):
+        return status(
+            status=ServiceStatusCode.OK,
+        )
+    else:
+        return status(
+            status=ServiceStatusCode.ERROR,
+            message="Database unreachable",
+        )

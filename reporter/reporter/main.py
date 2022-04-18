@@ -1,14 +1,16 @@
 # NOTE: ONLY SUPPORTS GCP RIGHT NOW
 
 
+from functools import partial
 import os
 from datetime import timedelta
 import time
 from typing import Optional
-from auspex_core.gcp.firestore import get_firestore_client
+from auspex_core.gcp.firestore import check_db_exists, get_firestore_client
 from auspex_core.models.scan import ReportData
+from auspex_core.models.status import ServiceStatus, ServiceStatusCode
 
-from fastapi import Depends, FastAPI, Query
+from fastapi import Depends, FastAPI, Query, Request
 from fastapi.exceptions import HTTPException
 from loguru import logger
 
@@ -136,3 +138,17 @@ async def get_reports(
     except Exception as e:
         logger.exception("Failed to retrieve reports", e)
         raise HTTPException(500, "Failed to retrieve reports")
+
+
+@app.get("/status", response_model=ServiceStatus)
+async def get_status(request: Request) -> ServiceStatus:
+    status = partial(ServiceStatus, url=request.url)
+    if await check_db_exists(AppConfig().collection_reports):
+        return status(
+            status=ServiceStatusCode.OK,
+        )
+    else:
+        return status(
+            status=ServiceStatusCode.ERROR,
+            message="Database unreachable",
+        )

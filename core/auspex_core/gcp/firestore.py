@@ -1,6 +1,9 @@
 from functools import cache
 import os
-from typing import Any
+from typing import Any, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from google.cloud.firestore_v1.async_query import AsyncQuery
 
 import aiohttp
 import backoff
@@ -78,3 +81,17 @@ async def add_document(
     await d.set(data)
     logger.debug(f"Added {collection_name}/{d.id}")
     return d
+
+
+async def check_db_exists(collection: str) -> bool:
+    """Checks if the database is available."""
+    client = get_firestore_client()
+    col = client.collection(collection)
+    query = col.limit(1)  # type: AsyncQuery
+    try:
+        await query.get()
+    except Exception as e:
+        logger.warning(f"Could not connect to database: {e}")
+        return False
+    else:
+        return True

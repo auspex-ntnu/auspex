@@ -200,3 +200,16 @@ async def get_reports(
         return res.json()
     except:
         raise HTTPException(status_code=500, detail="Failed to parse response.")
+
+
+@app.get("/status", response_model=ServiceStatusAggregate)
+async def get_status() -> ServiceStatusAggregate:
+    """Retrieves the status of all services."""
+    services = {
+        "scanner": AppConfig().url_scanner,
+        "reporter": AppConfig().url_reporter,
+        # BACKLOG: can we populate this dict automatically?
+    }
+    # TODO: use asyncio.gather to perform requests in parallel
+    responses = {name: await get_service_status(url) for name, url in services.items()}
+    return responses
