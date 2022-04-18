@@ -1,28 +1,23 @@
 import asyncio
-from typing import Any, Optional
+import os
+from typing import Any
+
+import httpx
+from auspex_core.models.api.report import ReportQuery, ReportRequest
+from auspex_core.models.api.scan import ScanRequest
+from auspex_core.models.scan import ReportData, ScanLog
+from auspex_core.models.status import ServiceStatusAggregate
 from fastapi import Depends, FastAPI, Request
 from fastapi.exceptions import HTTPException
-import os
-
-from auspex_core.models.scan import ReportData, ScanLog
-from auspex_core.models.api.report import ReportQuery
-from auspex_core.models.api.scan import ScanRequest
-import httpx
 from loguru import logger
-import backoff
-
 
 from .config import AppConfig
 from .exceptions import install_handlers
-from .workflows.base import WorkflowRunner
-from .workflows import get_runner
-from .workflows.gcp import start_pdf_workflow
-
+from .status import get_service_status
 
 app = FastAPI()
 install_handlers(app)
 
-runner: WorkflowRunner = get_runner()
 
 # TODO: move to auspex_core
 if os.getenv("DEBUG") == "1":
@@ -48,56 +43,41 @@ async def get_scan(scan_id: str) -> ScanLog:
         raise HTTPException(status_code=500, detail="Could not parse scan response.")
 
 
-# @app.post("/pdf/generate")
-# async def generate_pdf_report(body: PDFRequestIn):
-#     return await start_pdf_workflow()
-
-
-@app.get("/")
-async def root():
-    return "Hello World!"
-
-
-@app.post("/scan")
-async def scan_images(req: ScanRequest):
+@app.post("/scans", response_model=list[ScanLog])
+async def scan_images(req: ScanRequest) -> list[ScanLog]:
     # TODO: (further work) use pub/sub to submit one message for each image
     #       Spin up N cloud run instances to scan all images in parallel
-
-    url = AppConfig().url_scanner
-    if not url:
-        raise HTTPException(500, "Can't contact scanner service. URL is not defined.")
-    url = f"{url}/scan"
-
-    # Instantiate async client
-    # (`async with AsyncClient(...)` is inconsistent when combined with asyncio.gather)
-    # Sometimes it closes the client while some requests are still pending
-    client = httpx.AsyncClient()
-    # send request for each image
-    # TODO: implement backoff for these requests
-    coros = [send_scan_request(client, url, image, req.backend) for image in req.images]
-    responses = await asyncio.gather(*coros)
-    await client.aclose()
-
-    # Filter out failed responses
-    # TODO: option to raise for bad responses
-    ok, failed = await _check_responses(responses, req.ignore_failed)
-    scans = await _parse_scan_responses(ok, req.ignore_failed)
-
-    url = AppConfig().url_reporter
-    if not url:
-        raise HTTPException(500, "Can't contact reporter service. URL is not defined.")
+    scans = await do_request_scans(req)
+    return scans
 
     data = {
         "document_id": [scan.id for scan in scans],
         "ignore_failed": req.ignore_failed,
     }
 
-    async with httpx.AsyncClient() as client:
-        if len(scans) == 1:
-            r = await request_single_report(url, data)
-        else:
-            r = await request_aggregate_report(url, data)
-    return r.json()
+    return r
+
+
+async def do_request_scans(req: ScanRequest) -> list[ScanLog]:
+    # Instantiate async client
+    # (`async with AsyncClient(...)` is inconsistent when combined with asyncio.gather)
+    # Sometimes it closes the client while some requests are still pending
+    client = httpx.AsyncClient(timeout=AppConfig().timeout_scanner)
+
+    # send request for each image
+    url = f"{AppConfig().url_scanner}/scan"
+    coros = [
+        _send_scan_request(client, url, image, req.backend) for image in req.images
+    ]
+    responses = await asyncio.gather(*coros)
+
+    await client.aclose()  # close connection since we don't use ctx manager
+
+    # Filter out failed responses
+    # TODO: option to raise for bad responses
+    ok, failed = await _check_responses(responses, req.ignore_failed)
+    scans = await _parse_scan_responses(ok, req.ignore_failed)
+    return scans
 
 
 # @backoff.on_exception(
@@ -106,18 +86,59 @@ async def scan_images(req: ScanRequest):
 #     max_tries=5,
 #     # TODO: add callback functions
 # )
-async def send_scan_request(
+async def _send_scan_request(
     client: httpx.AsyncClient, url: str, image: str, backend: str
 ) -> httpx.Response:
+    """Sends a request to the scanner service.
+
+    Parameters
+    ----------
+    client : `httpx.AsyncClient`
+        The client to use for sending the request.
+    url : `str`
+        The URL to send the request to.
+    image : `str`
+        The image to scan.
+    backend : `str`
+        The backend to use for scanning.
+
+    Returns
+    -------
+    `httpx.Response`
+        The response from the request.
+    """
+
     res = await client.post(
-        url, json={"image": image, "backend": backend}, timeout=None
+        url,
+        json={"image": image, "backend": backend},
     )
     res.raise_for_status()
     return res
 
 
+async def do_request_report(req: dict[str, Any]) -> dict[str, Any]:
+    async with httpx.AsyncClient(timeout=AppConfig().timeout_reporter) as client:
+        url = f"{AppConfig().url_reporter}/report"
+        r = await client.post(url, json=req)
+        # TODO: validate response and handle errors
+        return r.json()
+
+
 async def _handle_failed(failed: list[httpx.Response], ignore_failed: bool):
-    """Handles failed responses."""
+    """Handles failed responses.
+
+    Parameters
+    ----------
+    failed : `list[httpx.Response]`
+        List of failed responses.
+    ignore_failed : `bool`
+        Whether to raise an exception or not if there are failed responses.
+
+    Raises
+    ------
+    `HTTPException`
+        If there are failed responses and `ignore_failed` is `False`.
+    """
     # Handle failed requests
     if failed:
         for f in failed:
@@ -172,22 +193,9 @@ async def _parse_scan_responses(
     return scans
 
 
-REPORTER_TIMEOUT: Optional[float] = None
-
-
-async def request_single_report(url: str, data: dict[str, Any]) -> httpx.Response:
-    # TODO: investigate what a sane timeout is
-    async with httpx.AsyncClient(timeout=REPORTER_TIMEOUT) as client:
-        url = f"{url}/report"
-        r = await client.post(url, json=data)
-    return r
-
-
-async def request_aggregate_report(url: str, data: dict[str, Any]) -> httpx.Response:
-    async with httpx.AsyncClient(timeout=REPORTER_TIMEOUT) as client:
-        url = f"{url}/aggregate"
-        r = await client.post(url, json=data)
-    return r
+@app.post("/reports", response_model=list[ReportData])
+async def report_scans(req: ReportRequest) -> list[ReportData]:
+    """Reports the results of scans."""
 
 
 # @app.get("/parsed", response_model=list[ReportData])  # name TBD
@@ -196,10 +204,10 @@ async def get_reports(
     request: Request,
     params: ReportQuery = Depends(),  # can we only include this in the schema somehow?
 ) -> list[ReportData]:
-    """Get reports for a given image."""
+    """Get reports for a given image from the reporter service."""
     async with httpx.AsyncClient() as client:
         res = await client.get(
-            AppConfig().url_reporter + "/reports",
+            f"{AppConfig().url_reporter}/reports",
             params=request.query_params,
         )
         res.raise_for_status()  # Is this a bad idea
