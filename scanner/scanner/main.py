@@ -43,7 +43,7 @@ async def on_app_startup():
 
 # TODO: improve exception handlers
 
-
+# TODO: remove this. It just obscures the actual error message
 @app.exception_handler(ValidationError)
 async def handle_validation_error(request: Request, exc: ValidationError):
     # TODO: improve message
@@ -68,7 +68,7 @@ async def handle_user_api_error(request: Request, exc: UserAPIError):
 
 
 @app.post("/scan", response_model=ScanLog)
-async def scan_endpoint(scan_request: ScanIn) -> ScanLog:
+async def scan_image(scan_request: ScanIn) -> ScanLog:
     """Scans a single container image."""
     image_info = await get_image_info(scan_request.image, AppConfig().project)
     logger.debug(image_info)
@@ -114,6 +114,15 @@ async def get_scan(scan_id: str) -> ScanLog:
     except ValueError:
         raise HTTPException(status_code=404, detail="Scan not found")
     return ScanLog(**doc.to_dict())
+
+
+@app.head("/scans")
+async def get_scans_head() -> PlainTextResponse:
+    """HEAD request handler that checks if database is reachable."""
+    if await check_db_exists(AppConfig().collection_scans):
+        return PlainTextResponse(status_code=200)
+    else:
+        raise HTTPException(status_code=500, detail="Database unreachable")
 
 
 @app.get("/status", response_model=ServiceStatus)
