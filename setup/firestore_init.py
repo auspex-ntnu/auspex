@@ -59,7 +59,15 @@ indexes: list[list[Index.IndexField]] = [
     ],
     [
         IF(field_path="image.image", order=ASC),
+        IF(field_path="cvss.mean", order=ASC),
+    ],
+    [
+        IF(field_path="image.image", order=ASC),
         IF(field_path="cvss.mean", order=DESC),
+    ],
+    [
+        IF(field_path="image.image", order=ASC),
+        IF(field_path="cvss.median", order=ASC),
     ],
     [
         IF(field_path="image.image", order=ASC),
@@ -67,7 +75,15 @@ indexes: list[list[Index.IndexField]] = [
     ],
     [
         IF(field_path="image.image", order=ASC),
+        IF(field_path="cvss.stdev", order=ASC),
+    ],
+    [
+        IF(field_path="image.image", order=ASC),
         IF(field_path="cvss.stdev", order=DESC),
+    ],
+    [
+        IF(field_path="image.image", order=ASC),
+        IF(field_path="cvss.min", order=ASC),
     ],
     [
         IF(field_path="image.image", order=ASC),
@@ -75,7 +91,15 @@ indexes: list[list[Index.IndexField]] = [
     ],
     [
         IF(field_path="image.image", order=ASC),
+        IF(field_path="cvss.max", order=ASC),
+    ],
+    [
+        IF(field_path="image.image", order=ASC),
         IF(field_path="cvss.max", order=DESC),
+    ],
+    [
+        IF(field_path="aggregate", order=ASC),
+        IF(field_path="cvss.mean", order=ASC),
     ],
     [
         IF(field_path="aggregate", order=ASC),
