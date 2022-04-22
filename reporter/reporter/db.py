@@ -2,7 +2,12 @@ from datetime import datetime, timedelta
 from typing import Any, AsyncGenerator, Optional, Union, cast
 
 from auspex_core.gcp.firestore import get_firestore_client
-from auspex_core.models.api.report import CVSSField, ReportQuery
+from auspex_core.models.api.report import (
+    CVSSField,
+    Direction,
+    OrderOption,
+    ReportQuery,
+)
 from auspex_core.models.cve import SEVERITIES
 from auspex_core.models.scan import ParsedVulnerabilities, ReportData
 from google.api_core.exceptions import InvalidArgument
@@ -291,7 +296,27 @@ async def get_reports_filtered(params: ReportQuery) -> list[dict[str, Any]]:
     query = await construct_query(collection, params)
 
     # Query DB
-    return [d async for d in filter_documents(query.stream(), params)]
+    docs = [d async for d in filter_documents(query.stream(), params)]
+    # TODO: add client-side sorting
+
+    # Order by timestamp
+    if params.order in [OrderOption.NEWEST, OrderOption.OLDEST]:
+        now = datetime.now()  # default pre-computed for performance
+        reverse = True if params.order == OrderOption.NEWEST else False
+        docs = sorted(docs, key=lambda d: d.get("timestamp", now), reverse=reverse)
+
+    # Order by Score
+    elif params.order in [OrderOption.MAXSCORE, OrderOption.MINSCORE]:
+        reverse = True if params.order == OrderOption.MAXSCORE else False
+        docs = sorted(
+            docs,
+            key=lambda d: d.get("cvss", {}).get(params.field.value, 0),
+            reverse=reverse,
+        )
+
+    if params.limit and len(docs) > params.limit:
+        docs = docs[: params.limit]
+    return docs
 
 
 async def construct_query(
@@ -313,12 +338,21 @@ async def construct_query(
     """
     # Filter
     query = collection.where("image.image", "==", params.image)
-    # Sort
-    if params.order_by:
-        query = query.order_by(params.order_by, direction=params.direction.value)
+    if params.ge is not None:
+        query = query.where(f"cvss.{params.field.value}", ">=", params.ge)
+    if params.le is not None:
+        query = query.where(f"cvss.{params.field.value}", "<=", params.le)
+
+    # # # Sort
+    # if params.sort_by:
+    #     query = query.order("cvss.mean", direction=firestore.Query.DESCENDING)
+
     # Limit
+    # TODO: inspect if we can use limit on the query itself
+    # as opposed to limiting client-side
     if params.limit:
         query = query.limit(params.limit)
+
     # have to convince mypy that it's an AsyncQuery
     # See: AsyncCollectionReference._query
     query = cast(AsyncQuery, query)
