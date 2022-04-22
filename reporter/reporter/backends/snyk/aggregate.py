@@ -2,7 +2,9 @@ from collections import Counter
 from dataclasses import dataclass
 from datetime import datetime
 from functools import _lru_cache_wrapper, cache, cached_property
+from itertools import chain
 from typing import Iterator, Optional, TypeVar
+from auspex_core.models.gcr import ImageInfo, ImageTimeMode
 
 import numpy as np
 from loguru import logger
@@ -35,6 +37,10 @@ class AggregateScan(BaseModel):
             return v
         return f"AggregateScan_{int(time.time())}"
 
+    @property  # workaround until we rename everything to "report"
+    def reports(self) -> list[SnykContainerScan]:
+        return self.scans
+
     def __hash__(self) -> int:
         return id(self)
 
@@ -45,6 +51,19 @@ class AggregateScan(BaseModel):
         Parameters `image` and `mode` have no effect, and are implemented
         to conform to `ScanType` protocol."""
         return self.timestamp
+
+    # @cached_property
+    # def image(self) -> ImageInfo:
+    #     return ImageInfo(
+    #         image_size_bytes=np.mean([s.image.imageSizeBytes for s in self.scans]),
+    #         layer_id="",
+    #         media_type="",
+    #         tag=[],
+    #         uploaded=datetime.utcnow(),
+    #         created=datetime.utcnow(),
+    #         digest=None,
+    #         image=None,
+    #     )
 
     @property
     def cvss_max(self) -> float:
@@ -191,7 +210,9 @@ class AggregateScan(BaseModel):
             key=lambda v: v.cvssScore if v is not None else 0.0,
         )
 
-    def most_severe_n(self, n: Optional[int] = 5) -> list[SnykVulnerability]:
+    def most_severe_n(
+        self, n: Optional[int] = 5, upgradable: bool = False
+    ) -> list[SnykVulnerability]:
         """Retrieves the N most severe vulnerabilities across all images scanned.
 
         Parameters
@@ -206,6 +227,8 @@ class AggregateScan(BaseModel):
         """
         vulns = list(self.vulnerabilities)
         vulns.sort(key=lambda v: v.cvssScore, reverse=True)
+        if upgradable:
+            vulns = list(filter(lambda v: v.is_upgradable, vulns))
         if n and n > len(vulns):  # make sure we don't go out of bounds
             n = len(vulns)
         return vulns[:n]
@@ -238,6 +261,7 @@ class AggregateScan(BaseModel):
         for scan in self.scans:
             u.extend(scan.upgrade_paths)
         return u
+        # return list(chain(scan.upgrade_paths for scan in self.scans))
 
     @property
     def dockerfile_instructions(self) -> list[str]:
@@ -247,6 +271,7 @@ class AggregateScan(BaseModel):
         for scan in self.scans:
             d.extend(scan.dockerfile_instructions)
         return d
+        # return list(chain(scan.dockerfile_instructions for scan in self.scans))
 
     def most_common_cve(self, n: int) -> list[tuple[str, int]]:
         c: Counter[str] = Counter()

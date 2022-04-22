@@ -1,7 +1,7 @@
 import asyncio
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, ContextManager, Union
+from typing import Any, ContextManager, Union, cast
 from auspex_core.models.gcr import ImageTimeMode
 from loguru import logger
 
@@ -21,6 +21,9 @@ from pylatex import (
     Subsection,
     Tabular,
     simple_page_number,
+    LongTable,
+    MultiColumn,
+    LongTabularx,
 )
 from pylatex.utils import NoEscape, bold, italic
 from sanitize_filename import sanitize
@@ -36,6 +39,10 @@ from ...backends.snyk.model import SnykContainerScan
 from ...types import ScanType, ScanTypeSingle
 from ...utils.matplotlib import DEFAULT_CMAP
 from ...config import AppConfig
+from .tables import init_longtable
+from ..shared.format import format_decimal
+from ..shared.vulnerabilities import top_vulns_table
+from ..shared.statistics import statistics_box
 
 import random
 
@@ -56,11 +63,6 @@ def _do_create_document(
     d = LatexDocument(scan, prev_scans)
     d.generate_pdf()
     return d
-
-
-# TODO: move this function to a more appropriate module
-def format_decimal(n: Union[int, float]) -> str:
-    return f"{n:.2f}"
 
 
 SectionContext = ContextManager[Any]
@@ -94,7 +96,7 @@ class LatexDocument:
             "margin": "2.54cm",
             # "headheight": "20pt",
             # "headsep": "10pt",
-            # "includeheadfoot": True
+            "includeheadfoot": True,
         }
         return Document(
             self.filename,
@@ -107,8 +109,10 @@ class LatexDocument:
             self.add_preamble()
             self.add_header()
             self.add_mean_trend_plot()
-            # self.add_statistics_box()
-            # self.add_vulnerability_piechart()
+            self.add_statistics_box()
+            self.add_top_vuln_table()
+            self.add_top_vuln_upgradable_table()
+            self.add_severity_piechart()
             # self.add_vulnerability_scatterplot()
             # self.add_vulnerability_table()
             # self.add_vulnerability_table_by_severity()
@@ -163,6 +167,126 @@ class LatexDocument:
         self.doc.preamble.append(header)
         self.doc.change_document_style("header")
 
+    def add_severity_piechart(self) -> None:
+        """Adds pie chart of CVSS severity distribution."""
+        plt.clf()
+        fig, ax = plt.subplots()
+
+        size = 0.3
+        dist = self.scan.get_distribution_by_severity()
+        labels = [d.title() for d in dist.keys()]
+        values = [d for d in dist.values()]
+
+        def get_colors(cmapname):
+            return plt.colormaps[cmapname]([150, 125, 100])
+
+        # plt.colormaps["Yellows"] = yellow_cmp
+
+        low = get_colors("Greens")
+        medium = get_colors("Yellows")
+        high = get_colors("Oranges")
+        critical = get_colors("Reds")
+        # colors = [low, medium, high, critical]
+
+        colors = [low[0], medium[0], high[0], critical[0]]
+
+        # Outer pie chart
+        wedges, texts = ax.pie(
+            values,
+            radius=1,
+            colors=colors,
+            wedgeprops=dict(width=0.7, edgecolor="black", linewidth=0.5),
+            startangle=90,
+            counterclock=False,
+        )
+        #
+        plt.legend(
+            wedges,
+            ["Low", "Medium", "High", "Critical"],
+            title="Severity",
+            loc="upper left",
+            bbox_to_anchor=(1, 0, 0.5, 1),
+        )
+
+        # TODO: Add wedge labels
+        # Total number of vulnerabilities as well
+
+        ax.set(aspect="equal", title="Pie plot with `ax.pie`")
+        # Save fig and store its filename
+        fig_filename = f"{self.filename}_pie.pdf"
+        plt.savefig(fig_filename)
+        self.plots.append(fig_filename)
+
+        with self.doc.create(Section("Pie")):
+            self.doc.append("mmm pie")
+            with self.doc.create(Figure(position="htbp")) as plot:
+                plot.add_image(fig_filename, width=NoEscape(r"\textwidth"))
+                # plot.add_plot(width=NoEscape(r"0.5\textwidth"), *args, **kwargs)
+                plot.add_caption("I am a caption.")
+            self.doc.append("Created using matplotlib.")
+
+    def add_top_vuln_table(self) -> None:
+        """Adds a table with the top N vulnerabilities."""
+        self._add_top_vulnerability_table(upgradable=False)
+
+    def add_top_vuln_upgradable_table(self) -> None:
+        """Adds a table with the top N upgradable vulnerabilities."""
+        self._add_top_vulnerability_table(upgradable=True)
+
+    def _add_top_vulnerability_table(self, upgradable: bool, maxrows: int = 5) -> None:
+        """Adds a table with the top N vulnerabilities.
+
+        Parameters
+        ----------
+        upgradable : `bool`
+            Whether to only show upgradable vulnerabilities
+        maxrows : `int`
+            Maximum number of rows to show
+            TODO: make this configurable
+        """
+        data = top_vulns_table(self.scan, upgradable=upgradable, maxrows=maxrows)
+        if not data.rows:
+            logger.info(f"No vulnerabilities to report for report {self.scan.id}")
+            return
+
+        with self.doc.create(Section(data.title)) as section:  # type: Section
+            section = cast(Section, section)  # mypy
+            table_spec = " ".join(["l"] * len(data.header))
+            with self.doc.create(LongTabularx(table_spec, booktabs=True)) as table:
+                table = cast(LongTabularx, table)
+                init_longtable(table, data.header)
+                for row in data.rows:
+                    table.add_row(row)
+
+    def add_top_common_table(self) -> None:
+        """NOTE: UNUSED + UNSTABLE"""
+        with self.doc.create(Section("Top 5 Most Common Vulnerabilities")):
+            maxrows = 5
+            columns = [
+                "Vulnerability",  # Name
+                "CVSS ID",  # ID
+                "CVSS Score",  # 0-10
+                "Upgradable",  # Yes/No
+                "Count",  # n times
+            ]
+            ncols = len(columns)
+            table_spec = " ".join(["l"] * ncols)
+            with self.doc.create(LongTable(table_spec)) as table:  # type: LongTable
+                table = cast(LongTable, table)
+                init_longtable(table, columns)
+                most_severe = self.scan.most_severe_n(maxrows)
+                for vuln in most_severe:
+                    table.add_row(
+                        (
+                            NoEscape(vuln.title),
+                            NoEscape(vuln.get_id()),
+                            NoEscape(format_decimal(vuln.get_cvss_score())),
+                            NoEscape(vuln.is_upgradable),
+                            NoEscape(f"{vuln.count}"),
+                        )
+                    )
+                # if not 5: pad out table with empty rows
+
     def add_mean_trend_plot(self) -> None:
         """Attempts to add a mean CVSSv3 score trend plot to the document."""
         section = self.doc.create(Section("Trend"))
@@ -174,7 +298,7 @@ class LatexDocument:
             self._do_add_mean_trend_plot_none(section)
 
     def _do_add_mean_trend_plot_none(self, section: SectionContext) -> None:
-        logger.info("No previous scans to compare to.")
+        logger.info("No previous data to compare with.")
         with section:
             self.doc.append(
                 NoEscape(
@@ -220,8 +344,6 @@ class LatexDocument:
             scan.get_timestamp(image=True, mode=ImageTimeMode.CREATED) for scan in scans
         ]
         score = [scan.cvss.mean for scan in scans]
-        if AppConfig().debug:
-            time, score = self._mock_scan_values(score_min=3, score_max=7)
         ax.scatter(time, score)
 
         # Format dates
@@ -256,59 +378,24 @@ class LatexDocument:
                 plot.add_caption("I am a caption.")
             self.doc.append("Created using matplotlib.")
 
-    def _mock_scan_values(
-        self, n: int = 50, score_min: int = 0, score_max: int = 10
-    ) -> tuple[list[datetime], list[float]]:
-        time = [
-            datetime(year=2022, month=random.randint(1, 6), day=random.randint(1, 28))
-            for _ in range(n)
-        ]
-        score = [random.uniform(score_min, score_max) for _ in range(len(time))]
-        return time, score
-
     def add_statistics_box(self) -> None:
-        # with self.doc.create(Section("Vulnerability Distribution")):
-        #     self.doc.append("Some text")
-        with self.doc.create(Section("Statistics", False)):
-            dist = self.scan.get_distribution_by_severity()
-            prio = ["critical", "high", "medium", "low"]
-            highest_severity = "low"  # default to low
-            for p in prio:
-                if dist.get(p):
-                    highest_severity = p
-                    break
-
+        columns = [
+            "Median CVSS Score",
+            "Mean CVSS Score",
+            "Standard Deviation",
+            "Max CVSS Score",
+            "Highest Severity",
+        ]
+        tabledata = statistics_box(self.scan)
+        with self.doc.create(Section(tabledata.title)):
+            table_spec = " ".join(["l"] * len(tabledata.header))
             with self.doc.create(
-                Tabular(
-                    "l l",
-                    row_height=1.5,
-                    # col_space=10,
-                    width=2,
-                )
-            ) as table:
-                table.add_row(
-                    "Median CVSS Score:",
-                    format_decimal(self.scan.cvss.median),
-                )
-                table.add_row(
-                    "Mean CVSS Score:",
-                    format_decimal(self.scan.cvss.mean),
-                )
-                table.add_row(
-                    "Standard Deviation:",
-                    format_decimal(self.scan.cvss.stdev),
-                ),
-                table.add_row(
-                    "Max CVSS Score:",
-                    format_decimal(self.scan.cvss.max),
-                ),
-                table.add_row(
-                    "Highest severity:",
-                    highest_severity,
-                ),
-
-    # def add_factbox(self) -> None:
-    #     pass
+                LongTabularx(table_spec, row_height=1.5, booktabs=True)
+            ) as table:  # type: LongTable
+                table = cast(LongTabularx, table)
+                init_longtable(table, columns)
+                for row in tabledata.rows:
+                    table.add_row(row)
 
     def add_scatterplot(self) -> None:
         # age = ([9, 7, 8, 11, 15, 14, 18],)

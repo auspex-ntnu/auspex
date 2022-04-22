@@ -128,6 +128,22 @@ class SnykVulnerability(BaseModel):
             return severity_scores.get(values.get("severity", ""), 0.0)
         return v
 
+    @property
+    def is_upgradable(self) -> bool:
+        return self.isUpgradable
+
+    def get_id(self) -> str:
+        # TODO: Add support for multiple prios
+        # This is extremely hacky!
+        prios = ["CVE", "CWE", "ALTERNATIVE"]
+        for prio in prios:
+            if not hasattr(self.identifiers, prio):
+                continue
+            ids = getattr(self.identifiers, prio)
+            if len(ids) > 0:
+                return ids[0]
+        return self.id  # fall back on Snyk ID
+
     def get_numpy_color(self) -> MplRGBAColor:
         return get_cvss_color(self.cvssScore)
 
@@ -370,8 +386,27 @@ class SnykContainerScan(BaseModel):
             key=lambda v: v.cvssScore if v is not None else 0.0,
         )
 
-    def most_severe_n(self, n: Optional[int] = 5) -> list[SnykVulnerability]:
+    def most_severe_n(
+        self, n: Optional[int] = 5, upgradable: bool = False
+    ) -> list[SnykVulnerability]:
+        """Returns the `n` most severe vulnerabilities (if any), optionally only upgradable ones.
+
+        Parameters
+        ----------
+        n : `int`, optional
+            The number of vulnerabilities to return.
+        upgradable : `bool`, optional
+            If True, only upgradable vulnerabilities are returned.
+
+        Returns
+        -------
+        `list[SnykVulnerability]`
+            The `n` most severe vulnerabilities (if any), optionally only upgradable ones.
+        """
+        # TODO: optimize memory usage by utilizing generators better
         v = sorted(self.vulnerabilities, key=lambda v: v.cvssScore, reverse=True)
+        if upgradable:
+            v = list(filter(lambda v: v.isUpgradable, v))
         if n and len(v) > n:
             return v[:n]
         return v

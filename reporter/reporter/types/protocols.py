@@ -21,12 +21,27 @@ class VulnerabilityType(Protocol):
     def cvssScore(self) -> float:
         ...
 
+    @property
+    def title(self) -> str:
+        ...
+
+    @property
+    def severity(self) -> str:
+        ...
+
+    @property
+    def is_upgradable(self) -> bool:
+        ...
+
     def get_numpy_color(self) -> MplRGBAColor:
         ...
 
     def get_age_score_color(
         self, timetype: CVETimeType
     ) -> tuple[int, float, MplRGBAColor]:
+        ...
+
+    def get_id(self) -> str:
         ...
 
 
@@ -126,6 +141,13 @@ class ScanType(Protocol):
         """Get most severe vulnerability"""
         ...
 
+    def most_severe_n(
+        self, n: Optional[int] = 5, upgradable: bool = False
+    ) -> list[VulnerabilityType]:
+        """Returns the `n` most severe vulnerabilities (if any), optionally only upgradable ones."""
+
+        ...
+
     @property
     def upgrade_paths(self) -> list[str]:
         """
@@ -164,6 +186,10 @@ class ScanTypeAggregate(ScanType, Protocol):
 
     @property
     def scans(self) -> list[ScanTypeSingle]:
+        ...
+
+    @property  # bandaid until everything is renamed from "scan" to "report"
+    def reports(self) -> list[ScanTypeSingle]:
         ...
 
 

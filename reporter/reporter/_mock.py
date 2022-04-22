@@ -1,7 +1,9 @@
 from datetime import datetime, timedelta
 import io
 from pathlib import Path
+import pickle
 import random
+from typing import Optional
 from auspex_core.models.cve import CVSS
 from auspex_core.models.gcr import ImageInfo
 from auspex_core.models.scan import CVSSv3Distribution, ReportData
@@ -17,17 +19,69 @@ from .backends.snyk.model import SnykContainerScan
 from .config import AppConfig
 from .frontends.latex import create_document
 from .models import ReportRequestIn
+from .types.protocols import ScanTypeSingle
 from .utils.firestore import get_firestore_document
 from .db import get_prev_scans
 
 mockrouter = fastapi.APIRouter()
 
 
-def get_mock_reportdata(report: ReportData, n: int = 100) -> list[ReportData]:
+@mockrouter.post("/reportmock")
+async def generate_report_mock(r: ReportRequestIn) -> StreamingResponse:
+    scan = await get_mock_report(r.document_id[0])
+    prev_scans = get_mock_reportdata(scan.image, n=100)
+
+    outdoc = await create_document(scan, prev_scans)
+    if not outdoc.path.exists():
+        raise HTTPException(500, "Failed to generate report.")
+
+    # Send report file back as a streaming response
+    with open(outdoc.path, "rb") as f:
+        return StreamingResponse(io.BytesIO(f.read()), media_type="application/pdf")
+
+
+@mockrouter.post("/aggregatemock")
+async def generate_aggregate_mock() -> None:
+    import json
+
+    files = ["phpscan.json", "mongoscan.json", "mariadbscan.json"]
+    scans = []
+    for filename in files:
+        with open(f"../_scans/{filename}", "r") as jsonfile:
+            d = json.load(jsonfile)
+        # Parse scan log and create report
+        scan = SnykContainerScan(**d)
+        scans.append(scan)
+    ag = AggregateScan(scans=scans)
+    print(ag)
+
+
+def get_mock_reportdata(
+    image: Optional[ImageInfo] = None, n: int = 100
+) -> list[ReportData]:
+    def get_image(image: Optional[ImageInfo]) -> ImageInfo:
+        return ImageInfo(
+            imageSizeBytes=image.image_size_bytes if image else "123",
+            layerId=image.layer_id if image else "123",
+            mediaType=image.media_type if image else "123",
+            tag=[
+                random.choice(
+                    ["1.0.0", "2.0.0", "3.0.0", "latest", "test", "latest-test"]
+                )
+            ],
+            timeCreatedMs=datetime(
+                year=2022, month=random.randint(1, 6), day=random.randint(1, 28)
+            ),
+            timeUploadedMs=datetime(
+                year=2022, month=random.randint(1, 6), day=random.randint(1, 28)
+            ),
+            image=image.image if image else "telenor/mock-img",
+        )
+
     return [
         ReportData(
             id="mock",
-            image=report.image,
+            image=get_image(image),
             timestamp=datetime(
                 year=2022, month=random.randint(1, 6), day=random.randint(1, 28)
             ),
@@ -56,45 +110,14 @@ def get_mock_reportdata(report: ReportData, n: int = 100) -> list[ReportData]:
     ]
 
 
-@mockrouter.post("/reportmock")
-async def generate_report_mock(r: ReportRequestIn) -> StreamingResponse:
-    import json
-    import time
+async def get_mock_report(docid: str) -> ScanTypeSingle:
+    from .main import scan_from_docid
 
-    doc = await get_firestore_document(r.document_id[0], AppConfig().collection_reports)
-    d = doc.to_dict()
-    if not d:
-        raise HTTPException(status_code=404, detail="Document not found")
-    scan = ReportData(**d)
-
-    prev_scans = await get_prev_scans(
-        scan,
-        collection=AppConfig().collection_reports,
-        max_age=timedelta(weeks=24),
-        ignore_self=True,
-        skip_historical=False,  # FIXME: set to True & should be envvar
-    )
-
-    outdoc = await create_document(scan, prev_scans)
-    if not outdoc.path.exists():
-        raise HTTPException(500, "Failed to generate report.")
-
-    # Send report file back as a streaming response
-    with open(outdoc.path, "rb") as f:
-        return StreamingResponse(io.BytesIO(f.read()), media_type="application/pdf")
-
-
-@mockrouter.post("/aggregatemock")
-async def generate_aggregate_mock() -> None:
-    import json
-
-    files = ["phpscan.json", "mongoscan.json", "mariadbscan.json"]
-    scans = []
-    for filename in files:
-        with open(f"../_scans/{filename}", "r") as jsonfile:
-            d = json.load(jsonfile)
-        # Parse scan log and create report
-        scan = SnykContainerScan(**d)
-        scans.append(scan)
-    ag = AggregateScan(scans=scans)
-    print(ag)
+    try:
+        with open(f"{docid}.pkl", "rb") as f:
+            return pickle.load(f)
+    except:
+        scan = await scan_from_docid(docid, "auspex-logs")
+        with open(f"{docid}.pkl", "wb") as f:
+            pickle.dump(scan, f)
+        return scan
