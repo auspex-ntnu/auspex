@@ -27,6 +27,7 @@ from ...cve import (
     UpgradabilityCounter,
 )
 from ...utils import npmath
+from ...frontends.shared.models import VulnAgePoint
 
 # JSON: .vulnerabilities[n].identifiers
 class Identifiers(BaseModel):
@@ -155,7 +156,7 @@ class SnykVulnerability(BaseModel):
     def get_age_score_color(
         self,
         timetype: CVETimeType = DEFAULT_CVSS_TIMETYPE,
-    ) -> tuple[int, float, MplRGBAColor]:
+    ) -> VulnAgePoint:
         """
         Retrieves the vulnerability's age (in days), score and numpy color (determined by its CVSS score).
 
@@ -163,10 +164,11 @@ class SnykVulnerability(BaseModel):
         """
         # NOTE: catch AttributeError?
         vuln_date = getattr(self, timetype.value)  # type: datetime
-        age_days = 0
-        if vuln_date is not None:
-            age_days = (datetime.now(vuln_date.tzinfo) - vuln_date).days
-        return age_days, self.cvssScore, self.get_numpy_color()
+        if vuln_date is None:
+            vuln_date = datetime.utcnow()
+        return VulnAgePoint(
+            timestamp=vuln_date, score=self.cvssScore, color=self.get_numpy_color()
+        )
 
     # TODO: determine if vulnerability is related to Docker
 
@@ -592,8 +594,10 @@ class SnykContainerScan(BaseModel):
 
     def get_vulns_age_score_color(
         self,
-    ) -> list[tuple[int, float, MplRGBAColor]]:
-        return [vuln.get_age_score_color() for vuln in self.vulnerabilities]
+    ) -> list[VulnAgePoint]:
+        """Returns a list of `VulnAgePoint` objects for all vulnerabilities."""
+        l = [vuln.get_age_score_color() for vuln in self.vulnerabilities]
+        return sorted(l, key=lambda v: v.timestamp)
 
     @cache
     def cvss_scores(self, ignore_zero: bool = True) -> list[float]:

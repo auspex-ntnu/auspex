@@ -7,12 +7,23 @@
 # properties with snake_case names that retrieve the original camelCase attribute values.
 
 from datetime import datetime
-from typing import Iterable, Optional, Protocol, Any, Sequence, runtime_checkable
+from typing import (
+    Iterable,
+    Optional,
+    Protocol,
+    Any,
+    Sequence,
+    runtime_checkable,
+    TYPE_CHECKING,
+)
 
 from .nptypes import MplRGBAColor
 
 from auspex_core.models.gcr import ImageInfo, ImageTimeMode
 from auspex_core.models.cve import CVSS, CVETimeType
+
+if TYPE_CHECKING:
+    from ..frontends.shared.models import VulnAgePoint
 
 
 @runtime_checkable
@@ -36,9 +47,7 @@ class VulnerabilityType(Protocol):
     def get_numpy_color(self) -> MplRGBAColor:
         ...
 
-    def get_age_score_color(
-        self, timetype: CVETimeType
-    ) -> tuple[int, float, MplRGBAColor]:
+    def get_age_score_color(self, timetype: CVETimeType) -> "VulnAgePoint":
         ...
 
     def get_id(self) -> str:
@@ -167,6 +176,24 @@ class ScanType(Protocol):
     def get_distribution_by_severity(self) -> dict[str, int]:
         """Retrieves distribution of vulnerabiltiies grouped by their
         CVSS severity level."""
+        ...
+
+    def get_vulns_age_score_color(
+        self,
+    ) -> list["VulnAgePoint"]:
+        """Creates list of tuples representing vulnerabilities,
+        to be used as datapoints in a plot.
+
+        Each tuple contains the vulnerability's timestamp, its CVSS score, and its color.
+        The color is determined by the vulnerability's CVSS score.
+
+        The list is sorted by timestamp.
+
+        Returns
+        -------
+        list[VulnAgePoint]
+            List of tuples representing a datapoint for each vulnerability to be used in a plot.
+        """
         ...
 
 

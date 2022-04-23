@@ -16,6 +16,7 @@ from .model import SnykContainerScan, SnykVulnerability
 from ...utils import npmath
 from ...types.protocols import ScanTypeSingle
 import time
+from ...frontends.shared.models import VulnAgePoint
 
 # TODO: move this out the snyk module
 class AggregateScan(BaseModel):
@@ -281,8 +282,9 @@ class AggregateScan(BaseModel):
             c.update(mc)
         return c.most_common(n)  # only here do we use n
 
-    def get_vuln_age_score_color(self) -> list[tuple[int, float, MplRGBAColor]]:
-        l: list[tuple[int, float, MplRGBAColor]] = []
+    def get_vulns_age_score_color(self) -> list[VulnAgePoint]:
+        """Retrieves vulnerability age, score and color for all vulnerabilities in all reports."""
+        l = []  # type: list[VulnAgePoint]
         for scan in self.scans:
             l.extend(scan.get_vulns_age_score_color())
-        return l
+        return sorted(l, key=lambda v: v.timestamp)
