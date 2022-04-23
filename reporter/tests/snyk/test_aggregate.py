@@ -57,9 +57,8 @@ def test_fuzz_AggregateScan(ag: AggregateScan) -> None:
     assert ag.n_high == sevvulns["high"]
     assert ag.n_critical == sevvulns["critical"]
 
-    if len(ag.scans) > 0:
-        with pytest.raises(ValueError):
-            ag._get_vulnerabilities_by_severity("invalid_severity")
+    with pytest.raises(ValueError):
+        list(ag._get_vulnerabilities_by_severity("invalid_severity"))
 
     # Test that correct number of scan IDs are retrieved
     assert len(ag.get_scan_ids()) == len(list(ag.scans))
@@ -89,5 +88,5 @@ def test_fuzz_AggregateScan(ag: AggregateScan) -> None:
     assert len(mc) <= n
 
     # Test age, score, color retrieval
-    asc = ag.get_vuln_age_score_color()
+    asc = ag.get_vulns_age_score_color()
     assert len(asc) == len(list(ag.vulnerabilities))

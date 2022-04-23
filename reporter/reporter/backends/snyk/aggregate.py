@@ -3,12 +3,14 @@ from dataclasses import dataclass
 from datetime import datetime
 from functools import _lru_cache_wrapper, cache, cached_property
 from itertools import chain
-from typing import Iterator, Optional, TypeVar
+from typing import Iterable, Iterator, Optional, TypeVar
+from auspex_core.models.cve import CVESeverity
 from auspex_core.models.gcr import ImageInfo, ImageTimeMode
 
 import numpy as np
 from loguru import logger
 from pydantic import BaseModel, Field, validator
+from more_itertools import ilen
 
 from ...types.nptypes import MplRGBAColor
 from ...types.cvss import CVSS
@@ -100,38 +102,37 @@ class AggregateScan(BaseModel):
         )
 
     @property
-    def low(self) -> list[SnykVulnerability]:
+    def low(self) -> Iterable[SnykVulnerability]:
         return self._get_vulnerabilities_by_severity("low")
 
     @property
-    def medium(self) -> list[SnykVulnerability]:
+    def medium(self) -> Iterable[SnykVulnerability]:
         return self._get_vulnerabilities_by_severity("medium")
 
     @property
-    def high(self) -> list[SnykVulnerability]:
+    def high(self) -> Iterable[SnykVulnerability]:
         return self._get_vulnerabilities_by_severity("high")
 
     @property
-    def critical(self) -> list[SnykVulnerability]:
+    def critical(self) -> Iterable[SnykVulnerability]:
         return self._get_vulnerabilities_by_severity("critical")
 
-    # BACKLOG: optimize these n_<severity> methods
     @property
     def n_low(self) -> int:
-        return len(self.low)
+        return ilen(self.low)
 
     @property
     def n_medium(self) -> int:
-        return len(self.medium)
+        return ilen(self.medium)
 
     @property
     def n_high(self) -> int:
-        return len(self.high)
+        return ilen(self.high)
 
     @property
     def n_critical(self) -> int:
         """Number of critical vulnerabilities."""
-        return len(self.critical)
+        return ilen(self.critical)
 
     @cache
     def cvss_scores(self, ignore_zero: bool = True) -> list[float]:
@@ -172,10 +173,10 @@ class AggregateScan(BaseModel):
 
     def _get_vulnerabilities_by_severity(
         self, severity: str
-    ) -> list[SnykVulnerability]:
-        # FIXME: will not raise exception on invalid severity if aggregate report has no scans
+    ) -> Iterable[SnykVulnerability]:
+        if CVESeverity.get(severity) == CVESeverity.UNDEFINED.value:
+            raise ValueError(f"Invalid severity: {severity}")
 
-        l = []
         for scan in self.scans:
             attrs = {
                 "low": scan.low,
@@ -186,8 +187,7 @@ class AggregateScan(BaseModel):
             vulns = attrs.get(severity)
             if vulns is None:
                 raise ValueError(f"Unknown severity: '{severity}'")
-            l.extend(vulns)
-        return l
+            yield from vulns
 
     def get_scan_ids(self) -> list[str]:
         """Retrieves IDs of all scans."""

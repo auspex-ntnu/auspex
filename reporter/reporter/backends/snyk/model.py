@@ -6,7 +6,7 @@ from collections import Counter
 from datetime import datetime, timezone
 from functools import _lru_cache_wrapper, cache, cached_property
 from os import PathLike
-from typing import Any, Iterator, Optional, Sequence, Union
+from typing import Any, Iterable, Iterator, Optional, Sequence, Union
 from auspex_core.models.gcr import ImageInfo, ImageTimeMode
 
 import numpy as np
@@ -14,7 +14,7 @@ from loguru import logger
 from numpy.typing import NDArray
 from pydantic import BaseModel, Field, root_validator, validator
 from pydantic.fields import ModelField
-
+from more_itertools import ilen
 from auspex_core.models.cve import CVETimeType, CVESeverity, CVSS
 
 from ...types.nptypes import MplRGBAColor
@@ -425,44 +425,44 @@ class SnykContainerScan(BaseModel):
         )
 
     @property
-    def low(self) -> list[SnykVulnerability]:
+    def low(self) -> Iterable[SnykVulnerability]:
         """All vulnerabilities with a CVSS rating of low."""
-        return self._get_vulns_by_severity_level("low")
+        return self._get_vulnerabilities_by_severity("low")
 
     @property
-    def medium(self) -> list[SnykVulnerability]:
+    def medium(self) -> Iterable[SnykVulnerability]:
         """All vulnerabilities with a CVSS rating of medium."""
-        return self._get_vulns_by_severity_level("medium")
+        return self._get_vulnerabilities_by_severity("medium")
 
     @property
-    def high(self) -> list[SnykVulnerability]:
+    def high(self) -> Iterable[SnykVulnerability]:
         """All vulnerabilities with a CVSS rating of high."""
-        return self._get_vulns_by_severity_level("high")
+        return self._get_vulnerabilities_by_severity("high")
 
     @property
-    def critical(self) -> list[SnykVulnerability]:
+    def critical(self) -> Iterable[SnykVulnerability]:
         """All vulnerabilities with a CVSS rating of critical."""
-        return self._get_vulns_by_severity_level("critical")
+        return self._get_vulnerabilities_by_severity("critical")
 
     @property
     def n_low(self) -> int:
         """All vulnerabilities with a CVSS rating of low."""
-        return len(self.low)
+        return ilen(self.low)
 
     @property
     def n_medium(self) -> int:
         """All vulnerabilities with a CVSS rating of medium."""
-        return len(self.medium)
+        return ilen(self.medium)
 
     @property
     def n_high(self) -> int:
         """All vulnerabilities with a CVSS rating of high."""
-        return len(self.high)
+        return ilen(self.high)
 
     @property
     def n_critical(self) -> int:
         """All vulnerabilities with a CVSS rating of critical."""
-        return len(self.critical)
+        return ilen(self.critical)
 
     @property
     def low_by_upgradability(self) -> UpgradabilityCounter:
@@ -619,11 +619,17 @@ class SnykContainerScan(BaseModel):
     #     for vuln in self.vulnerabilities:
     #         yield vuln.cvssScore
 
-    def _get_vulns_by_severity_level(self, level: str) -> list[SnykVulnerability]:
-        return [v for v in self.vulnerabilities if v.severity == level]
+    def _get_vulnerabilities_by_severity(
+        self, severity: str
+    ) -> Iterable[SnykVulnerability]:
+        if CVESeverity.get(severity) == CVESeverity.UNDEFINED.value:
+            raise ValueError(f"Invalid severity level: {severity}")
+        for v in self.vulnerabilities:
+            if v.severity == severity:
+                yield v
 
     def _get_vuln_upgradability_distribution(
-        self, vulns: list[SnykVulnerability]
+        self, vulns: Iterable[SnykVulnerability]
     ) -> UpgradabilityCounter:
         c = UpgradabilityCounter()
         for vuln in vulns:
