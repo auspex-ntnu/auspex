@@ -212,7 +212,7 @@ class LatexDocument:
                 table = cast(LongTabularx, table)
                 init_longtable(table, data.header)
                 for row in data.rows:
-                    table.add_row(row)
+                    table.add_row([NoEscape(c) for c in row])
 
     def add_top_common_table(self) -> None:
         """NOTE: UNUSED + UNSTABLE"""
@@ -290,7 +290,7 @@ class LatexDocument:
                 table = cast(LongTabularx, table)
                 init_longtable(table, tabledata.header)
                 for row in tabledata.rows:
-                    table.add_row(row)
+                    table.add_row([NoEscape(c) for c in row])
 
     def add_scatter_vuln_age(self) -> None:
         plot = scatter_vulnerability_age(self.scan, self.filename)
