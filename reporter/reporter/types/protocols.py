@@ -23,35 +23,35 @@ from auspex_core.models.gcr import ImageInfo, ImageTimeMode
 from auspex_core.models.cve import CVSS, CVETimeType
 
 if TYPE_CHECKING:
-    from ..frontends.shared.models import VulnAgePoint
+    from ..frontends.shared.models import VulnAgePoint  # pragma: no cover
 
 
 @runtime_checkable
 class VulnerabilityType(Protocol):
     @property
     def cvssScore(self) -> float:
-        ...
+        """CVSSv3 score of the vulnerability."""
 
     @property
     def title(self) -> str:
-        ...
+        """Title of the vulnerability."""
 
     @property
     def severity(self) -> str:
-        ...
+        """CVSSv3 severity of the vulnerability."""
 
     @property
     def is_upgradable(self) -> bool:
-        ...
+        """Whether or not the vulnerability can be mitigated by upgrading."""
 
     def get_numpy_color(self) -> MplRGBAColor:
-        ...
+        """Get the numpy color for the vulnerability - determined by its score."""
 
     def get_age_score_color(self, timetype: CVETimeType) -> "VulnAgePoint":
-        ...
+        """Get the age, score and color of the vulnerability."""
 
     def get_id(self) -> str:
-        ...
+        """Get the unique ID of the vulnerability."""
 
 
 # TODO: Use generics to annotate list contents
@@ -69,7 +69,7 @@ class ScanType(Protocol):
 
     @property
     def id(self) -> str:
-        ...
+        """The unique ID of the report."""
 
     def get_timestamp(
         self, image: bool = True, mode: ImageTimeMode = ImageTimeMode.CREATED
@@ -89,94 +89,75 @@ class ScanType(Protocol):
         `datetime`
             The timestamp of the scan (or image).
         """
-        ...
 
     @property
     def cvss(self) -> CVSS:
-        """CVSS object for the scan."""
-        ...
+        """CVSS object for the scan, containing CVSS metrics."""
 
     @property
     def low(self) -> Sequence[VulnerabilityType]:
         """Vulnerabilities with a severity of 'low'."""
-        ...
 
     @property
     def medium(self) -> Sequence[VulnerabilityType]:
         """Vulnerabilities with a severity of 'medium'."""
-        ...
 
     @property
     def high(self) -> Sequence[VulnerabilityType]:
         """Vulnerabilities with a severity of 'high'."""
-        ...
 
     @property
     def critical(self) -> Sequence[VulnerabilityType]:
         """Vulnerabilities with a severity of 'critical'."""
-        ...
 
     @property
     def vulnerabilities(self) -> Iterable[VulnerabilityType]:
         """All vulnerabilities."""
-        ...
 
     @property
     def n_low(self) -> int:
         """Number of vulnerabilities with a severity of 'low'."""
-        ...
 
     @property
     def n_medium(self) -> int:
         """Number of vulnerabilities with a severity of 'medium'."""
-        ...
 
     @property
     def n_high(self) -> int:
         """Number of vulnerabilities with a severity of 'high'."""
-        ...
 
     @property
     def n_critical(self) -> int:
         """Number of vulnerabilities with a severity of 'critical'."""
-        ...
 
     def most_common_cve(self, n: int) -> list[tuple[str, int]]:
         """Sorted list of tuples of CVE IDs and number of occurences."""
-        ...
 
     @property
     def most_severe(self) -> Any:  # TODO: decide on return type
         """Get most severe vulnerability"""
-        ...
 
     def most_severe_n(
         self, n: Optional[int] = 5, upgradable: bool = False
     ) -> list[VulnerabilityType]:
         """Returns the `n` most severe vulnerabilities (if any), optionally only upgradable ones."""
 
-        ...
-
     @property
     def upgrade_paths(self) -> list[str]:
         """
         Return a list of upgrade paths for all vulnerabilities.
         """
-        ...
 
     @property
     def dockerfile_instructions(self) -> list[str]:
         """Get list of Dockerfile instructions for all vulnerabilities."""
-        ...
 
     def cvss_scores(self, ignore_zero: bool) -> list[float]:
         """Get list of CVSSv3 scores of all vulnerabilities."""
-        ...
 
     def get_distribution_by_severity(self) -> dict[str, int]:
         """Retrieves distribution of vulnerabiltiies grouped by their
         CVSS severity level."""
-        ...
 
     def get_vulns_age_score_color(
         self,
@@ -194,7 +175,6 @@ class ScanType(Protocol):
         list[VulnAgePoint]
             List of tuples representing a datapoint for each vulnerability to be used in a plot.
         """
-        ...
 
 
 @runtime_checkable
@@ -204,7 +184,7 @@ class ScanTypeSingle(ScanType, Protocol):
     # id: str
     @property
     def image(self) -> ImageInfo:
-        ...
+        """ImageInfo object for the report."""
 
 
 @runtime_checkable
@@ -213,11 +193,11 @@ class ScanTypeAggregate(ScanType, Protocol):
 
     @property
     def scans(self) -> list[ScanTypeSingle]:
-        ...
+        """All reports in the aggregate."""
 
     @property  # bandaid until everything is renamed from "scan" to "report"
     def reports(self) -> list[ScanTypeSingle]:
-        ...
+        """All reports in the aggregate (alias)."""
 
 
 @runtime_checkable
@@ -227,4 +207,4 @@ class Plottable(Protocol):
     """
 
     def get_age_and_mean_score(self) -> tuple[datetime, float]:
-        ...
+        """Get age and mean score for the object."""
