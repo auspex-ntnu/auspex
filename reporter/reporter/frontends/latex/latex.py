@@ -37,9 +37,8 @@ from auspex_core.models.scan import ReportData
 from ...cve import CVSS_DATE_BRACKETS
 from ...backends.snyk.model import SnykContainerScan
 from ...types import ScanType, ScanTypeSingle
-from ...utils.matplotlib import DEFAULT_CMAP
 from ...config import AppConfig
-from .tables import init_longtable
+from .table import init_longtable
 from ..shared.format import format_decimal
 from ..shared.vulnerabilities import top_vulns_table
 from ..shared.statistics import statistics_box
