@@ -34,14 +34,16 @@ import matplotlib.dates as mdates
 import numpy as np
 from auspex_core.models.scan import ReportData
 
-from ...cve import CVSS_DATE_BRACKETS
-from ...backends.snyk.model import SnykContainerScan
 from ...types import ScanType, ScanTypeSingle
 from ...config import AppConfig
 from .table import init_longtable
 from ..shared.format import format_decimal
-from ..shared.vulnerabilities import top_vulns_table
-from ..shared.statistics import statistics_box
+from ..shared.tables import top_vulns_table, statistics_table
+from ..shared.plots import (
+    piechart_severity,
+    scatter_mean_trend,
+    scatter_vulnerability_age,
+)
 
 import random
 
@@ -69,7 +71,7 @@ SectionContext = ContextManager[Any]
 
 class LatexDocument:
     filename: str
-    plots: list[str]
+    plots: list[Path]
     doc: Document
     scan: ScanTypeSingle
     prev_scans: list[ReportData]
@@ -108,10 +110,11 @@ class LatexDocument:
             self.add_preamble()
             self.add_header()
             self.add_mean_trend_plot()
-            self.add_statistics_box()
+            self.add_statistics_table()
             self.add_top_vuln_table()
             self.add_top_vuln_upgradable_table()
             self.add_severity_piechart()
+            self.add_scatter_vuln_age()
             # self.add_vulnerability_scatterplot()
             # self.add_vulnerability_table()
             # self.add_vulnerability_table_by_severity()
@@ -168,60 +171,14 @@ class LatexDocument:
 
     def add_severity_piechart(self) -> None:
         """Adds pie chart of CVSS severity distribution."""
-        plt.clf()
-        fig, ax = plt.subplots()
-
-        size = 0.3
-        dist = self.scan.get_distribution_by_severity()
-        labels = [d.title() for d in dist.keys()]
-        values = [d for d in dist.values()]
-
-        def get_colors(cmapname):
-            return plt.colormaps[cmapname]([150, 125, 100])
-
-        # plt.colormaps["Yellows"] = yellow_cmp
-
-        low = get_colors("Greens")
-        medium = get_colors("Yellows")
-        high = get_colors("Oranges")
-        critical = get_colors("Reds")
-        # colors = [low, medium, high, critical]
-
-        colors = [low[0], medium[0], high[0], critical[0]]
-
-        # Outer pie chart
-        wedges, texts = ax.pie(
-            values,
-            radius=1,
-            colors=colors,
-            wedgeprops=dict(width=0.7, edgecolor="black", linewidth=0.5),
-            startangle=90,
-            counterclock=False,
-        )
-        #
-        plt.legend(
-            wedges,
-            ["Low", "Medium", "High", "Critical"],
-            title="Severity",
-            loc="upper left",
-            bbox_to_anchor=(1, 0, 0.5, 1),
-        )
-
-        # TODO: Add wedge labels
-        # Total number of vulnerabilities as well
-
-        ax.set(aspect="equal", title="Pie plot with `ax.pie`")
-        # Save fig and store its filename
-        fig_filename = f"{self.filename}_pie.pdf"
-        plt.savefig(fig_filename)
-        self.plots.append(fig_filename)
-
+        plot = piechart_severity(self.scan, self.filename)
+        self.plots.append(plot)
         with self.doc.create(Section("Pie")):
             self.doc.append("mmm pie")
-            with self.doc.create(Figure(position="htbp")) as plot:
-                plot.add_image(fig_filename, width=NoEscape(r"\textwidth"))
-                # plot.add_plot(width=NoEscape(r"0.5\textwidth"), *args, **kwargs)
-                plot.add_caption("I am a caption.")
+            with self.doc.create(Figure(position="h")) as fig:
+                fig.add_image(str(plot), width=NoEscape(r"\textwidth"))
+                # fig.add_plot(width=NoEscape(r"0.5\textwidth"), *args, **kwargs)
+                fig.add_caption("I am a caption.")
             self.doc.append("Created using matplotlib.")
 
     def add_top_vuln_table(self) -> None:
@@ -309,121 +266,42 @@ class LatexDocument:
         """Adds a mean CVSSv3 score trend plot to the document by comparing
         the current scan to the previous scans and creating a scatter plot."""
 
-        # clear any previous matplotlib plots
-        # TODO: check if we need to do it differently when using the
-        # object oriented interface
-        plt.clf()
-
-        fig, ax = plt.subplots()
-
-        # Set up axes and labels
-        ax.set_title("CVSSv3 Mean Score Over Time")
-        ax.set_xlabel("Image Creation Time")
-        ax.set_ylabel("CVSSv3 Mean Score")
-        ax.set_ylim(0, 10)
-
-        # Plot data
-        scans = []  # type: list[ScanType]
-        # TODO: move this timezone fixing to a separate function
-        for scan in self.prev_scans + [self.scan]:  # type: ScanType
-            if scan.timestamp.tzinfo is None:
-                scan.timestamp = scan.timestamp.replace(tzinfo=timezone.utc)
-            scans.append(scan)
-        scans = sorted(scans, key=lambda x: x.timestamp)
-
-        ## IMPORTANT NOTE REGARDING DATES:
-        #
-        # We are plotting the mean CVSSv3 score over time using the CREATION TIME
-        # of each image as the X-axis values, NOT the time of when the scan took place.
-        #
-        # This is because we want to be able to support re-scanning older images
-        # without these images changing position on the X-axis (time) on the plot,
-        # and thus influencing the CVSS score trend line.
-        time = [
-            scan.get_timestamp(image=True, mode=ImageTimeMode.CREATED) for scan in scans
-        ]
-        score = [scan.cvss.mean for scan in scans]
-        ax.scatter(time, score)
-
-        # Format dates
-        # Make ticks on occurrences of each month:
-        ax.xaxis.set_major_locator(mdates.MonthLocator())
-        # Get only the month to show in the x-axis:
-        ax.xaxis.set_major_formatter(mdates.DateFormatter("%b"))
-        # '%b' means month as locale’s abbreviated name
-
-        # Trend line
-        time_ts = [t.timestamp() for t in time]
-        z = np.polyfit(time_ts, score, 1)
-        p = np.poly1d(z)
-        plt.plot(time, p(time_ts), color="r")
-
-        # Add legend and grid
-        plt.legend(["Score"])
-        plt.grid(True)
-
-        # Save fig and store its filename
-        fig_filename = f"{self.filename}_plot_trend.pdf"
-        plt.savefig(fig_filename)
-        self.plots.append(fig_filename)
+        plot = scatter_mean_trend(self.scan, self.prev_scans, self.filename)
+        self.plots.append(plot)
 
         with section:
+            nscans = len(self.prev_scans) + 1  # Old + new
             self.doc.append(
-                f"Mean CVSSv3 score trend for the {len(scans)} most recent scans"
+                f"Mean CVSSv3 score trend for the {nscans} most recent scans"
             )
-            with self.doc.create(Figure(position="htbp")) as plot:
-                plot.add_image(fig_filename, width=NoEscape(r"\textwidth"))
-                # plot.add_plot(width=NoEscape(r"0.5\textwidth"), *args, **kwargs)
-                plot.add_caption("I am a caption.")
+            with self.doc.create(Figure(position="h")) as fig:
+                fig.add_image(str(plot), width=NoEscape(r"\textwidth"))
+                # fig.add_plot(width=NoEscape(r"0.5\textwidth"), *args, **kwargs)
+                fig.add_caption("I am a caption.")
             self.doc.append("Created using matplotlib.")
 
-    def add_statistics_box(self) -> None:
-        columns = [
-            "Median CVSS Score",
-            "Mean CVSS Score",
-            "Standard Deviation",
-            "Max CVSS Score",
-            "Highest Severity",
-        ]
-        tabledata = statistics_box(self.scan)
+    def add_statistics_table(self) -> None:
+        tabledata = statistics_table(self.scan)
         with self.doc.create(Section(tabledata.title)):
             table_spec = " ".join(["l"] * len(tabledata.header))
             with self.doc.create(
                 LongTabularx(table_spec, row_height=1.5, booktabs=True)
             ) as table:  # type: LongTable
                 table = cast(LongTabularx, table)
-                init_longtable(table, columns)
+                init_longtable(table, tabledata.header)
                 for row in tabledata.rows:
                     table.add_row(row)
 
-    def add_scatterplot(self) -> None:
-        # age = ([9, 7, 8, 11, 15, 14, 18],)
-        # severity = [4, 5, 8, 3, 2, 6, 9]
-        asc = self.scan.get_vulns_age_score_color()
-        age = [t[0] for t in asc]
-        severity = [t[1] for t in asc]
-        color = [t[2] for t in asc]
+    def add_scatter_vuln_age(self) -> None:
+        plot = scatter_vulnerability_age(self.scan, self.filename)
+        self.plots.append(plot)
 
-        plt.scatter(age, severity, c=color, cmap=DEFAULT_CMAP)
-        plt.xlabel("Time unpatched since publication (days)")
-        plt.ylabel("severity score")
-        ticks = [d.date.days for d in CVSS_DATE_BRACKETS]
-        if max(ticks) < max(age):
-            ticks.insert(0, max(age) + 30)
-        x = range(len(ticks))
-        # plt.xticks(x, ticks)
-
-        # Save fig and store its filename
-        fig_filename = f"{self.filename}_vuln_scatter.pdf"
-        plt.savefig(fig_filename)
-        self.plots.append(fig_filename)
-
-        with self.doc.create(Section("Scatterplot")):
+        with self.doc.create(Section("Unpatched Vulnerabilities")) as section:
             self.doc.append("Take a look at this beautiful plot:")
-            with self.doc.create(Figure(position="htbp")) as plot:
-                plot.add_image(fig_filename, width=NoEscape(r"\textwidth"))
+            with self.doc.create(Figure(position="h")) as fig:
+                fig.add_image(str(plot), width=NoEscape(r"\textwidth"))
                 # plot.add_plot(width=NoEscape(r"0.5\textwidth"), *args, **kwargs)
-                plot.add_caption("I am a caption.")
+                fig.add_caption("I am a caption.")
             self.doc.append("Created using matplotlib.")
 
     def add_plot(self, *args, **kwargs) -> None:
