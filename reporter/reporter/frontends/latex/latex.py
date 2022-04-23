@@ -106,6 +106,7 @@ class LatexDocument:
         )
 
     def generate_pdf(self) -> Document:
+        """Fills the document with content and generates a PDF."""
         try:
             self.add_preamble()
             self.add_header()
@@ -128,7 +129,7 @@ class LatexDocument:
             self.delete_temp_files()
 
     def delete_temp_files(self) -> None:
-        # Delete plots after generating PDF
+        """Deletes all temporary files after generating document."""
         # Depending on how (non-)ephemeral these containers are, we could risk
         # using all 512MB of memory by carelessly writing to the in-memory filesystem.
         # As a precautionary measure, we make sure all temporary files are cleaned up.
@@ -214,35 +215,6 @@ class LatexDocument:
                 for row in data.rows:
                     table.add_row([NoEscape(c) for c in row])
 
-    def add_top_common_table(self) -> None:
-        """NOTE: UNUSED + UNSTABLE"""
-        with self.doc.create(Section("Top 5 Most Common Vulnerabilities")):
-            maxrows = 5
-            columns = [
-                "Vulnerability",  # Name
-                "CVSS ID",  # ID
-                "CVSS Score",  # 0-10
-                "Upgradable",  # Yes/No
-                "Count",  # n times
-            ]
-            ncols = len(columns)
-            table_spec = " ".join(["l"] * ncols)
-            with self.doc.create(LongTable(table_spec)) as table:  # type: LongTable
-                table = cast(LongTable, table)
-                init_longtable(table, columns)
-                most_severe = self.scan.most_severe_n(maxrows)
-                for vuln in most_severe:
-                    table.add_row(
-                        (
-                            NoEscape(vuln.title),
-                            NoEscape(vuln.get_id()),
-                            NoEscape(format_decimal(vuln.get_cvss_score())),
-                            NoEscape(vuln.is_upgradable),
-                            NoEscape(f"{vuln.count}"),
-                        )
-                    )
-                # if not 5: pad out table with empty rows
-
     def add_mean_trend_plot(self) -> None:
         """Attempts to add a mean CVSSv3 score trend plot to the document."""
         section = self.doc.create(Section("Trend"))
@@ -302,29 +274,4 @@ class LatexDocument:
                 fig.add_image(str(plot), width=NoEscape(r"\textwidth"))
                 # plot.add_plot(width=NoEscape(r"0.5\textwidth"), *args, **kwargs)
                 fig.add_caption("I am a caption.")
-            self.doc.append("Created using matplotlib.")
-
-    def add_plot(self, *args, **kwargs) -> None:
-        sev = self.scan.severity_v3()
-        columns = [s[0] for s in sev]
-        data = [s[1] for s in sev]
-        index = np.arange(len(columns)) + 0.3
-        bar_width = 0.4
-
-        # Add severity labels to ticks
-        fig, ax = plt.subplots()
-        ax.set_xticks(index, columns)
-        plt.bar(index, data, bar_width)
-
-        # Save fig and store its filename
-        fig_filename = f"{self.filename}_fig.pdf"
-        plt.savefig(fig_filename)
-        self.plots.append(fig_filename)
-
-        with self.doc.create(Section("I am a section")):
-            self.doc.append("Take a look at this beautiful plot:")
-            with self.doc.create(Figure(position="htbp")) as plot:
-                plot.add_image(fig_filename, width=NoEscape(r"\textwidth"))
-                # plot.add_plot(width=NoEscape(r"0.5\textwidth"), *args, **kwargs)
-                plot.add_caption("I am a caption.")
             self.doc.append("Created using matplotlib.")
