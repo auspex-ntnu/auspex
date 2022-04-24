@@ -22,6 +22,7 @@ from pylatex import (
     Subsection,
     Tabular,
     simple_page_number,
+    NewPage,
 )
 from pylatex.utils import NoEscape, bold, italic
 from sanitize_filename import sanitize
@@ -33,7 +34,7 @@ from ..shared.plots import (
     scatter_vulnerability_age,
 )
 from ..shared.tables import statistics_table, top_vulns_table
-from .table import init_longtable
+from .table import init_longtable, add_row
 
 # TODO: support aggregate scans
 
@@ -69,7 +70,8 @@ class LatexDocument:
         # otherwise the PDF will not be generated.
         # PyLatex (or LaTeX itself) does not handle it well.
         # TODO: make self.filename a Path and check if we can write to it?
-        self.filename = f"/tmp/{sanitize(scan.id)}".replace(" ", "_")
+        self.directory = "/tmp"  # TODO: use tempfile.gettempdir() or tempfile.mkdtemp()
+        self.filename = f"{self.directory}/{sanitize(scan.id)}".replace(" ", "_")
         self.doc = self._init_document()  # type: Document
         self.scan = scan
         self.prev_scans = prev_scans
@@ -99,12 +101,12 @@ class LatexDocument:
         try:
             self.add_preamble()
             self.add_header()
-            self.add_mean_trend_plot()
-            self.add_statistics_table()
-            self.add_top_vuln_table()
-            self.add_top_vuln_upgradable_table()
-            self.add_severity_piechart()
-            self.add_scatter_vuln_age()
+            self.add_plot_mean_trend()
+            self.add_table_statistics()
+            self.add_table_top_vuln()
+            self.add_table_top_vuln_upgradable()
+            self.add_plot_severity_piechart()
+            self.add_plot_scatter_vuln_age()
             # self.add_vulnerability_scatterplot()
             # self.add_vulnerability_table()
             # self.add_vulnerability_table_by_severity()
@@ -120,7 +122,7 @@ class LatexDocument:
     def delete_temp_files(self) -> None:
         """Deletes all temporary files after generating document."""
         # Depending on how (non-)ephemeral these containers are, we could risk
-        # using all 512MB of memory by carelessly writing to the in-memory filesystem.
+        # using all of the container's memory by carelessly writing to the in-memory filesystem.
         # As a precautionary measure, we make sure all temporary files are cleaned up.
         for plot in self.plots:
             Path(plot).unlink(missing_ok=True)
@@ -159,23 +161,11 @@ class LatexDocument:
         self.doc.preamble.append(header)
         self.doc.change_document_style("header")
 
-    def add_severity_piechart(self) -> None:
-        """Adds pie chart of CVSS severity distribution."""
-        plot = piechart_severity(self.scan, self.filename)
-        self.plots.append(plot.path)
-        with self.doc.create(Section(plot.title)):
-            self.doc.append(plot.description)
-            with self.doc.create(Figure(position="h")) as fig:
-                fig.add_image(str(plot.path), width=NoEscape(r"\textwidth"))
-                # fig.add_plot(width=NoEscape(r"0.5\textwidth"), *args, **kwargs)
-                fig.add_caption(plot.caption)
-            self.doc.append("Created using matplotlib.")
-
-    def add_top_vuln_table(self) -> None:
+    def add_table_top_vuln(self) -> None:
         """Adds a table with the top N vulnerabilities."""
         self._add_top_vulnerability_table(upgradable=False)
 
-    def add_top_vuln_upgradable_table(self) -> None:
+    def add_table_top_vuln_upgradable(self) -> None:
         """Adds a table with the top N upgradable vulnerabilities."""
         self._add_top_vulnerability_table(upgradable=True)
 
@@ -202,19 +192,19 @@ class LatexDocument:
                 table = cast(LongTabularx, table)
                 init_longtable(table, data.header)
                 for row in data.rows:
-                    table.add_row([NoEscape(c) for c in row])
+                    add_row(table, row)
 
-    def add_mean_trend_plot(self) -> None:
+    def add_plot_mean_trend(self) -> None:
         """Attempts to add a mean CVSSv3 score trend plot to the document."""
         section = self.doc.create(Section("Trend"))
         if self.prev_scans:
             # Actually add the plot if we have previous scans to compare to
-            self._do_add_mean_trend_plot(section)
+            self._do_add_plot_mean_trend(section)
         else:
             # Otherwise, just add a placeholder
-            self._do_add_mean_trend_plot_none(section)
+            self._do_add_plot_mean_trend_none(section)
 
-    def _do_add_mean_trend_plot_none(self, section: SectionContext) -> None:
+    def _do_add_plot_mean_trend_none(self, section: SectionContext) -> None:
         logger.info("No previous data to compare with.")
         with section:
             self.doc.append(
@@ -223,7 +213,7 @@ class LatexDocument:
                 )
             )
 
-    def _do_add_mean_trend_plot(self, section: SectionContext) -> None:
+    def _do_add_plot_mean_trend(self, section: SectionContext) -> None:
         """Adds a mean CVSSv3 score trend plot to the document by comparing
         the current scan to the previous scans and creating a scatter plot."""
         plot = scatter_mean_trend(self.scan, self.prev_scans, self.filename)
@@ -234,9 +224,9 @@ class LatexDocument:
             with self.doc.create(Figure(position="h")) as fig:
                 fig.add_image(str(plot.path), width=NoEscape(r"\textwidth"))
                 fig.add_caption(plot.caption)
-            self.doc.append("Created using matplotlib.")
+            # self.doc.append("Created using matplotlib.")
 
-    def add_statistics_table(self) -> None:
+    def add_table_statistics(self) -> None:
         tabledata = statistics_table(self.scan)
         with self.doc.create(Section(tabledata.title)):
             table_spec = " ".join(["l"] * len(tabledata.header))
@@ -246,9 +236,24 @@ class LatexDocument:
                 table = cast(LongTabularx, table)
                 init_longtable(table, tabledata.header)
                 for row in tabledata.rows:
-                    table.add_row([NoEscape(c) for c in row])
+                    add_row(table, row)
 
-    def add_scatter_vuln_age(self) -> None:
+    def add_plot_severity_piechart(self) -> None:
+        """Adds pie chart of CVSS severity distribution."""
+        self.doc.append(NewPage())
+        plot = piechart_severity(self.scan, self.filename)
+        self.plots.append(plot.path)
+
+        with self.doc.create(Section(plot.title)):
+            self.doc.append(plot.description)
+            with self.doc.create(Figure(position="h")) as fig:
+                fig.add_image(str(plot.path), width=NoEscape(r"\textwidth"))
+                # fig.add_plot(width=NoEscape(r"0.5\textwidth"), *args, **kwargs)
+                fig.add_caption(plot.caption)
+            # self.doc.append("Created using matplotlib.")
+
+    def add_plot_scatter_vuln_age(self) -> None:
+        self.doc.append(NewPage())
         plot = scatter_vulnerability_age(self.scan, self.filename)
         self.plots.append(plot.path)
 
@@ -257,4 +262,4 @@ class LatexDocument:
             with self.doc.create(Figure(position="h")) as fig:
                 fig.add_image(str(plot.path), width=NoEscape(r"\textwidth"))
                 fig.add_caption(plot.caption)
-            self.doc.append("Created using matplotlib.")
+            # self.doc.append("Created using matplotlib.")
