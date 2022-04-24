@@ -4,6 +4,9 @@ from typing import Optional
 from auspex_core.models.gcr import ImageTimeMode
 from auspex_core.models.scan import ReportData
 
+import matplotlib
+
+matplotlib.use("Agg")  # disable GUI
 import matplotlib.pyplot as plt  # noqa
 import matplotlib.dates as mdates
 import numpy as np
@@ -12,9 +15,10 @@ from sanitize_filename import sanitize
 from ...types.protocols import ScanType
 from ...utils.matplotlib import DEFAULT_CMAP
 from ...cve import CVSS_DATE_BRACKETS
+from .models import PlotData, PlotType
 
 
-def piechart_severity(report: ScanType, basename: Optional[str] = None) -> Path:
+def piechart_severity(report: ScanType, basename: Optional[str] = None) -> PlotData:
     """Generates a pie chart of the severity distribution of vulnerabilities.
 
     Parameters
@@ -25,8 +29,9 @@ def piechart_severity(report: ScanType, basename: Optional[str] = None) -> Path:
         The basename of the output file.
     Returns
     -------
-    `Path`
-        Path to the generated pie chart.
+    `PlotData`
+        A plot data object containing everything required to insert
+        the plot into the report.
     """
     plt.clf()
     fig, ax = plt.subplots()
@@ -73,12 +78,19 @@ def piechart_severity(report: ScanType, basename: Optional[str] = None) -> Path:
     ax.set(aspect="equal", title="Pie plot with `ax.pie`")
     # Save fig and store its filename
     # TODO: fix filename
-    return save_fig(fig, report, basename, "piechart_severity")
+    path = save_fig(fig, report, basename, "piechart_severity")
+    return PlotData(
+        title="Distribution of Vulnerabilities by Severity",
+        path=path,
+        caption="Distribution of Vulnerabilities by Severity",
+        description="I am a description",
+        plot_type=PlotType.PIE,
+    )
 
 
 def scatter_mean_trend(
     report: ScanType, prev_reports: list[ReportData], basename: Optional[str] = None
-) -> Path:
+) -> PlotData:
     """Generates a scatter plot of the mean and trend of the CVSS score.
 
     Parameters
@@ -92,8 +104,9 @@ def scatter_mean_trend(
 
     Returns
     -------
-    `Path`
-        Path to the generated scatter plot.
+    `PlotData`
+        A plot data object containing everything required to insert
+        the plot into the report.
     """
     plt.clf()  # is this necessary when using subplots?
 
@@ -146,10 +159,21 @@ def scatter_mean_trend(
     ax.grid(True)
 
     # Save fig and store its filename
-    return save_fig(fig, report, basename, "scatter_mean_trend")
+    path = save_fig(fig, report, basename, "scatter_mean_trend")
+    nreports = len(prev_reports) + 1  # prev + current
+    title = f"Mean CVSSv3 score trend for the {nreports} most recent reports"
+    return PlotData(
+        title=title,
+        caption="CVSSv3 Mean Score Over Time",
+        description=title,
+        path=path,
+        plot_type=PlotType.SCATTER,
+    )
 
 
-def scatter_vulnerability_age(report: ScanType, basename: Optional[str] = None) -> Path:
+def scatter_vulnerability_age(
+    report: ScanType, basename: Optional[str] = None
+) -> PlotData:
     """Generates a scatter plot of the vulnerability age.
 
     Parameters
@@ -162,8 +186,9 @@ def scatter_vulnerability_age(report: ScanType, basename: Optional[str] = None) 
 
     Returns
     -------
-    `Path`
-        Path to the generated scatter plot.
+    `PlotData`
+        A plot data object containing everything required to insert
+        the plot into the report.
     """
     plt.clf()
 
@@ -202,7 +227,14 @@ def scatter_vulnerability_age(report: ScanType, basename: Optional[str] = None) 
     ax.grid(True)
     # '%b' means month as locale’s abbreviated name
 
-    return save_fig(fig, report, basename, "plot_vuln_age")
+    path = save_fig(fig, report, basename, "plot_vuln_age")
+    return PlotData(
+        title="Age of Unpatched Vulnerabilities",
+        caption="Age of Unpatched Vulnerabilities",
+        description="I am a description",
+        path=path,
+        plot_type=PlotType.SCATTER,
+    )
 
 
 def save_fig(

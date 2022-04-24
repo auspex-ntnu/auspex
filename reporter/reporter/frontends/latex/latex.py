@@ -1,11 +1,9 @@
 import asyncio
-from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, ContextManager, Union, cast
-from auspex_core.models.gcr import ImageTimeMode
-from loguru import logger
+from typing import Any, ContextManager, cast
 
-import matplotlib
+from auspex_core.models.scan import ReportData
+from loguru import logger
 from pylatex import (
     Command,
     Document,
@@ -14,38 +12,28 @@ from pylatex import (
     Head,
     LargeText,
     LineBreak,
+    LongTable,
+    LongTabularx,
     MediumText,
     MiniPage,
+    MultiColumn,
     PageStyle,
     Section,
     Subsection,
     Tabular,
     simple_page_number,
-    LongTable,
-    MultiColumn,
-    LongTabularx,
 )
 from pylatex.utils import NoEscape, bold, italic
 from sanitize_filename import sanitize
 
-matplotlib.use("agg")  # Not to use X server. For TravisCI.
-import matplotlib.pyplot as plt  # noqa
-import matplotlib.dates as mdates
-import numpy as np
-from auspex_core.models.scan import ReportData
-
 from ...types import ScanType, ScanTypeSingle
-from ...config import AppConfig
-from .table import init_longtable
-from ..shared.format import format_decimal
-from ..shared.tables import top_vulns_table, statistics_table
 from ..shared.plots import (
     piechart_severity,
     scatter_mean_trend,
     scatter_vulnerability_age,
 )
-
-import random
+from ..shared.tables import statistics_table, top_vulns_table
+from .table import init_longtable
 
 # TODO: support aggregate scans
 
@@ -80,6 +68,7 @@ class LatexDocument:
         # NOTE: Very important to not have spaces in the filename
         # otherwise the PDF will not be generated.
         # PyLatex (or LaTeX itself) does not handle it well.
+        # TODO: make self.filename a Path and check if we can write to it?
         self.filename = f"/tmp/{sanitize(scan.id)}".replace(" ", "_")
         self.doc = self._init_document()  # type: Document
         self.scan = scan
@@ -173,13 +162,13 @@ class LatexDocument:
     def add_severity_piechart(self) -> None:
         """Adds pie chart of CVSS severity distribution."""
         plot = piechart_severity(self.scan, self.filename)
-        self.plots.append(plot)
-        with self.doc.create(Section("Pie")):
-            self.doc.append("mmm pie")
+        self.plots.append(plot.path)
+        with self.doc.create(Section(plot.title)):
+            self.doc.append(plot.description)
             with self.doc.create(Figure(position="h")) as fig:
-                fig.add_image(str(plot), width=NoEscape(r"\textwidth"))
+                fig.add_image(str(plot.path), width=NoEscape(r"\textwidth"))
                 # fig.add_plot(width=NoEscape(r"0.5\textwidth"), *args, **kwargs)
-                fig.add_caption("I am a caption.")
+                fig.add_caption(plot.caption)
             self.doc.append("Created using matplotlib.")
 
     def add_top_vuln_table(self) -> None:
@@ -237,19 +226,14 @@ class LatexDocument:
     def _do_add_mean_trend_plot(self, section: SectionContext) -> None:
         """Adds a mean CVSSv3 score trend plot to the document by comparing
         the current scan to the previous scans and creating a scatter plot."""
-
         plot = scatter_mean_trend(self.scan, self.prev_scans, self.filename)
-        self.plots.append(plot)
+        self.plots.append(plot.path)
 
         with section:
-            nscans = len(self.prev_scans) + 1  # Old + new
-            self.doc.append(
-                f"Mean CVSSv3 score trend for the {nscans} most recent scans"
-            )
+            self.doc.append(plot.description)
             with self.doc.create(Figure(position="h")) as fig:
-                fig.add_image(str(plot), width=NoEscape(r"\textwidth"))
-                # fig.add_plot(width=NoEscape(r"0.5\textwidth"), *args, **kwargs)
-                fig.add_caption("I am a caption.")
+                fig.add_image(str(plot.path), width=NoEscape(r"\textwidth"))
+                fig.add_caption(plot.caption)
             self.doc.append("Created using matplotlib.")
 
     def add_statistics_table(self) -> None:
@@ -266,12 +250,11 @@ class LatexDocument:
 
     def add_scatter_vuln_age(self) -> None:
         plot = scatter_vulnerability_age(self.scan, self.filename)
-        self.plots.append(plot)
+        self.plots.append(plot.path)
 
-        with self.doc.create(Section("Unpatched Vulnerabilities")) as section:
-            self.doc.append("Take a look at this beautiful plot:")
+        with self.doc.create(Section(plot.title)):
+            self.doc.append(plot.description)
             with self.doc.create(Figure(position="h")) as fig:
-                fig.add_image(str(plot), width=NoEscape(r"\textwidth"))
-                # plot.add_plot(width=NoEscape(r"0.5\textwidth"), *args, **kwargs)
-                fig.add_caption("I am a caption.")
+                fig.add_image(str(plot.path), width=NoEscape(r"\textwidth"))
+                fig.add_caption(plot.caption)
             self.doc.append("Created using matplotlib.")
