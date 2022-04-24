@@ -12,7 +12,6 @@ from typing import (
     Optional,
     Protocol,
     Any,
-    Sequence,
     runtime_checkable,
     TYPE_CHECKING,
 )
@@ -95,19 +94,19 @@ class ScanType(Protocol):
         """CVSS object for the scan, containing CVSS metrics."""
 
     @property
-    def low(self) -> Sequence[VulnerabilityType]:
+    def low(self) -> Iterable[VulnerabilityType]:
         """Vulnerabilities with a severity of 'low'."""
 
     @property
-    def medium(self) -> Sequence[VulnerabilityType]:
+    def medium(self) -> Iterable[VulnerabilityType]:
         """Vulnerabilities with a severity of 'medium'."""
 
     @property
-    def high(self) -> Sequence[VulnerabilityType]:
+    def high(self) -> Iterable[VulnerabilityType]:
         """Vulnerabilities with a severity of 'high'."""
 
     @property
-    def critical(self) -> Sequence[VulnerabilityType]:
+    def critical(self) -> Iterable[VulnerabilityType]:
         """Vulnerabilities with a severity of 'critical'."""
 
     @property
