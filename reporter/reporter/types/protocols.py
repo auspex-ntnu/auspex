@@ -19,7 +19,7 @@ from typing import (
 from .nptypes import MplRGBAColor
 
 from auspex_core.models.gcr import ImageInfo, ImageTimeMode
-from auspex_core.models.cve import CVSS, CVETimeType
+from auspex_core.models.cve import CVSS, CVESeverity, CVETimeType
 
 if TYPE_CHECKING:
     from ..frontends.shared.models import VulnAgePoint  # pragma: no cover
@@ -70,6 +70,10 @@ class ScanType(Protocol):
     def id(self) -> str:
         """The unique ID of the report."""
 
+    @property
+    def title(self) -> str:
+        """Get the title of the scan."""
+
     def get_timestamp(
         self, image: bool = True, mode: ImageTimeMode = ImageTimeMode.CREATED
     ) -> datetime:
@@ -113,6 +117,11 @@ class ScanType(Protocol):
     def vulnerabilities(self) -> Iterable[VulnerabilityType]:
         """All vulnerabilities."""
 
+    def get_vulnerabilities_by_severity(
+        self, severity: CVESeverity
+    ) -> Iterable[VulnerabilityType]:
+        """Returns a list of vulnerabilities with the given severity."""
+
     @property
     def n_low(self) -> int:
         """Number of vulnerabilities with a severity of 'low'."""
@@ -138,7 +147,7 @@ class ScanType(Protocol):
 
     def most_severe_n(
         self, n: Optional[int] = 5, upgradable: bool = False
-    ) -> list[VulnerabilityType]:
+    ) -> Iterable[VulnerabilityType]:
         """Returns the `n` most severe vulnerabilities (if any), optionally only upgradable ones."""
 
     @property

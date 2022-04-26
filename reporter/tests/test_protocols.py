@@ -33,5 +33,10 @@ def takes_scantype(scan: ScanType) -> None:
 
 @given(st.builds(SnykVulnerability))
 @settings(max_examples=1, suppress_health_check=[HealthCheck.too_slow])
-def test_snykvulnerability_protocol(scan: AggregateScan) -> None:
+def test_snykvulnerability_protocol(vuln: VulnerabilityType) -> None:
+    takes_vulntype(vuln)
+    assert isinstance(vuln, VulnerabilityType)
+
+
+def takes_vulntype(scan: VulnerabilityType) -> None:
     assert isinstance(scan, VulnerabilityType)

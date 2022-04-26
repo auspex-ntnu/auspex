@@ -340,6 +340,11 @@ class SnykContainerScan(BaseModel):
         return ts
 
     @property
+    def title(self) -> str:
+        """Returns the title of the report. The title is the scanned image."""
+        return self.image.image
+
+    @property
     def architecture(self) -> str:
         # TODO: add docstring
         r = self.platform.split("/")
@@ -427,22 +432,30 @@ class SnykContainerScan(BaseModel):
     @property
     def low(self) -> Iterable[SnykVulnerability]:
         """All vulnerabilities with a CVSS rating of low."""
-        return self._get_vulnerabilities_by_severity("low")
+        return self.get_vulnerabilities_by_severity(CVESeverity.LOW)
 
     @property
     def medium(self) -> Iterable[SnykVulnerability]:
         """All vulnerabilities with a CVSS rating of medium."""
-        return self._get_vulnerabilities_by_severity("medium")
+        return self.get_vulnerabilities_by_severity(CVESeverity.MEDIUM)
 
     @property
     def high(self) -> Iterable[SnykVulnerability]:
         """All vulnerabilities with a CVSS rating of high."""
-        return self._get_vulnerabilities_by_severity("high")
+        return self.get_vulnerabilities_by_severity(CVESeverity.HIGH)
 
     @property
     def critical(self) -> Iterable[SnykVulnerability]:
         """All vulnerabilities with a CVSS rating of critical."""
-        return self._get_vulnerabilities_by_severity("critical")
+        return self.get_vulnerabilities_by_severity(CVESeverity.CRITICAL)
+
+    def get_vulnerabilities_by_severity(
+        self, severity: CVESeverity
+    ) -> Iterable[SnykVulnerability]:
+        sev = severity.name.lower()
+        for v in self.vulnerabilities:
+            if v.severity == sev:
+                yield v
 
     @property
     def n_low(self) -> int:
@@ -618,15 +631,6 @@ class SnykContainerScan(BaseModel):
     # def scores(self) -> Iterator[float]:
     #     for vuln in self.vulnerabilities:
     #         yield vuln.cvssScore
-
-    def _get_vulnerabilities_by_severity(
-        self, severity: str
-    ) -> Iterable[SnykVulnerability]:
-        if CVESeverity.get(severity) == CVESeverity.UNDEFINED.value:
-            raise ValueError(f"Invalid severity level: {severity}")
-        for v in self.vulnerabilities:
-            if v.severity == severity:
-                yield v
 
     def _get_vuln_upgradability_distribution(
         self, vulns: Iterable[SnykVulnerability]

@@ -40,6 +40,10 @@ class AggregateScan(BaseModel):
             return v
         return f"AggregateScan_{int(time.time())}"
 
+    @property
+    def title(self) -> str:
+        return f"Aggregate Report"
+
     @property  # workaround until we rename everything to "report"
     def reports(self) -> list[SnykContainerScan]:
         return self.scans
@@ -54,19 +58,6 @@ class AggregateScan(BaseModel):
         Parameters `image` and `mode` have no effect, and are implemented
         to conform to `ScanType` protocol."""
         return self.timestamp
-
-    # @cached_property
-    # def image(self) -> ImageInfo:
-    #     return ImageInfo(
-    #         image_size_bytes=np.mean([s.image.imageSizeBytes for s in self.scans]),
-    #         layer_id="",
-    #         media_type="",
-    #         tag=[],
-    #         uploaded=datetime.utcnow(),
-    #         created=datetime.utcnow(),
-    #         digest=None,
-    #         image=None,
-    #     )
 
     @property
     def cvss_max(self) -> float:
@@ -103,19 +94,19 @@ class AggregateScan(BaseModel):
 
     @property
     def low(self) -> Iterable[SnykVulnerability]:
-        return self._get_vulnerabilities_by_severity("low")
+        return self.get_vulnerabilities_by_severity(CVESeverity.LOW)
 
     @property
     def medium(self) -> Iterable[SnykVulnerability]:
-        return self._get_vulnerabilities_by_severity("medium")
+        return self.get_vulnerabilities_by_severity(CVESeverity.MEDIUM)
 
     @property
     def high(self) -> Iterable[SnykVulnerability]:
-        return self._get_vulnerabilities_by_severity("high")
+        return self.get_vulnerabilities_by_severity(CVESeverity.HIGH)
 
     @property
     def critical(self) -> Iterable[SnykVulnerability]:
-        return self._get_vulnerabilities_by_severity("critical")
+        return self.get_vulnerabilities_by_severity(CVESeverity.CRITICAL)
 
     @property
     def n_low(self) -> int:
@@ -171,23 +162,11 @@ class AggregateScan(BaseModel):
             "critical": self.n_critical,
         }
 
-    def _get_vulnerabilities_by_severity(
-        self, severity: str
+    def get_vulnerabilities_by_severity(
+        self, severity: CVESeverity
     ) -> Iterable[SnykVulnerability]:
-        if CVESeverity.get(severity) == CVESeverity.UNDEFINED.value:
-            raise ValueError(f"Invalid severity: {severity}")
-
         for scan in self.scans:
-            attrs = {
-                "low": scan.low,
-                "medium": scan.medium,
-                "high": scan.high,
-                "critical": scan.critical,
-            }
-            vulns = attrs.get(severity)
-            if vulns is None:
-                raise ValueError(f"Unknown severity: '{severity}'")
-            yield from vulns
+            yield from scan.get_vulnerabilities_by_severity(severity)
 
     def get_scan_ids(self) -> list[str]:
         """Retrieves IDs of all scans."""
