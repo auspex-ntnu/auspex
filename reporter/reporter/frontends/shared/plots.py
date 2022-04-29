@@ -121,7 +121,8 @@ def scatter_mean_trend(
     # Plot data
     scans = []  # type: list[ScanType]
     # TODO: move this timezone fixing to a separate function
-    for scan in prev_reports + [report]:  # type: ScanType
+
+    for scan in prev_reports:  # type: ScanType
         if scan.timestamp.tzinfo is None:
             scan.timestamp = scan.timestamp.replace(tzinfo=timezone.utc)
         scans.append(scan)
@@ -139,7 +140,16 @@ def scatter_mean_trend(
         scan.get_timestamp(image=True, mode=ImageTimeMode.CREATED) for scan in scans
     ]
     score = [scan.cvss.mean for scan in scans]
+    # TODO: specify default size of points
     ax.scatter(time, score)
+
+    # Add newest report to the plot with a different color
+    ax.scatter(
+        [report.get_timestamp(image=True, mode=ImageTimeMode.CREATED)],
+        [report.cvss.mean],
+        color="#5acf1b",
+        s=[100],  # TODO: find out default size, and have this be 1.5x that
+    )
 
     # Format dates
     # Make ticks on occurrences of each month:
@@ -155,8 +165,9 @@ def scatter_mean_trend(
     ax.plot(time, p(time_ts), color="r")
 
     # Add legend and grid
-    fig.legend(["Score"])
+    fig.legend(["Previous Reports", "Current Report"])
     ax.grid(True)
+    ax.set_axisbelow(True)
 
     # Save fig and store its filename
     path = save_fig(fig, report, basename, "scatter_mean_trend")
