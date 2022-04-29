@@ -14,12 +14,14 @@ from typing import (
     Any,
     runtime_checkable,
     TYPE_CHECKING,
+    Collection,
 )
 
 from .nptypes import MplRGBAColor
 
 from auspex_core.models.gcr import ImageInfo, ImageTimeMode
 from auspex_core.models.cve import CVSS, CVESeverity, CVETimeType
+from ..cve import DEFAULT_CVE_TIMETYPE
 
 if TYPE_CHECKING:
     from ..frontends.shared.models import VulnAgePoint  # pragma: no cover
@@ -40,13 +42,34 @@ class VulnerabilityType(Protocol):
         """CVSSv3 severity of the vulnerability."""
 
     @property
+    def exploitable(self) -> bool:
+        """Whether the vulnerability is exploitable."""
+
+    @property
     def is_upgradable(self) -> bool:
         """Whether or not the vulnerability can be mitigated by upgrading."""
+
+    @property
+    def url(self) -> str:
+        """Get the URL of the vulnerability."""
+
+    @property
+    def exploit(self) -> str:
+        """Get the exploit of the vulnerability.
+        Should only be used if the `self.exploitable==True`.
+        """
+
+    def get_year(self, timetype: CVETimeType = DEFAULT_CVE_TIMETYPE) -> Optional[int]:
+        """Get the year of the vulnerability.
+        (We account for not all vulnerabilities having a date.)
+        """
 
     def get_numpy_color(self) -> MplRGBAColor:
         """Get the numpy color for the vulnerability - determined by its score."""
 
-    def get_age_score_color(self, timetype: CVETimeType) -> "VulnAgePoint":
+    def get_age_score_color(
+        self, timetype: CVETimeType = DEFAULT_CVE_TIMETYPE
+    ) -> "VulnAgePoint":
         """Get the age, score and color of the vulnerability."""
 
     def get_id(self) -> str:
@@ -147,7 +170,7 @@ class ScanType(Protocol):
 
     def most_severe_n(
         self, n: Optional[int] = 5, upgradable: bool = False
-    ) -> Iterable[VulnerabilityType]:
+    ) -> Collection[VulnerabilityType]:
         """Returns the `n` most severe vulnerabilities (if any), optionally only upgradable ones."""
 
     @property
@@ -183,6 +206,9 @@ class ScanType(Protocol):
         list[VulnAgePoint]
             List of tuples representing a datapoint for each vulnerability to be used in a plot.
         """
+
+    def get_exploitable(self) -> Iterable[VulnerabilityType]:
+        """Get list of vulnerabilities that are exploitable."""
 
 
 @runtime_checkable
