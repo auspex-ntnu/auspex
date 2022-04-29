@@ -1,6 +1,9 @@
 import asyncio
+import contextlib
+from datetime import datetime
 from pathlib import Path
-from typing import Any, ContextManager, cast
+from typing import Any, ContextManager, Final, Type, Union, cast
+from auspex_core.models.cve import CVESeverity
 
 from auspex_core.models.scan import ReportData
 from loguru import logger
@@ -23,31 +26,44 @@ from pylatex import (
     Tabular,
     simple_page_number,
     NewPage,
+    Table,
+    LongTabu,
+    Package,
 )
 from pylatex.utils import NoEscape, bold, italic
+from reporter.types.protocols import ScanTypeAggregate, ScanTypeSingle
 from sanitize_filename import sanitize
 
-from ...types import ScanType, ScanTypeSingle
+from ...types import ScanType, ScanType
 from ..shared.plots import (
     piechart_severity,
     scatter_mean_trend,
     scatter_vulnerability_age,
 )
-from ..shared.tables import statistics_table, top_vulns_table
+from ..shared.tables import (
+    cvss_intervals,
+    exploitable_vulns,
+    image_info,
+    severity_vulns_table,
+    statistics_table,
+    top_vulns_table,
+)
+from ..shared.models import TableData
 from .table import init_longtable, add_row
+from .utils import hyperlink
 
 # TODO: support aggregate scans
 
 
 async def create_document(
-    scan: ScanTypeSingle, prev_scans: list[ReportData]
+    scan: ScanType, prev_scans: list[ReportData]
 ) -> "LatexDocument":
     loop = asyncio.get_event_loop()
     return await loop.run_in_executor(None, _do_create_document, scan, prev_scans)
 
 
 def _do_create_document(
-    scan: ScanTypeSingle, prev_scans: list[ReportData]
+    scan: ScanType, prev_scans: list[ReportData]
 ) -> "LatexDocument":
     """NOTE: blocking"""
     d = LatexDocument(scan, prev_scans)
@@ -58,14 +74,18 @@ def _do_create_document(
 SectionContext = ContextManager[Any]
 
 
+ROWHEIGHT_SINGLEROW: Final[float] = 1.5
+ROWHEIGHT_MULTIROW: Final[float] = 1.0
+
+
 class LatexDocument:
     filename: str
     plots: list[Path]
     doc: Document
-    scan: ScanTypeSingle
+    scan: ScanType
     prev_scans: list[ReportData]
 
-    def __init__(self, scan: ScanTypeSingle, prev_scans: list[ReportData]) -> None:
+    def __init__(self, scan: ScanType, prev_scans: list[ReportData]) -> None:
         # NOTE: Very important to not have spaces in the filename
         # otherwise the PDF will not be generated.
         # PyLatex (or LaTeX itself) does not handle it well.
@@ -99,14 +119,19 @@ class LatexDocument:
     def generate_pdf(self) -> Document:
         """Fills the document with content and generates a PDF."""
         try:
+            self.add_packages()
             self.add_preamble()
             self.add_header()
-            self.add_plot_mean_trend()
+            self.add_table_cvss_intervals()
+            self.add_table_image_info()
             self.add_table_statistics()
+            self.add_plot_mean_trend()
             self.add_table_top_vuln()
             self.add_table_top_vuln_upgradable()
             self.add_plot_severity_piechart()
             self.add_plot_scatter_vuln_age()
+            self.add_table_exploitable_vulns()
+            self.add_table_all_critical()
             # self.add_vulnerability_scatterplot()
             # self.add_vulnerability_table()
             # self.add_vulnerability_table_by_severity()
@@ -127,8 +152,11 @@ class LatexDocument:
         for plot in self.plots:
             Path(plot).unlink(missing_ok=True)
 
+    def add_packages(self) -> None:
+        self.doc.packages.append(Package("hyperref"))
+
     def add_preamble(self) -> None:
-        self.doc.preamble.append(Command("title", self.scan.image.image))
+        self.doc.preamble.append(Command("title", self.scan.title))
         self.doc.preamble.append(Command("author", "Auspex"))
         self.doc.preamble.append(Command("date", NoEscape(r"\today")))
         self.doc.append(NoEscape(r"\maketitle"))
@@ -137,65 +165,151 @@ class LatexDocument:
         # Add document header
         header = PageStyle("header")
 
+        # Header
         # Create left header
         with header.create(Head("L")):
-            header.append("Page date: ")
-            header.append(LineBreak())
-            header.append("R3")
+            # Today's date (ISO format)
+            header.append(datetime.now().strftime("%Y-%m-%d"))
         # Create center header
         with header.create(Head("C")):
-            header.append("Company")
+            header.append(self.scan.title)
         # Create right header
-        with header.create(Head("R")):
-            header.append(simple_page_number())
+        # with header.create(Head("R")):
+        #     header.append("Auspex")
+
+        # Footer
+
         # Create left footer
-        with header.create(Foot("L")):
-            header.append("Left Footer")
+        # with header.create(Foot("L")):
+        #     header.append("Left Footer")
         # Create center footer
         with header.create(Foot("C")):
-            header.append("Center Footer")
+            header.append(simple_page_number())
+
         # Create right footer
-        with header.create(Foot("R")):
-            header.append("Right Footer")
+        # with header.create(Foot("R")):
+        #     header.append("Right Footer")
 
         self.doc.preamble.append(header)
         self.doc.change_document_style("header")
 
+    def add_table_cvss_intervals(self) -> None:
+        tabledata = cvss_intervals()
+        self._add_longtable(tabledata, row_height=ROWHEIGHT_SINGLEROW)
+
+    def add_table_image_info(self) -> None:
+        if isinstance(self.scan, ScanTypeSingle):
+            tabledata = image_info(self.scan.image)
+            self._add_longtable(tabledata, row_height=ROWHEIGHT_SINGLEROW)
+        elif isinstance(self.scan, ScanTypeAggregate):
+            # for scan in self.scan.scans: ....
+            pass
+        else:
+            logger.warning("Scan is neither ScanTypeSingle or ScanTypeAggregate")
+
     def add_table_top_vuln(self) -> None:
         """Adds a table with the top N vulnerabilities."""
-        self._add_top_vulnerability_table(upgradable=False)
+        tabledata = top_vulns_table(self.scan, upgradable=False, maxrows=5)
+        if not tabledata.rows:
+            logger.info(f"No vulnerabilities to report for report {self.scan.id}")
+            return
+        self._add_section_longtable(tabledata)
 
     def add_table_top_vuln_upgradable(self) -> None:
         """Adds a table with the top N upgradable vulnerabilities."""
-        self._add_top_vulnerability_table(upgradable=True)
+        tabledata = top_vulns_table(self.scan, upgradable=True, maxrows=5)
+        if not tabledata.rows:
+            logger.info(f"No vulnerabilities to report for report {self.scan.id}")
+            return
+        self._add_section_longtable(tabledata, newpage=False)
 
-    def _add_top_vulnerability_table(self, upgradable: bool, maxrows: int = 5) -> None:
-        """Adds a table with the top N vulnerabilities.
+    def add_table_all_critical(self) -> None:
+        """Adds a table with all critical vulnerabilities."""
+        tabledata = severity_vulns_table(self.scan, severity=CVESeverity.CRITICAL)
+        if not tabledata.rows:
+            logger.info(f"No vulnerabilities to report for report {self.scan.id}")
+            return
+        self._add_section_longtable(tabledata)
+
+    def _add_section_longtable(
+        self,
+        tabledata: TableData,
+        numbering: bool = True,
+        newpage: bool = True,
+        **kwargs,
+    ) -> None:
+        """Adds a section with a longtable of the given table data.
 
         Parameters
         ----------
-        upgradable : `bool`
-            Whether to only show upgradable vulnerabilities
-        maxrows : `int`
-            Maximum number of rows to show
-            TODO: make this configurable
+        tabledata : `TableData`
+            Table data to add
+        numbering : `bool`, optional
+            Whether to number section, by default `True`
+        **kwargs
+            Additional keyword arguments to pass to `_add_longtable`
         """
-        data = top_vulns_table(self.scan, upgradable=upgradable, maxrows=maxrows)
-        if not data.rows:
-            logger.info(f"No vulnerabilities to report for report {self.scan.id}")
-            return
-
-        with self.doc.create(Section(data.title)) as section:  # type: Section
+        if newpage:
+            self.doc.append(NewPage())
+        with self.doc.create(
+            Section(tabledata.title, numbering=numbering)
+        ) as section:  # type: Section
+            if tabledata.description:
+                section.append(tabledata.description)
             section = cast(Section, section)  # mypy
-            table_spec = " ".join(["l"] * len(data.header))
-            with self.doc.create(LongTabularx(table_spec, booktabs=True)) as table:
-                table = cast(LongTabularx, table)
-                init_longtable(table, data.header)
-                for row in data.rows:
-                    add_row(table, row)
+            self._add_longtable(tabledata, LongTabularx)
+
+    def _add_longtable(
+        self,
+        tabledata: TableData,
+        table_type: Type[LongTable] = LongTabularx,
+        row_height: float = ROWHEIGHT_MULTIROW,
+        booktabs: bool = True,
+    ) -> None:
+        """Creates a LongTable wrapped in a Table environment.
+
+        Wrapping it in a table allows us to add captions + more.
+
+        Parameters
+        ----------
+        tabledata : `TableData`
+            Table data to add
+        table_type : `Type[LongTable]`
+            Type of table to create. This can be any of the LongTable types.
+        """
+        # Wrap tabular in a table so we can add a caption
+        if tabledata.caption:
+            ctx = self.doc.create(Table(position="h"))
+        else:
+            # NOTE:
+            # We use a null context when no caption is needed
+            # The reason we have to do this, is that longtabularx
+            # breaks when attempting to wrap it in a Table.
+            # Users can still use whatever Tabular environment they want,
+            # but we can't add a caption to tables that span multiple pages.
+            # This is something users should be aware of when using this method.
+            ctx = contextlib.nullcontext()
+
+        with ctx as table:
+            # Create the tabular environment
+            table_spec = " ".join(["l"] * len(tabledata.header))
+            with self.doc.create(
+                table_type(table_spec, row_height=row_height, booktabs=booktabs)
+            ) as tabular:
+                tabular = cast(LongTable, tabular)  # mypy
+
+                init_longtable(tabular, tabledata.header)
+                for row in tabledata.rows:
+                    add_row(tabular, row)
+
+            # Add caption to table if it exists
+            if tabledata.caption:
+                table = cast(Table, table)  # mypy
+                table.add_caption(tabledata.caption)
 
     def add_plot_mean_trend(self) -> None:
         """Attempts to add a mean CVSSv3 score trend plot to the document."""
+        self.doc.append(NewPage())
         section = self.doc.create(Section("Trend"))
         if self.prev_scans:
             # Actually add the plot if we have previous scans to compare to
@@ -224,19 +338,22 @@ class LatexDocument:
             with self.doc.create(Figure(position="h")) as fig:
                 fig.add_image(str(plot.path), width=NoEscape(r"\textwidth"))
                 fig.add_caption(plot.caption)
-            # self.doc.append("Created using matplotlib.")
 
     def add_table_statistics(self) -> None:
+        """Adds a table with statistics about the scanned image(s)."""
+        # TODO: rewrite using _add_section_longtable
+        self.doc.append(NewPage())
         tabledata = statistics_table(self.scan)
         with self.doc.create(Section(tabledata.title)):
             table_spec = " ".join(["l"] * len(tabledata.header))
             with self.doc.create(
-                LongTabularx(table_spec, row_height=1.5, booktabs=True)
+                LongTabularx(table_spec, row_height=ROWHEIGHT_SINGLEROW, booktabs=True)
             ) as table:  # type: LongTable
                 table = cast(LongTabularx, table)
                 init_longtable(table, tabledata.header)
                 for row in tabledata.rows:
                     add_row(table, row)
+            self.doc.append(NoEscape(italic(tabledata.description)))
 
     def add_plot_severity_piechart(self) -> None:
         """Adds pie chart of CVSS severity distribution."""
@@ -250,9 +367,9 @@ class LatexDocument:
                 fig.add_image(str(plot.path), width=NoEscape(r"\textwidth"))
                 # fig.add_plot(width=NoEscape(r"0.5\textwidth"), *args, **kwargs)
                 fig.add_caption(plot.caption)
-            # self.doc.append("Created using matplotlib.")
 
     def add_plot_scatter_vuln_age(self) -> None:
+        """Adds a scatter plot of vulnerability age vs. CVSSv3 score."""
         self.doc.append(NewPage())
         plot = scatter_vulnerability_age(self.scan, self.filename)
         self.plots.append(plot.path)
@@ -262,4 +379,13 @@ class LatexDocument:
             with self.doc.create(Figure(position="h")) as fig:
                 fig.add_image(str(plot.path), width=NoEscape(r"\textwidth"))
                 fig.add_caption(plot.caption)
-            # self.doc.append("Created using matplotlib.")
+
+    def add_table_exploitable_vulns(self) -> None:
+        """Adds a table of exploitable vulnerabilities."""
+        self.doc.append(NewPage())
+        tabledata = exploitable_vulns(self.scan)
+        if tabledata.rows:
+            self._add_section_longtable(tabledata)
+        else:
+            with self.doc.create(Section(title=tabledata.title)):
+                self.doc.append("No exploitable vulnerabilities found.")
