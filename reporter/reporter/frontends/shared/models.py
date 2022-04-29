@@ -14,6 +14,11 @@ class PlotType(Enum):
     HISTOGRAM = auto()
 
 
+class Hyperlink(NamedTuple):
+    url: str
+    text: str
+
+
 # TODO: rename from <Category>Data to something more appropriate
 class TableData(NamedTuple):
     title: str
