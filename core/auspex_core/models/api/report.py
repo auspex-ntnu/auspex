@@ -1,8 +1,10 @@
 from enum import Enum
-from typing import Any, Iterable, NamedTuple, Optional
+import os
+from typing import Any, Iterable, NamedTuple, Optional, Union
 from auspex_core.models.cve import CVSS, CVSS_MAX_SCORE, CVSS_MIN_SCORE
 from pydantic import BaseModel, Field, root_validator, validator
 from google.cloud import firestore
+from .scan import ScanRequest
 
 
 class FirestoreQuery(NamedTuple):
@@ -25,11 +27,18 @@ class CVSSField(Enum):
     MAX = "max"
 
 
+class OrderOption(Enum):
+    NEWEST = "newest"
+    OLDEST = "oldest"
+    MAXSCORE = "maxscore"
+    MINSCORE = "minscore"
+
+
 class ReportQuery(BaseModel):
     image: str = Field(..., description="Image to search for.")
 
     # Minimum CVSS score
-    ge: Optional[float] = Field(
+    ge: Optional[Union[float, int]] = Field(
         None,
         ge=CVSS_MIN_SCORE,
         le=CVSS_MAX_SCORE,
@@ -37,7 +46,7 @@ class ReportQuery(BaseModel):
     )
 
     # Maximum CVSS score
-    le: Optional[float] = Field(
+    le: Optional[Union[float, int]] = Field(
         None,
         ge=CVSS_MIN_SCORE,
         le=CVSS_MAX_SCORE,
@@ -56,16 +65,9 @@ class ReportQuery(BaseModel):
         description="Limit the number of results.",
     )
 
-    # Field to order by
-    order_by: Optional[str] = Field(
-        None,
-        description="Order results by field.",
-    )
-
-    # Order by direction
-    direction: Direction = Field(
-        Direction.DESCENDING,
-        description="Direction of ordering. Has no effect if `order_by` is not specified.",
+    order: OrderOption = Field(
+        OrderOption.NEWEST,
+        description="Sort results by date.",
     )
 
     # TODO: add has_report
@@ -74,28 +76,6 @@ class ReportQuery(BaseModel):
     # TODO: add max_age
     # max_age: Optional[int] = Field(None, gt=0, description="Maximum age of reports in days.")
 
-    @validator("direction")
-    def validate_direction(cls, v: Any) -> Direction:
-        """Validator that accepts multiple values for `direction`."""
-        if isinstance(v, Direction):
-            return v
-
-        valid = {
-            Direction.ASCENDING: ["asc", "ascending", "ascend"],
-            Direction.DESCENDING: ["desc", "descending", "descend"],
-        }
-        if not isinstance(v, str):
-            raise TypeError("argument 'direction' must be a string")
-
-        v = v.lower()
-        if v in valid[Direction.ASCENDING]:
-            return Direction.ASCENDING
-        elif v in valid[Direction.DESCENDING]:
-            return Direction.DESCENDING
-        raise ValueError(
-            f"Invalid argument for 'direction'. Accepted arguments: {valid}"
-        )
-
     @root_validator
     def validate_le_ge(cls, values: dict[str, Any]) -> dict[str, Any]:
         """Validator that ensures that `le` is not greater than `ge`."""
@@ -103,3 +83,13 @@ class ReportQuery(BaseModel):
             if values["le"] < values["ge"]:
                 raise ValueError("`le` must be greater than `ge`.")
         return values
+
+
+DEFAULT_FORMAT = os.getenv("REPORTER_DEFAULT_FORMAT") or "latex"
+
+
+class ReportRequest(ScanRequest):
+    format: str = Field(
+        default=DEFAULT_FORMAT,
+        description="Format of report.",
+    )  # FIXME: This should be defined in reporter's model
