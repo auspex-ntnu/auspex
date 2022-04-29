@@ -44,38 +44,37 @@ def piechart_severity(report: ScanType, basename: Optional[str] = None) -> PlotD
     def get_colors(cmapname):
         return plt.colormaps[cmapname]([150, 125, 100])
 
-    # plt.colormaps["Yellows"] = yellow_cmp
-
     low = get_colors("Greens")
-    medium = get_colors("Yellows")
+    medium = get_colors("Yellows")  # assert this is init
     high = get_colors("Oranges")
     critical = get_colors("Reds")
     # colors = [low, medium, high, critical]
 
     colors = [low[0], medium[0], high[0], critical[0]]
 
+    def labelfunc(pct, allvals):
+        absolute = int(np.round(pct / 100.0 * np.sum(allvals)))
+        return "{:.1f}%\n({:d})".format(pct, absolute)
+
     # Outer pie chart
-    wedges, texts = ax.pie(
+    wedges, *_ = ax.pie(
         values,
         radius=1,
         colors=colors,
         wedgeprops=dict(width=0.7, edgecolor="black", linewidth=0.5),
         startangle=90,
         counterclock=False,
+        autopct=lambda pct: labelfunc(pct, values),
     )
     #
     ax.legend(
         wedges,
-        ["Low", "Medium", "High", "Critical"],
+        labels,
         title="Severity",
         loc="upper left",
         bbox_to_anchor=(1, 0, 0.5, 1),
     )
 
-    # TODO: Add wedge labels
-    # Total number of vulnerabilities as well
-
-    ax.set(aspect="equal", title="Pie plot with `ax.pie`")
     # Save fig and store its filename
     # TODO: fix filename
     path = save_fig(fig, report, basename, "piechart_severity")
@@ -83,7 +82,8 @@ def piechart_severity(report: ScanType, basename: Optional[str] = None) -> PlotD
         title="Distribution of Vulnerabilities by Severity",
         path=path,
         caption="Distribution of Vulnerabilities by Severity",
-        description="I am a description",
+        # TODO: handle aggregate title
+        description="The following pie chart shows the distribution of vulnerabilities by severity for the current image.",
         plot_type=PlotType.PIE,
     )
 
