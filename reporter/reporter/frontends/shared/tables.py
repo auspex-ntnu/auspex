@@ -6,6 +6,7 @@ used to display vulnerability tables in reports.
 from typing import Any, NamedTuple, Optional, Union
 
 from auspex_core.models.cve import CVESeverity
+from auspex_core.models.gcr import ImageInfo
 
 from ...types.protocols import ScanType, ScanTypeAggregate, ScanTypeSingle
 
@@ -69,7 +70,7 @@ def top_vulns_table(report: ScanType, upgradable: bool, maxrows: int) -> TableDa
 def severity_vulns_table(
     report: ScanType, severity: CVESeverity, maxrows: Optional[int] = None
 ) -> TableData:
-    """Generates the data used to display the vulnerabilities by severity in a report.
+    """Generates the table data used to display the vulnerabilities by severity in a report.
 
     Parameters
     ----------
@@ -91,6 +92,7 @@ def severity_vulns_table(
         "CVSS Score",  # 0-10
         "Severity",
         "Upgradable",  # Yes/No
+        "Year",
     ]
 
     # Add image column if we have an aggregated report
@@ -115,6 +117,7 @@ def severity_vulns_table(
             format_decimal(vuln.cvssScore),  # TODO: format
             vuln.severity.title(),
             vuln.is_upgradable,
+            vuln.get_year(),
         ]
         if aggregate:
             row.insert(0, "Image")
@@ -129,6 +132,18 @@ def severity_vulns_table(
 
 
 def statistics_table(report: ScanType) -> TableData:
+    """Generates the table data used to display the statistics of a report.
+
+    Parameters
+    ----------
+    report : `ScanType`
+        The report to display statistics for.
+
+    Returns
+    -------
+    `TableData`
+        A named tuple containing the data used to display the statistics.
+    """
     columns = [
         "Median CVSS",
         "Mean CVSS",
@@ -148,6 +163,7 @@ def statistics_table(report: ScanType) -> TableData:
     # This is flimsy and should be refactored and moved to
     # a separate function.
     # We rely on the order defined in the list `prio` above.
+    # TODO: use CVESeverity to define the order
     highest_severity = "low"  # default to low
     for p in prio:
         if dist.get(p):
@@ -190,3 +206,131 @@ def _get_singlereport_statistics_row(report: ScanTypeSingle) -> list[Any]:
         dist["low"] + dist["medium"] + dist["high"] + dist["critical"],
     ]
     return row
+
+
+def cvss_intervals() -> TableData:
+    """Generates the table data used to display the CVSSv3 severity intervals.
+
+    Returns
+    -------
+    `TableData`
+        A named tuple containing the data used to display the CVSSv3 severity intervals.
+    """
+    columns = [
+        "Low",
+        "Medium",
+        "High",
+        "Critical",
+    ]
+
+    intervals = [
+        [
+            "0.1 - 3.9",
+            "4.0 - 6.9",
+            "7.0 - 8.9",
+            "9.0 - 10.0",
+        ]
+    ]
+
+    return TableData(
+        title="CVSS Intervals",
+        header=columns,
+        rows=intervals,
+        caption="",
+        description="",
+    )
+
+
+def image_info(image: ImageInfo, digest_limit: int = 8) -> TableData:
+    """Generates the table data used to display the info for an image.
+
+    Parameters
+    ----------
+    image : `ImageInfo`
+        The image to display statistics for.
+    digest_limit : `int`, optional
+        Maximum displayed sha256 digest length, by default 8
+
+    Returns
+    -------
+    `TableData`
+        A named tuple containing the data used to display the statistics of an image.
+    """
+    columns = [
+        "Image",
+        "Created",
+        "Tags",
+        "Digest",
+    ]
+    # Move this to ImageInfo.get_digest(maxlen=8)?
+    if image.digest is not None:
+        if ":" in image.digest:
+            digest = image.digest.split(":")[1]
+        if digest_limit and len(digest) > digest_limit:
+            digest = digest[:digest_limit]  # + "..."
+    else:
+        digest = "-"
+
+    # Move to ImageInfo.get_tags()?
+    if image.tag:
+        tags = ", ".join(image.tag)
+    else:
+        tags = "-"
+
+    rows = [
+        [
+            image.image,
+            image.created.strftime("%Y-%m-%d %H:%M:%S"),
+            tags,
+            digest,
+        ]
+    ]
+
+    return TableData(
+        title="Image Statistics",
+        header=columns,
+        rows=rows,
+        caption="",
+        description="",
+    )
+
+
+def exploitable_vulns(report: ScanType) -> TableData:
+    """Generates the table data used to display the exploitable vulnerabilities.
+
+    Parameters
+    ----------
+    report : `ScanType`
+        The report to display exploitable vulnerabilities for.
+
+    Returns
+    -------
+    `TableData`
+        A named tuple containing the data used to display the exploitable vulnerabilities.
+    """
+    columns = [
+        "Title",
+        "CVSS ID",
+        "CVSS Score",
+        "Severity",
+        "Upgradable",
+    ]
+
+    rows = []
+    for vuln in report.get_exploitable():
+        row = [
+            vuln.title,
+            Hyperlink(text=vuln.get_id(), url=vuln.url),
+            format_decimal(vuln.cvssScore),  # TODO: format
+            vuln.severity.title(),
+            vuln.is_upgradable,
+        ]
+        rows.append(row)
+
+    return TableData(
+        title="Exploitable Vulnerabilities",
+        header=columns,
+        rows=rows,
+        caption="",
+        description="",
+    )
