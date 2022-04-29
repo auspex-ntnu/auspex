@@ -10,7 +10,7 @@ from auspex_core.models.cve import CVESeverity
 from ...types.protocols import ScanType, ScanTypeAggregate, ScanTypeSingle
 
 from .format import format_decimal
-from .models import TableData
+from .models import Hyperlink, TableData
 
 
 def top_vulns_table(report: ScanType, upgradable: bool, maxrows: int) -> TableData:
@@ -48,7 +48,7 @@ def top_vulns_table(report: ScanType, upgradable: bool, maxrows: int) -> TableDa
     for vuln in most_severe:
         row = [
             vuln.title,
-            vuln.get_id(),
+            Hyperlink(text=vuln.get_id(), url=vuln.url),
             format_decimal(vuln.cvssScore),  # TODO: format
             vuln.severity.title(),
             vuln.is_upgradable,
@@ -111,7 +111,7 @@ def severity_vulns_table(
     for vuln in vulns:
         row = [
             vuln.title,
-            vuln.get_id(),
+            Hyperlink(text=vuln.get_id(), url=vuln.url),
             format_decimal(vuln.cvssScore),  # TODO: format
             vuln.severity.title(),
             vuln.is_upgradable,
