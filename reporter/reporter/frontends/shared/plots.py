@@ -236,13 +236,14 @@ def scatter_vulnerability_age(
     # ax.xaxis.set_major_formatter(mdates.DateFormatter("%b"))
     ax.xaxis.set_major_formatter(mdates.AutoDateFormatter(mdates.YearLocator()))
     ax.grid(True)
+    ax.set_axisbelow(True)
     # '%b' means month as locale’s abbreviated name
 
     path = save_fig(fig, report, basename, "plot_vuln_age")
     return PlotData(
         title="Age of Unpatched Vulnerabilities",
         caption="Age of Unpatched Vulnerabilities",
-        description="I am a description",
+        description="The age of unpatched vulnerabilities found and their corresponding CVSSv3 scores.",
         path=path,
         plot_type=PlotType.SCATTER,
     )
