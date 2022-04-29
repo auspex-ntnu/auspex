@@ -1,6 +1,8 @@
 from typing import Any, Literal, Optional, Sequence, Union
 
 from pylatex import LongTable, LongTabu, LongTabularx, MultiColumn, NoEscape
+from ..shared.models import Hyperlink
+from .utils import hyperlink
 
 LongTableType = Union[LongTable, LongTabu, LongTabularx]
 
@@ -33,5 +35,12 @@ def init_longtable(
 
 def add_row(table: LongTableType, row: Sequence[Any]) -> LongTableType:
     """Adds a row to a longtable and wraps each cell text in a `pylatex.NoEscape`."""
-    table.add_row([NoEscape(c) for c in row])
+    r = []
+    for cell in row:
+        if isinstance(cell, Hyperlink):
+            r.append(hyperlink(cell.url, cell.text))
+        # TODO: add support for other types of cells
+        else:
+            r.append(NoEscape(cell))
+    table.add_row(r)
     return table
