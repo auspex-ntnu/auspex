@@ -20,7 +20,7 @@ steps:
     '--port',
     '${_PORT}',
     '--region',
-    'europe-north1',
+    '${_SERVICE_REGION}',
     '--set-env-vars',
     'COLLECTION_REPORTS=auspex-reports,COLLECTION_SCANS=auspex-scans,BUCKET_SCANS=auspex-scans,BUCKET_REPORTS=auspex-reports',
     '--project',
@@ -35,7 +35,7 @@ steps:
     '${_SERVICE_NAME}',
     '--to-latest',
     '--region',
-    '${SERVICE_REGION}',
+    '${_SERVICE_REGION}',
   ]
 timeout: 1200s
 images:

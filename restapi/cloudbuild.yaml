@@ -20,7 +20,7 @@ steps:
     '--port',
     '${_PORT}',
     '--region',
-    'europe-north1',
+    '${_SERVICE_REGION}',
     '--set-env-vars',
     'URL_SCANNER=https://scanner-qk6stf4ejq-lz.a.run.app,URL_REPORTER=https://scanner-qk6stf4ejq-lz.a.run.app',
     '--project',
@@ -35,7 +35,7 @@ steps:
     '${_SERVICE_NAME}',
     '--to-latest',
     '--region',
-    '${SERVICE_REGION}',
+    '${_SERVICE_REGION}',
   ]
 timeout: 1200s
 images:

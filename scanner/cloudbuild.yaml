@@ -20,6 +20,8 @@ steps:
     '--allow-unauthenticated',
     '--port',
     '${_PORT}',
+    '--memory',
+    '${_MEMORY}',
     '--region',
     '${_SERVICE_REGION}',
     '--set-env-vars',
@@ -38,7 +40,7 @@ steps:
     '${_SERVICE_NAME}',
     '--to-latest',
     '--region',
-    '${SERVICE_REGION}',
+    '${_SERVICE_REGION}',
   ]
 images:
 - ${_IMAGE_NAME}
@@ -51,5 +53,6 @@ substitutions:
     _SNYK_TOKEN_FILE: /run/secrets/SNYK_TOKEN_FILE
     _SCANNER_CREDENTIALS: /run/secrets/gcpcreds/SCANNER_CREDENTIALS
     _PORT: "80"
+    _MEMORY: "2Gi"
 options:
     dynamic_substitutions: true
