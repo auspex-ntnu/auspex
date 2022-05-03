@@ -1,0 +1,18 @@
+# TODO: symlink to .gitignore?
+
+# Git
+.git
+.gitignore
+.gcloudignore
+
+# File types
+*.json
+*.pkl
+
+# Tests
+tests
+
+# Cached
+.mypy_cache
+.pytest_cache
+__pycache__

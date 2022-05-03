@@ -3,12 +3,11 @@ steps:
 - name: 'gcr.io/cloud-builders/docker'
   env:
     - DOCKER_BUILDKIT=1
-  args: ['build', '-t', '${_IMAGE_NAME}', '-f', 'scanner/Dockerfile', '.']
+  args: ['build', '-t', '${_IMAGE_NAME}', '-f', 'restapi/Dockerfile', '.']
 # Push the container image to Container Registry
 - name: 'gcr.io/cloud-builders/docker'
   args: ['push', '${_IMAGE_NAME}']
 # Deploy container image to Cloud Run
-# TODO: replace with script or bake deploy_scanner.sh into this file
 - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
   entrypoint: gcloud
   args: [
@@ -21,14 +20,12 @@ steps:
     '--port',
     '${_PORT}',
     '--region',
-    '${_SERVICE_REGION}',
+    'europe-north1',
     '--set-env-vars',
-    'GOOGLE_CLOUD_PROJECT=${PROJECT_ID},SNYK_TOKEN_FILE=${_SNYK_TOKEN_FILE},SCANNER_CREDENTIALS=${_SCANNER_CREDENTIALS}',
-    '--set-secrets',
-    '${_SNYK_TOKEN_FILE}=SNYK_TOKEN:latest,${_SCANNER_CREDENTIALS}=SCANNER_CREDENTIALS:latest',
+    'URL_SCANNER=https://scanner-qk6stf4ejq-lz.a.run.app,URL_REPORTER=https://scanner-qk6stf4ejq-lz.a.run.app',
     '--project',
     '${PROJECT_ID}',
-  ]
+]
 - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
   entrypoint: gcloud
   args: [
@@ -40,16 +37,15 @@ steps:
     '--region',
     '${SERVICE_REGION}',
   ]
+timeout: 1200s
 images:
 - ${_IMAGE_NAME}
 
 # https://cloud.google.com/build/docs/configuring-builds/substitute-variable-values#dynamic_substitutions
 substitutions:
-    _IMAGE_NAME: 'eu.gcr.io/${PROJECT_ID}/auspex/scanner'
-    _SERVICE_NAME: 'scanner'
-    _SERVICE_REGION: 'europe-north1'
-    _SNYK_TOKEN_FILE: /run/secrets/SNYK_TOKEN_FILE
-    _SCANNER_CREDENTIALS: /run/secrets/gcpcreds/SCANNER_CREDENTIALS
+    _IMAGE_NAME: 'eu.gcr.io/${PROJECT_ID}/auspex/restapi'
+    _SERVICE_NAME: 'restapi'
     _PORT: "80"
+    _SERVICE_REGION: "europe-north1"
 options:
     dynamic_substitutions: true

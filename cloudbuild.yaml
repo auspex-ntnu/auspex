@@ -1,0 +1,36 @@
+# DESCRIPTION
+#
+# Detects and runs cloudbuild.yaml files for all services
+# Waits until every build has completed.
+
+# Source: https://stackoverflow.com/a/52894592
+# Modifications to answer:
+#   Changed context from $d to .
+#
+# All our Dockerfiles assume the build context is the project root - NOT their own directory
+
+# TODO
+#
+# Potential solution to fail when any child process fails:
+# https://stackoverflow.com/a/46212640
+
+steps:
+- name: 'gcr.io/cloud-builders/gcloud'
+  entrypoint: 'bash'
+  # TODO: use --env to pass in .env
+  args:
+  - '-c'
+  - |
+    set -euxo pipefail
+    for d in */; do
+      config="${d}cloudbuild.yaml"
+      if [[ ! -f "${config}" ]]; then
+        continue
+      fi
+
+      echo "Building $d ... "
+      (
+        gcloud builds submit --config=${config} .
+      ) &
+    done
+    wait
