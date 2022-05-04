@@ -1,4 +1,5 @@
 from functools import partial
+from typing import Optional
 from auspex_core.models.status import (
     ServiceStatus,
     ServiceStatusCode,
@@ -8,13 +9,15 @@ import httpx
 from loguru import logger
 
 
-async def get_service_status(url: str) -> ServiceStatus:
+async def get_service_status(url: str, timeout: Optional[float] = 300) -> ServiceStatus:
     """Get the status of a service.
 
     Parameters
     ----------
     url : `str`
         The URL of the service.
+    timeout: `Optional[float]`
+        The timeout for the request.
 
     Returns
     -------
@@ -23,7 +26,7 @@ async def get_service_status(url: str) -> ServiceStatus:
     """
     # bake in the URL of the service
     status = partial(ServiceStatus, url=url)
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(timeout=timeout) as client:
         # Guard against timeouts and other errors
         # Return a default "DOWN" status if the request fails
         try:
