@@ -40,72 +40,41 @@ COLPATH = f"{DBPATH}/collectionGroups/{config.collection_reports}"
 db = client.get_database(name=DBPATH)
 logger.debug(f"Using database: {db}")
 
-
+# Aliases for brevity
 IF = Index.IndexField
 ASC = Index.IndexField.Order.ASCENDING
 DESC = Index.IndexField.Order.DESCENDING
-indexes: list[list[Index.IndexField]] = [
-    [
-        IF(field_path="image.image", order=ASC),
-        IF(field_path="timestamp", order=DESC),
-    ],
-    [
-        IF(field_path="image.image", order=ASC),
-        IF(field_path="timestamp", order=ASC),
-    ],
+
+indexes: list[list[Index.IndexField]] = []
+# CVSS metrics + image indexes
+for field in ["cvss.mean", "cvss.median", "cvss.stdev", "cvss.min", "cvss.max"]:
+    for order in [ASC, DESC]:
+        indexes.append(
+            [IF(field_path="image.image", order=ASC), IF(field_path=field, order=order)]
+        )
+
+# Aggregate + CVSS mean indexes
+for order in [ASC, DESC]:
+    indexes.append(
+        [IF(field_path="aggregate", order=ASC), IF(field_path="cvss.mean", order=order)]
+    )
+
+# Image + Timestamp indexes
+for order in [ASC, DESC]:
+    indexes.append(
+        [
+            IF(field_path="image.image", order=ASC),
+            IF(field_path="timestamp", order=order),
+        ]
+    )
+
+# Image + Historical indexes
+indexes.append(
     [
         IF(field_path="image.image", order=ASC),
         IF(field_path="historical", order=DESC),
-    ],
-    [
-        IF(field_path="image.image", order=ASC),
-        IF(field_path="cvss.mean", order=ASC),
-    ],
-    [
-        IF(field_path="image.image", order=ASC),
-        IF(field_path="cvss.mean", order=DESC),
-    ],
-    [
-        IF(field_path="image.image", order=ASC),
-        IF(field_path="cvss.median", order=ASC),
-    ],
-    [
-        IF(field_path="image.image", order=ASC),
-        IF(field_path="cvss.median", order=DESC),
-    ],
-    [
-        IF(field_path="image.image", order=ASC),
-        IF(field_path="cvss.stdev", order=ASC),
-    ],
-    [
-        IF(field_path="image.image", order=ASC),
-        IF(field_path="cvss.stdev", order=DESC),
-    ],
-    [
-        IF(field_path="image.image", order=ASC),
-        IF(field_path="cvss.min", order=ASC),
-    ],
-    [
-        IF(field_path="image.image", order=ASC),
-        IF(field_path="cvss.min", order=DESC),
-    ],
-    [
-        IF(field_path="image.image", order=ASC),
-        IF(field_path="cvss.max", order=ASC),
-    ],
-    [
-        IF(field_path="image.image", order=ASC),
-        IF(field_path="cvss.max", order=DESC),
-    ],
-    [
-        IF(field_path="aggregate", order=ASC),
-        IF(field_path="cvss.mean", order=ASC),
-    ],
-    [
-        IF(field_path="aggregate", order=ASC),
-        IF(field_path="cvss.mean", order=DESC),
-    ],
-]
+    ]
+)
 
 for index in indexes:
     try:
