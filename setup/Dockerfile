@@ -31,6 +31,7 @@ COPY --from=setup-requirements /tmp/requirements.txt /app/requirements.txt
 # COPY ./core /core
 RUN --mount=type=cache,target=/root/.cache \
     pip install --upgrade -r /app/requirements.txt
+COPY ./setup /app
 
 
 CMD ["python", "main.py"]
