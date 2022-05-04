@@ -6,4 +6,5 @@ class AppConfig(BaseSettings):
     bucket_reports: str = Field(..., env="BUCKET_REPORTS")
     collection_scans: str = Field(..., env="COLLECTION_SCANS")
     collection_reports: str = Field(..., env="COLLECTION_REPORTS")
-    trend_weeks: int = Field(24, env="REPORTER_TREND_WEEKS")
+    trend_weeks: int = Field(26, env="REPORTER_TREND_WEEKS")
+    debug: bool = Field(False, env="DEBUG")
