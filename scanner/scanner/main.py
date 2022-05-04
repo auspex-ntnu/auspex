@@ -22,6 +22,7 @@ from .scan import scan_container
 from .types import ScanResultsType
 from .models import CompletedScan, ScanIn
 from .db import log_scan
+from .health import startup_health_check
 
 if os.getenv("DEBUG") == "1":
     import debugpy
@@ -37,8 +38,7 @@ app = FastAPI()
 
 @app.on_event("startup")
 async def on_app_startup():
-    # instantiate config to check that all envvars are defined
-    AppConfig()
+    await startup_health_check()
 
 
 # TODO: improve exception handlers
