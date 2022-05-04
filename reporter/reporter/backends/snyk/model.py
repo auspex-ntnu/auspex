@@ -22,7 +22,7 @@ from ...types.protocols import VulnerabilityType
 from ...utils.matplotlib import get_cvss_color
 from ...cve import (
     CVSS_DATE_BRACKETS,
-    DEFAULT_CVSS_TIMETYPE,
+    DEFAULT_CVE_TIMETYPE,
     DateDescription,
     UpgradabilityCounter,
 )
@@ -133,6 +133,10 @@ class SnykVulnerability(BaseModel):
     def is_upgradable(self) -> bool:
         return self.isUpgradable
 
+    @property
+    def exploitable(self) -> bool:
+        return True if self.exploit and self.exploit != "Not Defined" else False
+
     def get_id(self) -> str:
         # TODO: Add support for multiple prios
         # This is extremely hacky!
@@ -145,6 +149,15 @@ class SnykVulnerability(BaseModel):
                 return ids[0]
         return self.id  # fall back on Snyk ID
 
+    @property
+    def url(self) -> str:
+        """Attempts to return the cve.mitre.org URL for the vulnerability.
+        Falls back on the Snyk URL if no URL is found."""
+        for reference in self.references:
+            if reference.url.startswith("https://cve.mitre.org"):
+                return reference.url
+        return f"https://snyk.io/vuln/{self.id}"  # id is Snyk's vulnerability ID
+
     def get_numpy_color(self) -> MplRGBAColor:
         return get_cvss_color(self.cvssScore)
 
@@ -153,9 +166,21 @@ class SnykVulnerability(BaseModel):
             return self.upgradePath[1]
         return None
 
+    def get_year(self, timetype: CVETimeType = DEFAULT_CVE_TIMETYPE) -> Optional[int]:
+        """
+        Returns the year of the vulnerability.
+        """
+        try:
+            vuln_date = getattr(self, timetype.value)  # type: datetime
+            if vuln_date is not None:
+                return vuln_date.year
+        except AttributeError:
+            pass
+        return None
+
     def get_age_score_color(
         self,
-        timetype: CVETimeType = DEFAULT_CVSS_TIMETYPE,
+        timetype: CVETimeType = DEFAULT_CVE_TIMETYPE,
     ) -> VulnAgePoint:
         """
         Retrieves the vulnerability's age (in days), score and numpy color (determined by its CVSS score).
@@ -411,6 +436,13 @@ class SnykContainerScan(BaseModel):
             The `n` most severe vulnerabilities (if any), optionally only upgradable ones.
         """
         # TODO: optimize memory usage by utilizing generators better
+        # We can limit a generator by doing takewhile(lambda x: x < n, v)
+        #
+        # Then again, what's the point?
+        # We need to collect all to sort anyway... We don't actually save any memory.
+        #
+        # Actually trying to save memory here would require a pretty complex
+        # function to do the filtering.
         v = sorted(self.vulnerabilities, key=lambda v: v.cvssScore, reverse=True)
         if upgradable:
             v = list(filter(lambda v: v.isUpgradable, v))
@@ -549,6 +581,14 @@ class SnykContainerScan(BaseModel):
                 )
             )
         )
+
+    def get_exploitable(self) -> Iterable[SnykVulnerability]:
+        """
+        Return a list of vulnerabilities that are exploitable.
+        """
+        for v in self.vulnerabilities:
+            if v.exploitable:
+                yield v
 
     def get_vulns_by_date(
         self, time_type: CVETimeType

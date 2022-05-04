@@ -52,7 +52,7 @@ class UpgradabilityCounter(BaseModel):
     not_upgradable: int = 0
 
 
-DEFAULT_CVSS_TIMETYPE = CVETimeType.PUBLICATION_TIME
+DEFAULT_CVE_TIMETYPE = CVETimeType.PUBLICATION_TIME
 
 # NOTE: _Must_ be in descending order (high->low)
 CVSS_DATE_BRACKETS = [
