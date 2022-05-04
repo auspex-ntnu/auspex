@@ -12,9 +12,7 @@ from typing import Any
 from google.cloud import storage
 import backoff
 from loguru import logger
-
-# By default we don't quit on missing name, but it can be enabled
-EXIT_ON_MISSING = os.environ.get("EXIT_ON_MISSING", "") != ""
+from .config import AppConfig
 
 
 def on_giveup(details: dict[str, Any]) -> None:
@@ -42,20 +40,13 @@ def create_bucket(client: storage.Client, bucketname: str) -> None:
     logger.info("Created bucket {}", bucketname)
 
 
-def main() -> None:
+def init() -> None:
     client = storage.Client()
-
-    buckets = {b: os.getenv(b) for b in ("BUCKET_SCANS", "BUCKET_REPORTS")}
-
-    for envvar, bucket_name in buckets.items():
-        if bucket_name is None:
-            logger.warning(f"{envvar} is not set")
-            if EXIT_ON_MISSING:
-                logger.error("Exiting due to EXIT_ON_MISSING")
-                exit(1)
-            continue
+    config = AppConfig()
+    buckets = [config.bucket_scans, config.bucket_reports]
+    for bucket_name in buckets:
         create_bucket(client, bucket_name)
 
 
 if __name__ == "__main__":
-    main()
+    init()

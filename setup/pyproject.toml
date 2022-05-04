@@ -1,0 +1,23 @@
+[tool.poetry]
+name = "setup"
+version = "0.1.0"
+description = ""
+authors = ["Peder Hovdan Andresen <pedeha@stud.ntnu.no>"]
+
+[tool.poetry.dependencies]
+python = "^3.10"
+google-cloud-storage = "^2.3.0"
+firebase-admin = "^5.2.0"
+loguru = "^0.6.0"
+pydantic = "^1.9.0"
+backoff = "^2.0.1"
+google-cloud-firestore = "^2.4.0"
+httpx = "^0.22.0"
+
+[tool.poetry.dev-dependencies]
+mypy = "^0.950"
+black = "^22.3.0"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
