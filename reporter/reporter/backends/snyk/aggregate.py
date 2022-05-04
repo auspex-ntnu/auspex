@@ -13,7 +13,7 @@ from pydantic import BaseModel, Field, validator
 from more_itertools import ilen
 
 from ...types.nptypes import MplRGBAColor
-from ...types.cvss import CVSS
+from auspex_core.models.cve import CVSS
 from .model import SnykContainerScan, SnykVulnerability
 from ...utils import npmath
 from ...types.protocols import ScanTypeSingle
