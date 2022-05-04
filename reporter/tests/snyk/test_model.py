@@ -157,7 +157,7 @@ def test_fuzz_SnykVulnerability(vuln: SnykVulnerability) -> None:
     assert all(x is not None for x in vuln.get_age_score_color())
     age, score, color = vuln.get_age_score_color()
     assert age is not None
-    assert age >= 0
+    assert age <= datetime.now().replace(tzinfo=age.tzinfo)
     assert score is not None
     assert 0.0 <= score <= 10.0
     assert color is not None
