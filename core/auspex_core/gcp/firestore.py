@@ -85,10 +85,10 @@ async def add_document(
 
 async def check_db_exists(collection: str) -> bool:
     """Checks if the database is available."""
-    client = get_firestore_client()
-    col = client.collection(collection)
-    query = col.limit(1)  # type: AsyncQuery
     try:
+        client = get_firestore_client()
+        col = client.collection(collection)
+        query = col.limit(1)  # type: AsyncQuery
         await query.get()
     except Exception as e:
         logger.warning(f"Could not connect to database: {e}")
