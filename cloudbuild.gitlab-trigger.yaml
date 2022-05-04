@@ -1,0 +1,29 @@
+# This is the contents of the inline config used to setup the webhook trigger for GitLab CI/CD
+# trigger in Google Cloud Build
+
+# NOTE: _TO_SHA environment variable must be configured according to this guide:
+# https://cloud.google.com/build/docs/automating-builds/build-repos-from-gitlab#creating_webhook_triggers
+
+steps:
+  - name: gcr.io/cloud-builders/git
+    args:
+      - clone
+      - >-
+        https://gitlab-ci-token:<TOKEN_GOES_HERE>@gitlab.stud.idi.ntnu.no/containers-bachelor/repo.git
+      - .
+    volumes:
+      - name: ssh
+        path: /root/.ssh
+  - name: gcr.io/cloud-builders/git
+    args:
+      - checkout
+      - $_TO_SHA
+  - name: gcr.io/google.com/cloudsdktool/cloud-sdk
+    args:
+      - builds
+      - submit
+      - .
+    entrypoint: gcloud
+timeout: 1200s
+options:
+  logging: CLOUD_LOGGING_ONLY
