@@ -93,6 +93,17 @@ class ImageInfo(BaseModel):
     class Config:
         # Allow population using both camelCase and snake_case
         allow_population_by_field_name = True
+        extra = "ignore"
+        schema_extra = {
+            "example": {
+                "imageSizeBytes": "12345",
+                "layerId": "sha256:12345",
+                "mediaType": "application/vnd.docker.image.rootfs.diff.tar.gzip",
+                "tag": ["latest", "1.0"],
+                "timeCreatedMs": "1577836800000",  # TODO: fix these example timestamps
+                "timeUploadedMs": "1577836800000",
+            }
+        }
 
 
 class ImageNameMode(Enum):
