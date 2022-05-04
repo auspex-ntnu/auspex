@@ -158,15 +158,16 @@ async def upload_json_blob_from_memory(
             filename = f"{filename}.json"
         filename = sanitize(filename)
 
-        status = await client.upload(
+        st = await client.upload(
             bucket,
             filename,
             scan_contents,
             content_type=content_type,
         )
 
-        logger.debug(f"{filename} uploaded to {bucket}.")
-        return ObjectStatus.construct(**status)
+        status = ObjectStatus.construct(**st)
+        logger.debug(f"{status.mediaLink} uploaded to {bucket}.")
+        return status
 
 
 def create_bucket(bucket_name: str) -> Bucket:
