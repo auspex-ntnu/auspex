@@ -46,7 +46,7 @@ def determine_cloud_platform() -> str:
         )
     # Fall back on platform-injected env vars
     # TODO: find out if these are vars stable and not just implementation details we shouldn't rely on
-    if os.getenv("GOOGLE_CLOUD_PROJECT"):
+    if os.getenv("GOOGLE_CLOUD_PROJECT") or os.getenv("GCP_PROJECT"):
         return "gcp"
     elif os.getenv("WEBSITE_SITE_NAME"):
         return "azure"
