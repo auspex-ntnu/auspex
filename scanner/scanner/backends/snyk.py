@@ -7,6 +7,8 @@ from loguru import logger
 
 from pydantic import BaseModel, Field
 
+from ..config import AppConfig
+
 
 DEFAULT_CMD = "snyk"
 
@@ -21,9 +23,7 @@ class SnykScanResults(BaseModel):
         arbitrary_types_allowed = True  # for CompletedProcess
 
     @classmethod
-    def from_subprocess(
-        cls, process: CompletedProcess[str]
-    ) -> "SnykScanResults":  # TODO: FIX ANNOTATION
+    def from_subprocess(cls, process: CompletedProcess[str]) -> "SnykScanResults":
         return cls(
             scan=process.stdout,
             error=process.stderr,
@@ -40,12 +40,22 @@ class SnykScanResults(BaseModel):
         # 2: failure, try to re-run command
         # 3: failure, no supported projects detected
 
+        # TODO: replace with something more robust:
+
+        # class SnykExitCode(Enum):
+        #     SUCCESS = 0
+        #     FAILURE = 1
+        #     FAILURE_RERUN = 2
+        #     FAILURE_NOT_SUPPORTED = 3
+
         if self.process.returncode in [0, 1]:
             return True
         return False
 
 
 def run_snyk_scan(image: str) -> SnykScanResults:
+    # TODO: support other container registries.
+    # Currently only supports GCR
     snyk_exe = shutil.which("snyk")
     if not snyk_exe:
         logger.warning(
@@ -57,8 +67,12 @@ def run_snyk_scan(image: str) -> SnykScanResults:
 
     # We use the --json option to pipe the results to stdout
     # and then read it directly into memory.
+    snyk_cmd = f'{snyk_exe} container test --json --username=_json_key --password="$(cat {AppConfig().google_credentials})" {image}'
+    logger.debug(f"Running snyk command: {snyk_cmd}")
     p = subprocess.run(
-        [snyk_exe, "container", "test", "--json", image],
+        # FIXME: is there a better way to use "$(cat <file>)" in a subprocess?
+        # Ideally we would just want to run the Snyk binary directly
+        ["/bin/bash", "-c", snyk_cmd],
         capture_output=True,
         text=True,
     )
