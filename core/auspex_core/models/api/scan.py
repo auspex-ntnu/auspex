@@ -4,24 +4,20 @@ from typing import Optional
 from pydantic import BaseModel, Field
 
 
-DEFAULT_FORMAT = os.getenv("REPORTER_DEFAULT_FORMAT") or "latex"
-
 # FIXME: why is this shared
+
+
 class ScanRequest(BaseModel):
     images: list[str] = Field(
         default_factory=list,
         description="List of image names to scan.",
     )
 
+    # NYI:
     repository: Optional[str] = Field(
         default=None,
         description="Repository name to scan images of. Supercedes images.",
     )
-
-    format: str = Field(
-        default=DEFAULT_FORMAT,
-        description="Format of report.",
-    )  # FIXME: This should be defined in reporter's model
 
     backend: str = Field(
         default="snyk",
