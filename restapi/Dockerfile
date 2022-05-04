@@ -5,7 +5,7 @@ FROM python:3.10.4-slim-buster as restapi-requirements
 WORKDIR /tmp
 
 # Install poetry and copy poetry files
-RUN pip install poetry 
+RUN pip install poetry
 COPY ./restapi/pyproject.toml /tmp/
 
 # Copy core module requirements file
@@ -29,4 +29,11 @@ RUN --mount=type=cache,target=/root/.cache \
 
 # Copy application code and run application
 COPY ./restapi /app
+
+# REST API Environment variables
+ENV PYTHONOPTIMIZE=1
+
+ENV URL_REPORTER=http://localhost:8080/reporter
+ENV URL_SCANNER=http://localhost:8080/scanner
+
 CMD ["uvicorn", "restapi:app", "--host", "0.0.0.0", "--port", "80"]
