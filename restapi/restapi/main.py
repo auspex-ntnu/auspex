@@ -30,6 +30,13 @@ if os.getenv("DEBUG") == "1":
     # debugpy.breakpoint()
 
 
+@app.on_event("startup")
+async def startup():
+    logger.info("Starting up")
+    # Instantiate config to check for missing fields
+    AppConfig()
+
+
 @app.get("/scans/{scan_id}", response_model=ScanLog)
 async def get_scan(scan_id: str) -> ScanLog:
     """Get a scan by its ID."""
