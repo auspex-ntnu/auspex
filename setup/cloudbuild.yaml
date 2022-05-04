@@ -7,36 +7,14 @@ steps:
 # Push the container image to Container Registry
 - name: 'gcr.io/cloud-builders/docker'
   args: ['push', '${_IMAGE_NAME}']
-# Deploy container image to Cloud Run
-- name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
-  entrypoint: gcloud
-  args: [
-    'run',
-    'deploy',
-    '${_SERVICE_NAME}',
-    '--image',
-    '${_IMAGE_NAME}',
-    '--allow-unauthenticated',
-    '--port',
-    '${_PORT}',
-    '--region',
-    '${_SERVICE_REGION}',
-    '--set-env-vars',
-    'COLLECTION_REPORTS=auspex-reports,COLLECTION_SCANS=auspex-scans,BUCKET_SCANS=auspex-scans,BUCKET_REPORTS=auspex-reports',
-    '--project',
-    '${PROJECT_ID}',
-]
-- name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
-  entrypoint: gcloud
-  args: [
-    'run',
-    'services',
-    'update-traffic',
-    '${_SERVICE_NAME}',
-    '--to-latest',
-    '--region',
-    '${_SERVICE_REGION}',
-  ]
+# Run the setup as a one-off job
+- name: 'eu.gcr.io/${PROJECT_ID}/auspex/setup'
+  env:
+    - COLLECTION_REPORTS=auspex-reports
+    - COLLECTION_SCANS=auspex-scans
+    - BUCKET_SCANS=auspex-scans
+    - BUCKET_REPORTS=auspex-reports
+
 timeout: 1200s
 images:
 - ${_IMAGE_NAME}
