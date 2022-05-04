@@ -64,7 +64,7 @@ class ReportRequest(BaseModel):
     image: str
     filter: Optional[Filter] = None
     limit: Optional[int] = None
-    order_by: Optional[OrderBy] = None
+    order: Optional[OrderBy] = None
 
     @validator("image")
     def ensure_not_empty(cls, v: str) -> str:
