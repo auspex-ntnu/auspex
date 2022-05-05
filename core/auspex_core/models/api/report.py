@@ -35,7 +35,11 @@ class OrderOption(Enum):
 
 
 class ReportQuery(BaseModel):
-    image: str = Field(..., description="Image to search for.")
+    # either image or aggregate MUST be specified
+    image: str = Field("", description="Image to search for.")
+    aggregate: str = Field(
+        False, description="Whether or not to search for aggregate reports."
+    )
 
     # Minimum CVSS score
     ge: Optional[Union[float, int]] = Field(
@@ -77,8 +81,11 @@ class ReportQuery(BaseModel):
     # max_age: Optional[int] = Field(None, gt=0, description="Maximum age of reports in days.")
 
     @root_validator
-    def validate_le_ge(cls, values: dict[str, Any]) -> dict[str, Any]:
-        """Validator that ensures that `le` is not greater than `ge`."""
+    def validate_values(cls, values: dict[str, Any]) -> dict[str, Any]:
+        if values["image"] and values["aggregate"]:
+            raise ValueError("Cannot search for both image and aggregate.")
+        if not values["image"] and not values["aggregate"]:
+            raise ValueError("Must search for either image or aggregate.")
         if values["le"] is not None and values["ge"] is not None:
             if values["le"] < values["ge"]:
                 raise ValueError("`le` must be greater than `ge`.")
