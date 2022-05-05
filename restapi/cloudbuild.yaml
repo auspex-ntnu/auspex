@@ -22,7 +22,7 @@ steps:
     '--region',
     '${_SERVICE_REGION}',
     '--set-env-vars',
-    'URL_SCANNER=https://scanner-qk6stf4ejq-lz.a.run.app,URL_REPORTER=https://scanner-qk6stf4ejq-lz.a.run.app',
+    'URL_SCANNER=${_URL_SCANNER},URL_REPORTER=${_URL_REPORTER}',
     '--project',
     '${PROJECT_ID}',
 ]
@@ -47,5 +47,7 @@ substitutions:
     _SERVICE_NAME: 'restapi'
     _PORT: "80"
     _SERVICE_REGION: "europe-north1"
+    _URL_SCANNER: https://scanner-qk6stf4ejq-lz.a.run.app
+    _URL_REPORTER: https://reporter-qk6stf4ejq-lz.a.run.app
 options:
     dynamic_substitutions: true

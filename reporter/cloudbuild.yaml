@@ -22,7 +22,7 @@ steps:
     '--region',
     '${_SERVICE_REGION}',
     '--set-env-vars',
-    'URL_SCANNER=${_URL_SCANNER},COLLECTION_REPORTS=auspex-reports,COLLECTION_SCANS=auspex-scans,BUCKET_SCANS=auspex-scans,BUCKET_REPORTS=auspex-reports',
+    'URL_SCANNER=${_URL_SCANNER},COLLECTION_REPORTS=${_COLLECTION_REPORTS},BUCKET_REPORTS=${_BUCKET_REPORTS}',
     '--project',
     '${PROJECT_ID}',
 ]
@@ -48,5 +48,7 @@ substitutions:
     _PORT: "80"
     _SERVICE_REGION: "europe-north1"
     _URL_SCANNER: https://scanner-qk6stf4ejq-lz.a.run.app
+    _BUCKET_REPORTS: auspex-reports
+    _COLLECTION_REPORTS: auspex-reports
 options:
     dynamic_substitutions: true
