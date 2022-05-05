@@ -9,6 +9,30 @@ from ..cve import CVSS, CVSS_MAX_SCORE, CVSS_MIN_SCORE
 from ..scan import ReportData
 from ..api.scan import ScanRequest
 
+from typing import List
+from pydantic import BaseModel, Field, validator
+
+
+class ReportRequestIn(BaseModel):
+    """Request body for POST /reports"""
+
+    # TODO: ensure no duplicates
+    scan_ids: list[str] = Field(..., min_items=1)
+    aggregate: bool = Field(
+        False, description="Aggregate results in an aggregate report."
+    )
+    ignore_failed: bool = Field(
+        False,
+        description="Ignore scans that fail to be retrieved or parsed.",
+    )
+    format: str = "latex"  # TODO: make use of enum to validate this
+    # rename to style?
+
+    @validator("scan_ids")
+    def validate_scan_ids(cls, v: List[str]) -> List[str]:
+        # Ensure no duplicates
+        return list(set(v))
+
 
 class FirestoreQuery(NamedTuple):
     field: str
@@ -38,6 +62,8 @@ class OrderOption(Enum):
 
 
 class ReportQuery(BaseModel):
+    """Query parameters used to retrieve a report."""
+
     # either image or aggregate MUST be specified
     image: str = Field("", description="Image to search for.")
     aggregate: str = Field(
@@ -97,7 +123,7 @@ class ReportQuery(BaseModel):
 
 DEFAULT_FORMAT = os.getenv("REPORTER_DEFAULT_FORMAT") or "latex"
 
-
+# FIXME: define default format in config
 class ReportRequest(ScanRequest):
     format: str = Field(
         default=DEFAULT_FORMAT,
