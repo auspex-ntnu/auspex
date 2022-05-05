@@ -2,7 +2,6 @@ from pydantic import BaseSettings, Field
 
 
 class AppConfig(BaseSettings):
-    bucket_scans: str = Field(..., env="BUCKET_SCANS")
     bucket_reports: str = Field(..., env="BUCKET_REPORTS")
     collection_reports: str = Field(..., env="COLLECTION_REPORTS")
     url_scanner: str = Field(..., env="URL_SCANNER")
