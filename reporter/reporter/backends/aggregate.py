@@ -52,10 +52,17 @@ class AggregateReport(BaseModel):
             imageSizeBytes=sum(map(lambda s: s.image.imageSizeBytes, self.reports)),
             layerId="",
             tag=list(set(map(lambda s: s.image.tag, self.reports))),
-            timeCreatedMs=min(map(lambda s: s.image.timeCreatedMs, self.reports)),
-            timeUploadedMs=min(map(lambda s: s.image.timeCreated, self.reports)),
-            digest=None,
+            timeCreatedMs=min(
+                map(lambda s: s.image.timeCreatedMs, self.reports),
+                default=datetime.utcnow(),
+            ),
+            timeUploadedMs=min(
+                map(lambda s: s.image.timeCreated, self.reports),
+                default=datetime.utcnow(),
+            ),
+            digest="",  # NOTE: hash digests of all reports?
             image=", ".join(map(lambda s: s.image.image, self.reports)),
+            mediaType="",
         )
 
     def __hash__(self) -> int:
