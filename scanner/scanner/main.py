@@ -43,15 +43,15 @@ async def on_app_startup():
 
 # TODO: improve exception handlers
 
-# TODO: remove this. It just obscures the actual error message
-@app.exception_handler(ValidationError)
-async def handle_validation_error(request: Request, exc: ValidationError):
-    # TODO: improve message
-    logger.error("A pydantic validation error occured", exc)
-    return JSONResponse(
-        status_code=400,
-        content={"detail": exc.errors()},
-    )
+# # TODO: remove this. It just obscures the actual error message
+# @app.exception_handler(ValidationError)
+# async def handle_validation_error(request: Request, exc: ValidationError):
+#     # TODO: improve message
+#     logger.error("A pydantic validation error occured", exc)
+#     return JSONResponse(
+#         status_code=400,
+#         content={"detail": exc.errors()},
+#     )
 
 
 @app.exception_handler(APIError)
@@ -67,7 +67,7 @@ async def handle_user_api_error(request: Request, exc: UserAPIError):
     return JSONResponse(status_code=500, content=exc.args)
 
 
-@app.post("/scan", response_model=ScanLog)
+@app.post("/scans", response_model=ScanLog)
 async def scan_image(scan_request: ScanIn) -> ScanLog:
     """Scans a single container image."""
     image_info = await get_image_info(scan_request.image, AppConfig().project)
@@ -113,7 +113,7 @@ async def get_scan(scan_id: str) -> ScanLog:
         doc = await get_document(AppConfig().collection_scans, scan_id)
     except ValueError:
         raise HTTPException(status_code=404, detail="Scan not found")
-    return ScanLog(**doc.to_dict())
+    return ScanLog(**doc.to_dict(), id=doc.id)
 
 
 @app.head("/scans")
