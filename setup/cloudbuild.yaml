@@ -10,10 +10,10 @@ steps:
 # Run the setup as a one-off job
 - name: 'eu.gcr.io/${PROJECT_ID}/auspex/setup'
   env:
-    - COLLECTION_REPORTS=auspex-reports
-    - COLLECTION_SCANS=auspex-scans
-    - BUCKET_SCANS=auspex-scans
-    - BUCKET_REPORTS=auspex-reports
+    - COLLECTION_REPORTS=${_COLLECTION_REPORTS}
+    - COLLECTION_SCANS=${_COLLECTION_SCANS}
+    - BUCKET_SCANS=${_BUCKET_SCANS}
+    - BUCKET_REPORTS=${_BUCKET_REPORTS}
 
 timeout: 1200s
 images:
@@ -22,8 +22,9 @@ images:
 # https://cloud.google.com/build/docs/configuring-builds/substitute-variable-values#dynamic_substitutions
 substitutions:
     _IMAGE_NAME: 'eu.gcr.io/${PROJECT_ID}/auspex/setup'
-    _SERVICE_NAME: 'setup'
-    _PORT: "80"
-    _SERVICE_REGION: "europe-north1"
+    _BUCKET_REPORTS: auspex-reports
+    _COLLECTION_REPORTS: auspex-reports
+    _COLLECTION_SCANS: auspex-scans
+    _BUCKET_SCANS: auspex-scans
 options:
     dynamic_substitutions: true
