@@ -1,10 +1,13 @@
-from enum import Enum
 import os
+from enum import Enum
 from typing import Any, Iterable, NamedTuple, Optional, Union
-from auspex_core.models.cve import CVSS, CVSS_MAX_SCORE, CVSS_MIN_SCORE
-from pydantic import BaseModel, Field, root_validator, validator
+
 from google.cloud import firestore
-from .scan import ScanRequest
+from pydantic import BaseModel, Field, root_validator, validator
+
+from ..cve import CVSS, CVSS_MAX_SCORE, CVSS_MIN_SCORE
+from ..scan import ReportData
+from ..api.scan import ScanRequest
 
 
 class FirestoreQuery(NamedTuple):
@@ -100,3 +103,17 @@ class ReportRequest(ScanRequest):
         default=DEFAULT_FORMAT,
         description="Format of report.",
     )  # FIXME: This should be defined in reporter's model
+
+
+class ReportOut(BaseModel):
+    reports: list[ReportData] = Field(
+        ..., min_items=1, description="List of generated reports and their metadata."
+    )
+    aggregate: Optional[ReportData] = Field(None, description="Aggregate report data.")
+    message: str = Field(
+        "",
+        description="Optional message describing the data.",
+    )
+    failed: list[str] = Field(
+        default_factory=list, description="List of failed scan IDs."
+    )
