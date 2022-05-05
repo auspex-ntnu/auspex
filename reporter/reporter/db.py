@@ -26,8 +26,7 @@ from loguru import logger
 from pydantic import ValidationError
 
 from .config import AppConfig
-from .types import ScanTypeSingle
-from .types.protocols import ScanTypeSingle
+from .types.protocols import ScanTypeSingle, ScanType
 
 # async def log_report(scan: ScanTypeSingle) -> WriteResult:
 #     client = get_firestore_client()
@@ -37,7 +36,11 @@ from .types.protocols import ScanTypeSingle
 # ) -> WriteResult:
 
 
-async def log_report(scan: ScanTypeSingle, report_url: Optional[str] = None) -> None:
+async def log_report(
+    scan: ScanType,
+    report_url: Optional[str] = None,
+    aggregate: bool = False,  # TODO: add this to ScanType protocol
+) -> ReportData:
     """Store results of parsed container scan in the database and mark
     existing reports as historical."""
     client = get_firestore_client()
@@ -46,21 +49,20 @@ async def log_report(scan: ScanTypeSingle, report_url: Optional[str] = None) -> 
     # transaction = client.transaction()
     # How to write then read (then write) in a transaction?
 
-    scanres = await _log_report(
-        client, AppConfig().collection_reports, scan, report_url
+    report_data = await _log_report(
+        client, AppConfig().collection_reports, scan, report_url, aggregate
     )
-    logger.debug(f"Logged report with ID '{scan.id}', result: {scanres}")
-
-    hisres = await mark_reports_historical(client, AppConfig().collection_reports, scan)
-    logger.debug(f"Marked historical reports: {hisres}")
+    await mark_reports_historical(client, AppConfig().collection_reports, scan)
+    return report_data
 
 
 async def _log_report(
     client: AsyncClient,
     collection: str,
-    scan: ScanTypeSingle,
+    scan: ScanType,
     report_url: Optional[str],
-) -> WriteResult:
+    aggregate: bool,
+) -> ReportData:
     """Store results of parsed container scan in the database."""
     r = ReportData(
         image=scan.image.dict(),
@@ -70,6 +72,7 @@ async def _log_report(
         report_url=report_url,
         upgrade_paths=scan.upgrade_paths,
         dockerfile_instructions=scan.dockerfile_instructions,
+        aggregate=aggregate,
     )
 
     doc = client.collection(collection).document()
@@ -112,16 +115,17 @@ async def _log_report(
                 await col.document(severity).set(data.dict())
             else:
                 raise
-
-    return result
+    logger.debug(f"Logged report with ID '{scan.id}', result: {result}")
+    return r
 
 
 async def get_prev_scans(
-    scan: ScanTypeSingle,
+    scan: ScanType,
     collection: str,
     max_age: Union[timedelta, datetime],
     ignore_self: bool = True,
     by_image: bool = True,
+    aggregate: bool = False,
     skip_historical: bool = True,
 ) -> list[ReportData]:
     """Given a single image scan, find all previous scans going back
@@ -140,6 +144,8 @@ async def get_prev_scans(
         If true, does not include the input scan in the returned list, by default True
     by_image : `bool`, optional
         If true, returns reports by image creation date instead of scan date, by default True
+    aggregate : `bool`, optional
+        If true, only returns reports marked 'aggregate', by default False
     skip_historical : `bool`, optional
         If true, skips historical reports, by default True
 
@@ -155,7 +161,12 @@ async def get_prev_scans(
 
     client = get_firestore_client()
     col = client.collection(collection)
-    query = col.where("image.image", "==", scan.image.image)  # type: AsyncQuery
+
+    query: AsyncQuery
+    if aggregate:
+        query = col.where("aggregate", "==", True)
+    else:
+        query = col.where("image.image", "==", scan.image.image)
 
     # Perform filtering by date client-side instead of using composite query
     # This will require more database reads and memory, but saves us from
@@ -264,6 +275,7 @@ async def mark_reports_historical(
                 continue
             else:
                 res["updated"] += 1
+    logger.debug(f"Marked historical reports: {res}")
     return res
 
 

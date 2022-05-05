@@ -1,32 +1,31 @@
 # NOTE: ONLY SUPPORTS GCP RIGHT NOW
 
 
-from functools import partial
+import asyncio
 import os
+
 from datetime import timedelta
-import time
+from functools import partial
 from typing import Optional
-from auspex_core.gcp.firestore import check_db_exists, get_firestore_client
+
+from auspex_core.gcp.firestore import check_db_exists
+from auspex_core.models.api.report import ReportOut, ReportQuery, ReportRequest
 from auspex_core.models.scan import ReportData
 from auspex_core.models.status import ServiceStatus, ServiceStatusCode
-
-from fastapi import Depends, FastAPI, Query, Request
+from fastapi import Depends, FastAPI, Request
 from fastapi.exceptions import HTTPException
 from loguru import logger
 
-from .backends.snyk.model import SnykContainerScan
+
 from .config import AppConfig
-from .db import (
-    get_reports_filtered,
-    log_report,
-    get_prev_scans,
-)
+from .db import get_prev_scans, get_reports_filtered, log_report
+from .exceptions import combine_exception_messages
 from .frontends.latex import create_document
 from .models import ReportRequestIn
+from .report import parse_scan
+from .backends.aggregate import AggregateReport
 from .types.protocols import ScanTypeSingle
-from .utils.firestore import get_firestore_document
-from .utils.storage import get_object_from_document, upload_report_to_bucket
-from auspex_core.models.api.report import ReportQuery
+from .utils.storage import upload_report_to_bucket
 
 if os.getenv("DEBUG") == "1":
     import debugpy
@@ -54,40 +53,51 @@ async def on_app_startup():
     AppConfig()
 
 
-async def scan_from_docid(docid: str, collection: str) -> ScanTypeSingle:
-    # TODO: move to appropriate module (backends, db, or utils)
-
-    # DB Document
-    doc = await get_firestore_document(docid, collection)
-    # Download blob from document
-    obj = await get_object_from_document(doc)
-
-    backends = {
-        "snyk": SnykContainerScan,
-    }
-    backend = doc.get("backend")
-    if backend not in backends:
-        raise ValueError(f"Backend {backend} not supported")
-    backend_class = backends[backend]
-
-    id = f"{doc.id}-{obj.blob.id}-{int(time.time())}"
-    image = doc.get("image")
-    return backend_class(**obj.content, id=id, image=image)
-
-
-@app.post("/report")
+@app.post("/reports", response_model=ReportOut)
 async def generate_report(r: ReportRequestIn):
-    scan = await scan_from_docid(r.document_id[0], AppConfig().collection_scans)
+    # Create reports for all reports in the request
+    reports = await asyncio.gather(
+        *[create_single_report(scan_id, r) for scan_id in r.scan_ids],
+        return_exceptions=True,
+    )
 
+    # Filter out any exceptions (and log them)
+    failed = [r for r in reports if isinstance(r, Exception)]
+    for f in failed:
+        reports.remove(f)
+    if failed:
+        exc_msg = combine_exception_messages(failed)
+        msg = f"One or more scans failed to be parsed: {exc_msg}"
+
+        if not r.ignore_failed:
+            raise HTTPException(status_code=500, detail=msg)
+        else:
+            logger.warning(msg)
+
+    # Create aggregate report if specified and there are multiple reports
+    aggregate: Optional[AggregateReport] = None
+    msg = ""
+    if r.aggregate:
+        if len(reports) > 1:
+            aggregate = await create_aggregate_report(reports)
+        else:
+            msg = "Aggregate report requested but only one scan was provided."
+            logger.warning(msg)
+    # TODO: determine failed scans and return them in the response
+    return ReportOut(reports=reports, aggregate=aggregate, message=msg, failed=[])
+
+
+async def create_single_report(scan_id: str, settings: ReportRequest) -> ReportData:
+    report = await parse_scan(scan_id)
     prev_scans = await get_prev_scans(
-        scan,
+        report,
         collection=AppConfig().collection_reports,
         max_age=timedelta(weeks=AppConfig().trend_weeks),
         ignore_self=True,
         skip_historical=False,  # FIXME: set to True & should be envvar
     )
 
-    doc = await create_document(scan, prev_scans)
+    doc = await create_document(report, prev_scans)
     if not doc.path.exists():
         raise HTTPException(500, "Failed to generate report.")
     status = await upload_report_to_bucket(doc.path, AppConfig().bucket_reports)
@@ -96,37 +106,30 @@ async def generate_report(r: ReportRequestIn):
     #    because we create the report, THEN log and mark the previous scans
 
     try:
-        await log_report(scan, status.mediaLink)
+        report_data = await log_report(report, status.mediaLink)
     except Exception as e:
         logger.error(f"Failed to log scan: {e}")
         raise HTTPException(500, f"Failed to log scan: {e}")
+    return report_data
 
-    return {"request": r.dict(), "status": status}
 
+async def create_aggregate_report(reports: list[ScanTypeSingle]) -> ReportData:
+    report = AggregateReport(reports=reports)
+    prev_scans = await get_prev_scans(
+        report,
+        collection=AppConfig().collection_reports,
+        max_age=timedelta(weeks=AppConfig().trend_weeks),
+        ignore_self=True,
+        skip_historical=False,  # NOTE: MUST be True for aggregate reports
+        aggregate=True,
+    )
 
-@app.post("/aggregate")
-async def generate_aggregate_report(r: ReportRequestIn):
-    failed = []  # type: list[str]
-    scans = []  # type: list[ScanTypeSingle]
-    for docid in r.document_id:
-        try:
-            scan = await scan_from_docid(docid, AppConfig().collection_scans)
-        except Exception:
-            logger.exception(f"Failed to retrieve document with ID {docid}")
-            failed.append(docid)
-        else:
-            scans.append(scan)
-
-    if failed:
-        msg = f"Failed to retrieve the following documents: {failed}"
-        logger.error(msg)
-        if not r.ignore_failed or not scans:
-            # TODO: clarify to user if _all_ requested scans fail with ignore_failed=True
-            raise HTTPException(500, msg)
-
-    return r
-
-    # Make aggregate report
+    doc = await create_document(report, prev_scans)
+    if not doc.path.exists():
+        raise HTTPException(500, "Failed to generate report.")
+    status = await upload_report_to_bucket(doc.path, AppConfig().bucket_reports)
+    await log_report(report, status.mediaLink)
+    return report
 
 
 @app.get("/reports")  # name TBD

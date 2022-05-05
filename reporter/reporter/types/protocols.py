@@ -97,6 +97,10 @@ class ScanType(Protocol):
     def title(self) -> str:
         """Get the title of the scan."""
 
+    @property
+    def image(self) -> ImageInfo:
+        """ImageInfo object for the report."""
+
     def get_timestamp(
         self, image: bool = True, mode: ImageTimeMode = ImageTimeMode.CREATED
     ) -> datetime:
@@ -161,7 +165,7 @@ class ScanType(Protocol):
     def n_critical(self) -> int:
         """Number of vulnerabilities with a severity of 'critical'."""
 
-    def most_common_cve(self, n: int) -> list[tuple[str, int]]:
+    def most_common_cve(self, n: Optional[int] = 5) -> list[tuple[str, int]]:
         """Sorted list of tuples of CVE IDs and number of occurences."""
 
     @property
@@ -214,11 +218,6 @@ class ScanType(Protocol):
 @runtime_checkable
 class ScanTypeSingle(ScanType, Protocol):
     """Specialization of ScanType for single image scans."""
-
-    # id: str
-    @property
-    def image(self) -> ImageInfo:
-        """ImageInfo object for the report."""
 
 
 @runtime_checkable

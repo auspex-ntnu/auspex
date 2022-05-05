@@ -5,10 +5,22 @@ from .config import AppConfig
 
 
 class ReportRequestIn(BaseModel):
-    document_id: list[str] = Field(..., min_items=1)
-    ignore_failed: bool = False
-    format: str = "latex"
+    # TODO: ensure no duplicates
+    scan_ids: list[str] = Field(..., min_items=1)
+    aggregate: bool = Field(
+        False, description="Aggregate results in an aggregate report."
+    )
+    ignore_failed: bool = Field(
+        False,
+        description="Ignore scans that fail to be retrieved or parsed.",
+    )
+    format: str = "latex"  # TODO: make use of enum to validate this
     # rename to style?
+
+    @validator("scan_ids")
+    def validate_scan_ids(cls, v: List[str]) -> List[str]:
+        # Ensure no duplicates
+        return list(set(v))
 
     @validator("format")
     def validate_format(cls, v: str) -> str:

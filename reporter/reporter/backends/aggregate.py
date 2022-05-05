@@ -12,17 +12,18 @@ from loguru import logger
 from pydantic import BaseModel, Field, validator
 from more_itertools import ilen
 
-from ...types.nptypes import MplRGBAColor
+from ..types.nptypes import MplRGBAColor
 from auspex_core.models.cve import CVSS
-from .model import SnykContainerScan, SnykVulnerability
-from ...utils import npmath
-from ...types.protocols import ScanTypeSingle
+
+# from .snyk.model import SnykContainerScan, SnykVulnerability
+from ..utils import npmath
+from ..types.protocols import ScanTypeSingle, VulnerabilityType
 import time
-from ...frontends.shared.models import VulnAgePoint
+from ..frontends.shared.models import VulnAgePoint
 
 # TODO: move this out the snyk module
-class AggregateScan(BaseModel):
-    scans: list[SnykContainerScan]
+class AggregateReport(BaseModel):
+    reports: list[ScanTypeSingle]
     id: str = ""
     timestamp: datetime = Field(default_factory=datetime.now)
     # OR
@@ -33,6 +34,7 @@ class AggregateScan(BaseModel):
         extra = "allow"  # should we allow or disallow this?
         validate_assignment = True
         keep_untouched = (cached_property, _lru_cache_wrapper)
+        arbitrary_types_allowed = True
 
     @validator("id", always=True)
     def set_id(cls, v: str) -> str:
@@ -44,9 +46,17 @@ class AggregateScan(BaseModel):
     def title(self) -> str:
         return f"Aggregate Report"
 
-    @property  # workaround until we rename everything to "report"
-    def reports(self) -> list[SnykContainerScan]:
-        return self.scans
+    @property
+    def image(self) -> ImageInfo:
+        return ImageInfo(
+            imageSizeBytes=sum(map(lambda s: s.image.imageSizeBytes, self.reports)),
+            layerId="",
+            tag=list(set(map(lambda s: s.image.tag, self.reports))),
+            timeCreatedMs=min(map(lambda s: s.image.timeCreatedMs, self.reports)),
+            timeUploadedMs=min(map(lambda s: s.image.timeCreated, self.reports)),
+            digest=None,
+            image=", ".join(map(lambda s: s.image.image, self.reports)),
+        )
 
     def __hash__(self) -> int:
         return id(self)
@@ -66,7 +76,7 @@ class AggregateScan(BaseModel):
 
     @property
     def cvss_min(self) -> float:
-        # return min((scan.cvss_min for scan in self.scans), default=0.0)
+        # return min((scan.cvss_min for scan in self.reports), default=0.0)
         return min(self.cvss_scores(), default=0.0)
         # return 0.0
 
@@ -93,19 +103,19 @@ class AggregateScan(BaseModel):
         )
 
     @property
-    def low(self) -> Iterable[SnykVulnerability]:
+    def low(self) -> Iterable[VulnerabilityType]:
         return self.get_vulnerabilities_by_severity(CVESeverity.LOW)
 
     @property
-    def medium(self) -> Iterable[SnykVulnerability]:
+    def medium(self) -> Iterable[VulnerabilityType]:
         return self.get_vulnerabilities_by_severity(CVESeverity.MEDIUM)
 
     @property
-    def high(self) -> Iterable[SnykVulnerability]:
+    def high(self) -> Iterable[VulnerabilityType]:
         return self.get_vulnerabilities_by_severity(CVESeverity.HIGH)
 
     @property
-    def critical(self) -> Iterable[SnykVulnerability]:
+    def critical(self) -> Iterable[VulnerabilityType]:
         return self.get_vulnerabilities_by_severity(CVESeverity.CRITICAL)
 
     @property
@@ -128,14 +138,14 @@ class AggregateScan(BaseModel):
     @cache
     def cvss_scores(self, ignore_zero: bool = True) -> list[float]:
         scores: list[float] = []
-        for scan in self.scans:
+        for scan in self.reports:
             scores.extend(scan.cvss_scores(ignore_zero))
 
         if not scores:
             scores = [0.0]
             logger.warning(
                 "Unable to retrieve scores when creating aggregate report for "
-                f"the following scans: {self.scans}"
+                f"the following scans: {self.reports}"
             )
         return scores
 
@@ -164,23 +174,34 @@ class AggregateScan(BaseModel):
 
     def get_vulnerabilities_by_severity(
         self, severity: CVESeverity
-    ) -> Iterable[SnykVulnerability]:
-        for scan in self.scans:
+    ) -> Iterable[VulnerabilityType]:
+        for scan in self.reports:
             yield from scan.get_vulnerabilities_by_severity(severity)
+
+    def get_exploitable(self) -> Iterable[VulnerabilityType]:
+        """Returns vulnerabilities that are exploitable.
+
+        Returns
+        -------
+        `Iterable[VulnerabilityType]`
+            Iterable of vulnerabilities that are exploitable.
+        """
+        for report in self.reports:
+            yield from report.get_exploitable()
 
     def get_scan_ids(self) -> list[str]:
         """Retrieves IDs of all scans."""
-        return [scan.id for scan in self.scans]
+        return [scan.id for scan in self.reports]
 
     @property
-    def vulnerabilities(self) -> Iterator[SnykVulnerability]:
+    def vulnerabilities(self) -> Iterator[VulnerabilityType]:
         """Generator that yields vulnerabilities from all scans."""
-        for scan in self.scans:
+        for scan in self.reports:
             for vuln in scan.vulnerabilities:
                 yield vuln
 
     @property
-    def most_severe(self) -> Optional[SnykVulnerability]:
+    def most_severe(self) -> Optional[VulnerabilityType]:
         """The most severe vulnerability (if any)"""
         return max(
             self.most_severe_n(),
@@ -192,7 +213,7 @@ class AggregateScan(BaseModel):
 
     def most_severe_n(
         self, n: Optional[int] = 5, upgradable: bool = False
-    ) -> list[SnykVulnerability]:
+    ) -> list[VulnerabilityType]:
         """Retrieves the N most severe vulnerabilities across all images scanned.
 
         Parameters
@@ -214,7 +235,7 @@ class AggregateScan(BaseModel):
         return vulns[:n]
 
     # BACKLOG: add n argument so we can get multiple per image?
-    def most_severe_per_scan(self) -> dict[str, Optional[SnykVulnerability]]:
+    def most_severe_per_scan(self) -> dict[str, Optional[VulnerabilityType]]:
         """Retrieves the most severe vulnerability from each scanned image.
 
         Returns
@@ -222,8 +243,8 @@ class AggregateScan(BaseModel):
         list[SnykVulnerability]
             Dictionary where keys are image names and values are scans
         """
-        vulns = {}  # type: dict[str, Optional[SnykVulnerability]]
-        for scan in self.scans:
+        vulns = {}  # type: dict[str, Optional[VulnerabilityType]]
+        for scan in self.reports:
             most_severe = scan.most_severe
             if not most_severe:
                 logger.info(f"Scan {scan.id} has no vulnerabilities.")
@@ -238,32 +259,32 @@ class AggregateScan(BaseModel):
         """Retrieves upgrade paths for all vulnerabilities in all scans."""
         # BACKLOG: could make this more efficient with a chain.from_iterable() call
         u = []  # type: list[str]
-        for scan in self.scans:
+        for scan in self.reports:
             u.extend(scan.upgrade_paths)
         return u
-        # return list(chain(scan.upgrade_paths for scan in self.scans))
+        # return list(chain(scan.upgrade_paths for scan in self.reports))
 
     @property
     def dockerfile_instructions(self) -> list[str]:
         """Retrieves Dockerfile instructions for all vulnerabilities in all scans."""
         # BACKLOG: could make this more efficient with a chain.from_iterable() call
         d = []  # type: list[str]
-        for scan in self.scans:
+        for scan in self.reports:
             d.extend(scan.dockerfile_instructions)
         return d
-        # return list(chain(scan.dockerfile_instructions for scan in self.scans))
+        # return list(chain(scan.dockerfile_instructions for scan in self.reports))
 
     def most_common_cve(self, n: Optional[int] = 5) -> list[tuple[str, int]]:
         c: Counter[str] = Counter()
-        for scan in self.scans:
+        for report in self.reports:
             # we need to retrieve all CVEs, so we don't pass the n arg here
-            mc = scan.most_common_cve()
+            mc = report.most_common_cve()
             c.update(mc)
         return c.most_common(n)  # only here do we use n
 
     def get_vulns_age_score_color(self) -> list[VulnAgePoint]:
         """Retrieves vulnerability age, score and color for all vulnerabilities in all reports."""
         l = []  # type: list[VulnAgePoint]
-        for scan in self.scans:
-            l.extend(scan.get_vulns_age_score_color())
+        for report in self.reports:
+            l.extend(report.get_vulns_age_score_color())
         return sorted(l, key=lambda v: v.timestamp)
