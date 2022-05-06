@@ -34,4 +34,4 @@ RUN --mount=type=cache,target=/root/.cache \
 COPY ./setup /app
 
 
-CMD ["python", "main.py"]
+CMD ["python", "/app/main.py"]
