@@ -23,8 +23,8 @@ jobs:
         with:
           poetry-version: ${{ matrix.poetry-version }}
       - name: Poetry install
-        working-directory: /${{ matrix.service }}
+        working-directory: ./${{ matrix.service }}
         run: poetry install --dev
       - name: Run tests
-        working-directory: /${{ matrix.service }}
+        working-directory: ./${{ matrix.service }}
         run: pytest
