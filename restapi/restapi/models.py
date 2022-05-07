@@ -1,76 +1,39 @@
-from datetime import datetime
-from enum import Enum
-import os
-from typing import Any, Iterable, NamedTuple, Optional
-from pydantic import BaseModel, Field, validator
-from google.cloud import firestore
+from typing import Any
+from auspex_core.models.api.report import ReportRequestBase
+from pydantic import Field, validator, root_validator
 
+# TODO: add timeouts as fields?
+class ScanReportRequest(ReportRequestBase):
+    """Model used for requesting both a scan and report for one or more images.
 
-DEFAULT_FORMAT = os.getenv("REPORTER_DEFAULT_FORMAT") or "latex"
+    This facilitates a more natural user interface for the /reports endpoint,
+    due to the fact that a scan and report are often requested together.
 
+    Users are not expected to know scan IDs, but are expected to know image names.
+    This model impements image names as the primary way to initiate report creation.
 
-class FirestoreQuery(NamedTuple):
-    field: str
-    operator: str
-    value: Any
+    The model is based on the ReportRequestBase model, which is a base model for
+    all report requests.
+    """
 
+    images: list[str] = Field(
+        default_factory=list,
+        description="List of image names to scan and report.",
+        min_items=1,
+    )
 
-class Direction(Enum):
-    ASCENDING = firestore.Query.ASCENDING
-    DESCENDING = firestore.Query.DESCENDING
+    # NYI: repository
 
+    @validator("images")
+    def validate_images(cls, v: list[str]) -> list[str]:
+        # Ensure no duplicates
+        return list(set(v))
 
-class OrderBy(BaseModel):
-    field: str
-    direction: Direction = Direction.DESCENDING  # TODO: decide on default direction
-
-    @validator("direction", pre=True)
-    def validate_direction(cls, v: Any) -> str:
-        valid = {
-            Direction.ASCENDING: ["asc", "ascending", "ascend"],
-            Direction.DESCENDING: ["desc", "descending", "descend"],
-        }
-        if not isinstance(v, str):
-            raise TypeError("argument 'direction' must be a string")
-
-        v = v.lower()
-        if v in valid[Direction.ASCENDING]:
-            return Direction.ASCENDING.value
-        elif v in valid[Direction.DESCENDING]:
-            return Direction.DESCENDING.value
-        raise ValueError(
-            f"Invalid argument for 'direction'. Accepted arguments: {valid}"
-        )
-
-
-class Limit(BaseModel):
-    limit: int
-    last: bool = False
-
-
-class Filter(BaseModel):
-    cvss_mean: Optional[float] = None
-    cvss_median: Optional[float] = None
-    critical: Optional[int] = None
-
-    def get_filters(self) -> Iterable[tuple[str, Any]]:
-        """Generator that yields all attributes whose values are not None."""
-        for k, v in self.dict().items():
-            if v is not None:
-                yield (k, v)
-
-
-class ReportRequest(BaseModel):
-    image: str
-    filter: Optional[Filter] = None
-    limit: Optional[int] = None
-    order: Optional[OrderBy] = None
-
-    @validator("image")
-    def ensure_not_empty(cls, v: str) -> str:
-        if len(v) == 0:
-            raise ValueError("Image cannot be an empty string.")
-        return v
-
-    def get_query(self) -> FirestoreQuery:
-        return FirestoreQuery(field="image", operator="==", value=self.image)
+    @root_validator()
+    def root_validator(cls, values: dict[str, Any]) -> dict[str, Any]:
+        # Ensure that at at least two images are provided if aggregate is True
+        if values["aggregate"] and len(values["images"]) < 2:
+            raise ValueError(
+                "At least two images must be provided if aggregate is True."
+            )
+        return values

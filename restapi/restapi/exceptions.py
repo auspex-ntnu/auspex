@@ -1,3 +1,4 @@
+from typing import TYPE_CHECKING, Any, Callable, Type, TypeVar, Union
 from fastapi import FastAPI, Request
 from google.api_core.exceptions import FailedPrecondition
 from fastapi.responses import PlainTextResponse
@@ -24,9 +25,10 @@ def handle_HTTPStatusError(req: Request, exc: HTTPStatusError) -> PlainTextRespo
 
 def install_handlers(app: FastAPI):
     """Installs custom exception handlers for the FastAPI app."""
+    # TODO: find out how to type this. How to do type[generic]?
     handlers = {
         FailedPrecondition: handle_FailedPrecondition,
         HTTPStatusError: handle_HTTPStatusError,
     }
     for exc, handler in handlers.items():
-        app.add_exception_handler(exc, handler)
+        app.add_exception_handler(exc, handler)  # type: ignore

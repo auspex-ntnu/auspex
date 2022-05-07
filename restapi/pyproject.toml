@@ -25,6 +25,7 @@ pytest = "7.0.1"
 mypy = "^0.931"
 black = "^22.1.0"
 pytest-cov = "^3.0.0"
+hypothesis = "^6.46.2"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
