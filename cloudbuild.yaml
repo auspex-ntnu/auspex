@@ -34,3 +34,5 @@ steps:
       ) &
     done
     wait
+tags:
+  - monorepo_builder
