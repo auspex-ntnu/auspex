@@ -42,6 +42,11 @@ class AggregateReport(BaseModel):
             return v
         return f"AggregateScan_{int(time.time())}"
 
+    # FIXME: remove. Only in place to make tests pass for now
+    @property
+    def scans(self) -> list[ScanTypeSingle]:
+        return self.reports
+
     @property
     def title(self) -> str:
         return f"Aggregate Report"
