@@ -13,11 +13,7 @@ from typing import List
 from pydantic import BaseModel, Field, validator
 
 
-class ReportRequestIn(BaseModel):
-    """Request body for POST /reports"""
-
-    # TODO: ensure no duplicates
-    scan_ids: list[str] = Field(..., min_items=1)
+class ReportRequestBase(BaseModel):
     aggregate: bool = Field(
         False, description="Aggregate results in an aggregate report."
     )
@@ -27,9 +23,24 @@ class ReportRequestIn(BaseModel):
     )
     format: str = "latex"  # TODO: make use of enum to validate this
     # rename to style?
+    trend: bool = Field(
+        True,
+        description="Whether or not to include a trend graph.",
+    )
+    trend_weeks: int = Field(
+        26,
+        description="Number of weeks to include in the trend graph.",
+    )
+
+
+class ReportRequestIn(ReportRequestBase):
+    """Request body for POST /reports endpoint in Reporter service"""
+
+    # TODO: ensure no duplicates
+    scan_ids: list[str] = Field(..., min_items=1)
 
     @validator("scan_ids")
-    def validate_scan_ids(cls, v: List[str]) -> List[str]:
+    def validate_scan_ids(cls, v: list[str]) -> list[str]:
         # Ensure no duplicates
         return list(set(v))
 
@@ -66,7 +77,7 @@ class ReportQuery(BaseModel):
 
     # either image or aggregate MUST be specified
     image: str = Field("", description="Image to search for.")
-    aggregate: str = Field(
+    aggregate: bool = Field(
         False, description="Whether or not to search for aggregate reports."
     )
 
@@ -124,11 +135,19 @@ class ReportQuery(BaseModel):
 DEFAULT_FORMAT = os.getenv("REPORTER_DEFAULT_FORMAT") or "latex"
 
 # FIXME: define default format in config
-class ReportRequest(ScanRequest):
-    format: str = Field(
-        default=DEFAULT_FORMAT,
-        description="Format of report.",
-    )  # FIXME: This should be defined in reporter's model
+
+
+class FailedReport(BaseModel):
+    scan_id: str
+    error: str
+
+    class Config:
+        schema_extra = {
+            "example": {
+                "scan_id": "12345",
+                "error": "Failed to retrieve report.",
+            }
+        }
 
 
 class ReportOut(BaseModel):
@@ -140,6 +159,6 @@ class ReportOut(BaseModel):
         "",
         description="Optional message describing the data.",
     )
-    failed: list[str] = Field(
-        default_factory=list, description="List of failed scan IDs."
+    failed: list[FailedReport] = Field(
+        default_factory=list, description="List of failed scans and their errors"
     )
