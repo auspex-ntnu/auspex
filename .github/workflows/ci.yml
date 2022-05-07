@@ -1,9 +1,5 @@
-name: CI
-on:
-  push:
-    branches:
-      - main
-
+name: Build and Test
+on: [push]
 jobs:
   ci:
     strategy:
