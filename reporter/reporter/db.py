@@ -42,7 +42,22 @@ async def log_report(
     aggregate: bool = False,  # TODO: add this to ScanType protocol
 ) -> ReportData:
     """Store results of parsed container scan in the database and mark
-    existing reports as historical."""
+    existing reports for the same image as historical.
+
+    Parameters
+    ----------
+    scan : `ScanType`
+        Scan results to log.
+    report_url : `Optional[str]`
+        URL of the human-readable version of the report.
+    aggregate : `bool`
+        Whether or not the report is an aggregate report.
+
+    Returns
+    -------
+    `ReportData`
+        The representation of the logged report in the database.
+    """
     client = get_firestore_client()
 
     # TODO: perform the two steps below as transaction
@@ -211,8 +226,8 @@ async def get_prev_scans(
 
 
 async def mark_reports_historical(
-    client: AsyncClient, collection: str, scan: ScanTypeSingle
-) -> dict[str, int]:
+    client: AsyncClient, collection: str, report: ScanTypeSingle
+) -> None:
     """Mark all older reports with the same image as the input scan as historical.
 
     See: _mark_historical
@@ -220,7 +235,7 @@ async def mark_reports_historical(
 
     Parameters
     ----------
-    scan : `ScanTypeSingle`
+    report : `ScanTypeSingle`
         The scan to use as a reference for finding older reports.
     collection : `str`
         The collection to search for reports in.
@@ -230,53 +245,59 @@ async def mark_reports_historical(
     `dict[str, int]`
         A dictionary of updated, skipped, and failed counts.
     """
-
-    # TODO: use composite query instead of iterating over all docs
-    #
-    # This would be massively sped up by using a composite index
-    # https://cloud.google.com/firestore/docs/query-data/composite-index
-    # Furthermore, it would reduce the number of reads required.
+    # NOTE:
+    # Until the Firestore AsyncClient has proper type stubs, we have to
+    # manually cast AsyncClient queries to AsyncQuery to avoid mypy errors.
+    # This clogs up the code a bit, but gives us proper type checking.
 
     client = get_firestore_client()
     col = client.collection(collection)
-    query = col.where("image.image", "==", scan.image.image)
-    # if using composite index: query = query.where("historical", "==", False)
+    query = col.where("image.image", "==", report.image.image)
+    query = cast(AsyncQuery, query)  # cast for mypy
 
-    # cast to AsyncQuery due to missing stubs/overload for AsyncCollectionReference.where()
-    query = cast(AsyncQuery, query)
+    # In this try/except block we try to use a composite index first,
+    # but if that fails, we fall back to iterating over all docs with the given image.
+    try:
+        # Try to use composite index first
+        query_composite = query.where("historical", "==", False)
+        query_composite = cast(AsyncQuery, query_composite)  # cast for mypy
+        async for doc in query_composite.stream():
+            await _process_historical_doc(doc, report)
+        logger.debug("Marked historical using composite index.")
+    except:  # TODO: should be FailedPrecondition most likely
+        # Fallback to iterating over all docs
+        async for doc in query.stream():
+            await _process_historical_doc(doc, report)
+        logger.debug("Marked historical using single key index (iteration).")
 
-    res = {"updated": 0, "skipped": 0, "failed": 0}
-    async for doc in query.stream():
-        d = doc.to_dict()
-        if not d:
-            res["skipped"] += 1
-            continue
 
-        # We don't have to update existing historical documents
-        if d.get("historical") == True:
-            res["skipped"] += 1
-            continue
+async def _process_historical_doc(
+    doc: DocumentSnapshot,
+    report: ScanType,
+) -> None:
+    """Process a document and decide whether to mark it as historical."""
+    d = doc.to_dict()
+    if not d:
+        return
 
-        # Check for presence of timestamp (if not, skip)
-        if not (timestamp := d.get("timestamp")) or not isinstance(timestamp, datetime):
-            logger.warning(
-                f"Document '{doc.id}' has no key 'timestamp' or is not a valid datetime object."
-            )
-            res["failed"] += 1
-            continue
+    # We don't have to update existing historical documents
+    if d.get("historical") == True:
+        return
 
-        # If doc's timestamp is older than scan's timestamp, mark it as historical
-        if d.get("timestamp") < scan.timestamp.replace(tzinfo=timestamp.tzinfo):
-            try:
-                await _mark_historical(doc.reference)
-            except:
-                logger.exception(f"Failed to mark document '{doc.id}' as historical")
-                res["failed"] += 1
-                continue
-            else:
-                res["updated"] += 1
-    logger.debug(f"Marked historical reports: {res}")
-    return res
+    # Check for presence of timestamp (if not, skip)
+    if not (timestamp := d.get("timestamp")) or not isinstance(timestamp, datetime):
+        logger.warning(
+            f"Document '{doc.id}' has no key 'timestamp' or is not a valid datetime object."
+        )
+        return
+
+    # If doc's timestamp is older than scan's timestamp, mark it as historical
+    if timestamp < report.timestamp.replace(tzinfo=timestamp.tzinfo):
+        try:
+            await _mark_historical(doc.reference)
+        except:
+            logger.exception(f"Failed to mark document '{doc.id}' as historical")
+            return
 
 
 async def _mark_historical(docref: AsyncDocumentReference) -> WriteResult:
@@ -340,8 +361,8 @@ async def construct_query(
     ----
     collection : `AsyncCollectionReference`
         The collection to query.
-    req : `ReportRequest`
-        The request query params to construct the Firestore query from.
+    params : `ReportQuery`
+        The query parameters.
 
     Returns
     -------
