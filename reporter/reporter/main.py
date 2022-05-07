@@ -9,7 +9,12 @@ from functools import partial
 from typing import Optional
 
 from auspex_core.gcp.firestore import check_db_exists
-from auspex_core.models.api.report import ReportOut, ReportQuery, ReportRequest
+from auspex_core.models.api.report import (
+    FailedReport,
+    ReportOut,
+    ReportQuery,
+    ReportRequestIn,
+)
 from auspex_core.models.scan import ReportData
 from auspex_core.models.status import ServiceStatus, ServiceStatusCode
 from fastapi import Depends, FastAPI, Request
@@ -21,7 +26,6 @@ from .config import AppConfig
 from .db import get_prev_scans, get_reports_filtered, log_report
 from .exceptions import combine_exception_messages
 from .frontends.latex import create_document
-from .models import ReportRequestIn
 from .report import parse_scan
 from .backends.aggregate import AggregateReport
 from .types.protocols import ScanTypeSingle
@@ -56,23 +60,23 @@ async def on_app_startup():
 @app.post("/reports", response_model=ReportOut)
 async def generate_report(r: ReportRequestIn):
     # Create reports for all reports in the request
-    reports = await asyncio.gather(
-        *[create_single_report(scan_id, r) for scan_id in r.scan_ids],
-        return_exceptions=True,
-    )
+    reports: list[ReportData] = []
+    failed: list[FailedReport] = []
+    for scan_id in r.scan_ids:
+        try:
+            report = await create_single_report(scan_id, r)
+            reports.append(report)
+        except Exception as e:
+            logger.warning(e)
+            failed.append((scan_id, str(e)))
 
-    # Filter out any exceptions (and log them)
-    failed = [r for r in reports if isinstance(r, Exception)]
-    for f in failed:
-        reports.remove(f)
     if failed:
-        exc_msg = combine_exception_messages(failed)
-        msg = f"One or more scans failed to be parsed: {exc_msg}"
-
+        detail = {
+            "message": f"One or more scans failed to be parsed.",
+            "reports": [f.dict() for f in failed],
+        }
         if not r.ignore_failed:
-            raise HTTPException(status_code=500, detail=msg)
-        else:
-            logger.warning(msg)
+            raise HTTPException(status_code=500, detail=detail)
 
     # Create aggregate report if specified and there are multiple reports
     aggregate: Optional[AggregateReport] = None
@@ -87,7 +91,7 @@ async def generate_report(r: ReportRequestIn):
     return ReportOut(reports=reports, aggregate=aggregate, message=msg, failed=[])
 
 
-async def create_single_report(scan_id: str, settings: ReportRequest) -> ReportData:
+async def create_single_report(scan_id: str, settings: ReportRequestIn) -> ReportData:
     report = await parse_scan(scan_id)
     prev_scans = await get_prev_scans(
         report,
