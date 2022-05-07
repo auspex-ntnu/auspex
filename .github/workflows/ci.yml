@@ -27,4 +27,4 @@ jobs:
         run: poetry install
       - name: Run tests
         working-directory: ./${{ matrix.service }}
-        run: pytest
+        run: poetry run pytest
