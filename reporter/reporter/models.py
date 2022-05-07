@@ -1,7 +1,5 @@
 from typing import List
 from pydantic import BaseModel, Field, validator
-from .frontends import SUPPORTED_FRONTENDS
-from .config import AppConfig
 
 
 class ReportRequestIn(BaseModel):
@@ -21,10 +19,3 @@ class ReportRequestIn(BaseModel):
     def validate_scan_ids(cls, v: List[str]) -> List[str]:
         # Ensure no duplicates
         return list(set(v))
-
-    @validator("format")
-    def validate_format(cls, v: str) -> str:
-        v = v.lower()
-        if v not in SUPPORTED_FRONTENDS:
-            raise ValueError(f"Report frontend must be one of: {SUPPORTED_FRONTENDS}")
-        return v
