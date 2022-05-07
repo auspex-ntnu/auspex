@@ -24,7 +24,7 @@ jobs:
           poetry-version: ${{ matrix.poetry-version }}
       - name: Poetry install
         working-directory: ./${{ matrix.service }}
-        run: poetry install --dev
+        run: poetry install
       - name: Run tests
         working-directory: ./${{ matrix.service }}
         run: pytest
