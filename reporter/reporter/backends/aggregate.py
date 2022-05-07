@@ -40,7 +40,7 @@ class AggregateReport(BaseModel):
     def set_id(cls, v: str) -> str:
         if v:
             return v
-        return f"AggregateScan_{int(time.time())}"
+        return f"AggregateReport_{int(time.time())}"
 
     # FIXME: remove. Only in place to make tests pass for now
     @property
@@ -201,9 +201,9 @@ class AggregateReport(BaseModel):
         for report in self.reports:
             yield from report.get_exploitable()
 
-    def get_scan_ids(self) -> list[str]:
-        """Retrieves IDs of all scans."""
-        return [scan.id for scan in self.reports]
+    def get_report_ids(self) -> list[str]:
+        """Retrieves IDs of all reports."""
+        return [report.id for report in self.reports]
 
     @property
     def vulnerabilities(self) -> Iterator[VulnerabilityType]:

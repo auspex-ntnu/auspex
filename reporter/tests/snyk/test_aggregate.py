@@ -2,21 +2,21 @@ from pathlib import Path
 from hypothesis import HealthCheck, given, settings, strategies as st
 import pytest
 
-from reporter.backends.snyk.aggregate import AggregateScan
+from reporter.backends.aggregate import AggregateReport
 from reporter.backends.snyk.model import VulnerabilityList, SnykContainerScan
 
 
-def test_AggregateScan_from_file() -> None:
+def test_AggregateReport_from_file() -> None:
     scan = SnykContainerScan.parse_file(
         Path(__file__).parent / "../_static/vulhub_php_5.4.1_cgi.json"
     )
-    ag = AggregateScan(scans=[scan])
+    ag = AggregateReport(reports=[scan])
     assert len(list(ag.vulnerabilities)) == len(scan.vulnerabilities)
 
 
 @settings(max_examples=10)
-@given(st.builds(AggregateScan))
-def test_fuzz_AggregateScan(ag: AggregateScan) -> None:
+@given(st.builds(AggregateReport, reports=st.lists(st.builds(SnykContainerScan))))
+def test_fuzz_AggregateReport(ag: AggregateReport) -> None:
     N = 5
     most_severe = ag.most_severe_n(n=N)
     assert len(most_severe) <= N
@@ -46,7 +46,7 @@ def test_fuzz_AggregateScan(ag: AggregateScan) -> None:
     # Test retrieving number of vulnerabilities by severity
     sevvulns = {"low": 0, "medium": 0, "high": 0, "critical": 0}
     for severity in sevvulns:
-        for scan in ag.scans:
+        for scan in ag.reports:
             for vuln in scan.vulnerabilities:
                 try:
                     sevvulns[vuln.severity] += 1
@@ -58,14 +58,14 @@ def test_fuzz_AggregateScan(ag: AggregateScan) -> None:
     assert ag.n_critical == sevvulns["critical"]
 
     # Test that correct number of scan IDs are retrieved
-    assert len(ag.get_scan_ids()) == len(list(ag.scans))
+    assert len(ag.get_report_ids()) == len(list(ag.reports))
 
-    # Test that AggregateScan.vulnerabilities retrieves all vulnerabilities
+    # Test that AggregateReport.vulnerabilities retrieves all vulnerabilities
     # (or at least the correct number.)
     # TODO: Ensure contents are equal
     n = 0
-    for scan in ag.scans:
-        n += len(scan.vulnerabilities)
+    for report in ag.reports:
+        n += len(list(report.vulnerabilities))
     assert n == len(list(ag.vulnerabilities))
 
     # Test capability as a generator
@@ -74,8 +74,8 @@ def test_fuzz_AggregateScan(ag: AggregateScan) -> None:
 
     # Test most severe vulnerability per scan
     most_severe_per_scan = ag.most_severe_per_scan()
-    assert len(most_severe_per_scan) == len(ag.scans)
-    assert all(scan_id in ag.get_scan_ids() for scan_id in most_severe_per_scan)
+    assert len(most_severe_per_scan) == len(ag.reports)
+    assert all(scan_id in ag.get_report_ids() for scan_id in most_severe_per_scan)
     # TODO: ensure output of method is correct
 
     # Test most common vulnerability
