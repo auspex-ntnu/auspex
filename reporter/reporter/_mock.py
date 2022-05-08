@@ -14,11 +14,11 @@ from fastapi.responses import StreamingResponse
 
 from reporter.utils.firestore import get_firestore_document
 
-from .backends.snyk.aggregate import AggregateScan
+from .backends.aggregate import AggregateReport
 from .backends.snyk.model import SnykContainerScan
 from .config import AppConfig
 from .frontends.latex import create_document
-from .models import ReportRequestIn
+from auspex_core.models.api.report import ReportRequestIn
 from .types.protocols import ScanTypeSingle
 from .utils.firestore import get_firestore_document
 from .db import get_prev_scans
@@ -28,7 +28,7 @@ mockrouter = fastapi.APIRouter()
 
 @mockrouter.post("/reportmock")
 async def generate_report_mock(r: ReportRequestIn) -> StreamingResponse:
-    scan = await get_mock_report(r.document_id[0])
+    scan = await get_mock_report(r.scan_ids[0])
     prev_scans = get_mock_reportdata(scan.image, n=100)
 
     outdoc = await create_document(scan, prev_scans)
@@ -52,7 +52,7 @@ async def generate_aggregate_mock() -> None:
         # Parse scan log and create report
         scan = SnykContainerScan(**d)
         scans.append(scan)
-    ag = AggregateScan(scans=scans)
+    ag = AggregateReport(reports=scans)
     print(ag)
 
 
