@@ -33,7 +33,6 @@ def piechart_severity(report: ScanType, basename: Optional[str] = None) -> PlotD
         A plot data object containing everything required to insert
         the plot into the report.
     """
-    plt.clf()
     fig, ax = plt.subplots()
 
     size = 0.3
@@ -108,8 +107,6 @@ def scatter_mean_trend(
         A plot data object containing everything required to insert
         the plot into the report.
     """
-    plt.clf()  # is this necessary when using subplots?
-
     fig, ax = plt.subplots()
 
     # Set up axes and labels
@@ -201,8 +198,6 @@ def scatter_vulnerability_age(
         A plot data object containing everything required to insert
         the plot into the report.
     """
-    plt.clf()
-
     fig, ax = plt.subplots()
 
     # Set up axes and labels
