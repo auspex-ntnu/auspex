@@ -101,6 +101,10 @@ class ScanType(Protocol):
     def image(self) -> ImageInfo:
         """ImageInfo object for the report."""
 
+    @property
+    def is_aggregate(self) -> bool:
+        """Whether the report is an aggregate report."""
+
     def get_timestamp(
         self, image: bool = True, mode: ImageTimeMode = ImageTimeMode.CREATED
     ) -> datetime:

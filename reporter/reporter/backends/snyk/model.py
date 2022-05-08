@@ -370,6 +370,10 @@ class SnykContainerScan(BaseModel):
         return self.image.image
 
     @property
+    def is_aggregate(self) -> bool:
+        return False
+
+    @property
     def architecture(self) -> str:
         # TODO: add docstring
         r = self.platform.split("/")

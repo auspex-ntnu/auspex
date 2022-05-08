@@ -70,6 +70,10 @@ class AggregateReport(BaseModel):
             mediaType="",
         )
 
+    @property
+    def is_aggregate(self) -> bool:
+        return True
+
     def __hash__(self) -> int:
         return id(self)
 
