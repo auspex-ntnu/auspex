@@ -16,7 +16,3 @@ class InvalidBackend(Exception):
 
 class LogReportError(Exception):
     pass
-
-
-def combine_exception_messages(exceptions: list[Exception]) -> str:
-    return "\n".join([str(e) for e in exceptions])
