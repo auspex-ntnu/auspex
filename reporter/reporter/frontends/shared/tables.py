@@ -7,8 +7,10 @@ from typing import Any, NamedTuple, Optional, Union
 
 from auspex_core.models.cve import CVESeverity
 from auspex_core.models.gcr import ImageInfo
+from loguru import logger
 
-from ...types.protocols import ScanType, ScanTypeAggregate, ScanTypeSingle
+from ...types.protocols import ScanType, VulnerabilityType
+from ...backends.aggregate import AggregateReport
 
 from .format import format_decimal
 from .models import Hyperlink, TableData
@@ -19,7 +21,7 @@ def top_vulns_table(report: ScanType, upgradable: bool, maxrows: int) -> TableDa
 
     Parameters
     ----------
-    report : `Union[ScanTypeSingle, ScanTypeAggregate]`
+    report : `ScanType`
         A report, either a single report or an aggregate report.
     upgradable : `bool`
         Whether or not to only display upgradable vulnerabilities.
@@ -40,7 +42,7 @@ def top_vulns_table(report: ScanType, upgradable: bool, maxrows: int) -> TableDa
     ]
 
     # Add image column if we have an aggregated report
-    aggregate = isinstance(report, ScanTypeAggregate)
+    aggregate = isinstance(report, AggregateReport)
     if aggregate:
         header.insert(0, "Image")
 
@@ -70,7 +72,8 @@ def top_vulns_table(report: ScanType, upgradable: bool, maxrows: int) -> TableDa
 def severity_vulns_table(
     report: ScanType, severity: CVESeverity, maxrows: Optional[int] = None
 ) -> TableData:
-    """Generates the table data used to display the vulnerabilities by severity in a report.
+    """Generates the table data used to display the vulnererabilites of
+    a specific severity in a report.
 
     Parameters
     ----------
@@ -96,14 +99,13 @@ def severity_vulns_table(
     ]
 
     # Add image column if we have an aggregated report
-    aggregate = isinstance(report, ScanTypeAggregate)
+    aggregate = isinstance(report, AggregateReport)
     if aggregate:
         header.insert(0, "Image")
 
     # Get list of vulnerabilities
-    # TODO: add method to get vulnerabilities by severity (with )
-    v = getattr(report, severity.name.lower(), [])
-    vulns = list(v)
+    # TODO: add method to get vulnerabilities by severity
+    vulns = list(report.get_vulnerabilities_by_severity(severity))
     vulns.sort(key=lambda x: x.cvssScore, reverse=True)
 
     if maxrows is not None and len(vulns) > maxrows:
@@ -155,7 +157,8 @@ def statistics_table(report: ScanType) -> TableData:
         "C",
         "# Vulns",
     ]
-    if isinstance(report, ScanTypeAggregate):
+    # Always add Image as 1st column if we have an aggregated report
+    if isinstance(report, AggregateReport):
         columns.insert(0, "Image")
 
     dist = report.get_distribution_by_severity()
@@ -172,14 +175,14 @@ def statistics_table(report: ScanType) -> TableData:
 
     highest_severity = highest_severity.title()
     rows = []
-    if isinstance(report, ScanTypeAggregate):
+    if isinstance(report, AggregateReport):
         for r in report.reports:
-            row = _get_singlereport_statistics_row(r)
+            row = _get_report_statistics_row(r)
             row.insert(0, r.image.image)
-    elif isinstance(report, ScanTypeSingle):
-        rows.append(_get_singlereport_statistics_row(report))
+    elif isinstance(report, ScanType):
+        rows.append(_get_report_statistics_row(report))
     else:
-        raise ValueError("report must be a ScanTypeSingle or ScanTypeAggregate")
+        raise ValueError("report must be a ScanType or AggregateReport")
 
     assert len(rows[0]) == len(columns)
 
@@ -192,7 +195,7 @@ def statistics_table(report: ScanType) -> TableData:
     )
 
 
-def _get_singlereport_statistics_row(report: ScanTypeSingle) -> list[Any]:
+def _get_report_statistics_row(report: ScanType) -> list[Any]:
     dist = report.get_distribution_by_severity()
     row = [
         format_decimal(report.cvss.median),
@@ -241,13 +244,13 @@ def cvss_intervals() -> TableData:
     )
 
 
-def image_info(image: ImageInfo, digest_limit: int = 8) -> TableData:
+def image_info(report: ScanType, digest_limit: int = 8) -> TableData:
     """Generates the table data used to display the info for an image.
 
     Parameters
     ----------
     image : `ImageInfo`
-        The image to display statistics for.
+        The report to display image statistics for.
     digest_limit : `int`, optional
         Maximum displayed sha256 digest length, by default 8
 
@@ -262,29 +265,13 @@ def image_info(image: ImageInfo, digest_limit: int = 8) -> TableData:
         "Tags",
         "Digest",
     ]
-    # Move this to ImageInfo.get_digest(maxlen=8)?
-    if image.digest is not None:
-        if ":" in image.digest:
-            digest = image.digest.split(":")[1]
-        if digest_limit and len(digest) > digest_limit:
-            digest = digest[:digest_limit]  # + "..."
-    else:
-        digest = "-"
 
-    # Move to ImageInfo.get_tags()?
-    if image.tag:
-        tags = ", ".join(image.tag)
+    rows = []  # type: list[list[str]]
+    if isinstance(report, AggregateReport):
+        for r in report.reports:
+            rows.append(_get_image_info_row(r.image, digest_limit))
     else:
-        tags = "-"
-
-    rows = [
-        [
-            image.image,
-            image.created.strftime("%Y-%m-%d %H:%M:%S"),
-            tags,
-            digest,
-        ]
-    ]
+        rows.append(_get_image_info_row(report.image, digest_limit))
 
     return TableData(
         title="Image Statistics",
@@ -293,6 +280,33 @@ def image_info(image: ImageInfo, digest_limit: int = 8) -> TableData:
         caption="",
         description="",
     )
+
+
+def _get_image_info_row(image: ImageInfo, digest_limit: int = 8) -> list[str]:
+    # Move this to ImageInfo.get_digest(maxlen=8)?
+    digest = "-"
+    if image.digest is not None:
+        if ":" in image.digest:
+            digest = image.digest.split(":")[1]
+        if digest_limit and len(digest) > digest_limit:
+            digest = digest[:digest_limit]  # + "..."
+
+    # Move to ImageInfo.get_tags()?
+    if image.tag:
+        tags = ", ".join(image.tag)
+    else:
+        tags = "-"
+
+    if not image.image:
+        # This should NEVER happen, but just in case
+        logger.warning(f"No image name for image with digest {image.digest}")
+
+    return [
+        image.image or "-",
+        image.created.strftime("%Y-%m-%d %H:%M:%S"),
+        tags,
+        digest,
+    ]
 
 
 def exploitable_vulns(report: ScanType) -> TableData:

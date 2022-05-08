@@ -31,7 +31,8 @@ from pylatex import (
     Package,
 )
 from pylatex.utils import NoEscape, bold, italic
-from reporter.types.protocols import ScanTypeAggregate, ScanTypeSingle
+from ...types.protocols import ScanType
+from ...backends.aggregate import AggregateReport
 from sanitize_filename import sanitize
 
 from ...types import ScanType, ScanType
@@ -218,14 +219,8 @@ class LatexDocument:
         self._add_longtable(tabledata, row_height=ROWHEIGHT_SINGLEROW)
 
     def add_table_image_info(self) -> None:
-        if isinstance(self.scan, ScanTypeSingle):
-            tabledata = image_info(self.scan.image)
-            self._add_longtable(tabledata, row_height=ROWHEIGHT_SINGLEROW)
-        elif isinstance(self.scan, ScanTypeAggregate):
-            # for scan in self.scan.scans: ....
-            pass
-        else:
-            logger.warning("Scan is neither ScanTypeSingle or ScanTypeAggregate")
+        tabledata = image_info(self.scan)
+        self._add_longtable(tabledata, row_height=ROWHEIGHT_SINGLEROW)
 
     def add_table_top_vuln(self) -> None:
         """Adds a table with the top N vulnerabilities."""

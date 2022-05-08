@@ -21,7 +21,7 @@ from .config import AppConfig
 from .db import get_prev_scans, get_reports_filtered
 from .report import create_and_upload_report, get_report
 from .backends.aggregate import AggregateReport
-from .types.protocols import ScanTypeSingle
+from .types.protocols import ScanType
 
 
 app = FastAPI()
@@ -94,13 +94,13 @@ async def create_single_report(scan_id: str, settings: ReportRequestIn) -> Repor
 
 
 async def create_aggregate_report(
-    reports: list[ScanTypeSingle], settings: ReportRequestIn
+    reports: list[ScanType], settings: ReportRequestIn
 ) -> ReportData:
     """Creates an aggregate report from a list of reports.
 
     Parameters
     ----------
-    reports : `list[ScanTypeSingle]`
+    reports : `list[ScanType]`
         A list of reports to aggregate.
     settings : `ReportRequestIn`
         The settings to use for the aggregate report.
@@ -121,7 +121,7 @@ async def create_aggregate_report(
         collection=AppConfig().collection_reports,
         max_age=timedelta(weeks=AppConfig().trend_weeks),
         ignore_self=True,
-        skip_historical=False,  # NOTE: MUST be True for aggregate reports (why?)
+        skip_historical=False,  # NOTE: MUST be False for aggregate reports. Aggregates can't be historical.
         aggregate=True,
     )
     return await create_and_upload_report(report, prev_scans, settings)

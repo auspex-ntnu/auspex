@@ -11,7 +11,8 @@ from .config import AppConfig
 from auspex_core.models.scan import ReportData, ScanLog
 import httpx
 from .backends import get_backend
-from .types.protocols import ScanType, ScanTypeAggregate, ScanTypeSingle
+from .types.protocols import ScanType
+from .backends.aggregate import AggregateReport
 from .frontends.latex import create_document
 from .utils.storage import upload_report_to_bucket
 from .db import log_report
@@ -107,7 +108,7 @@ async def create_and_upload_report(
     status = await upload_report_to_bucket(doc.path, AppConfig().bucket_reports)
 
     # TODO: don't rely on isinstance check here. Implement .aggregate property?
-    aggregate = report.is_aggregate or isinstance(report, ScanTypeAggregate)
+    aggregate = report.is_aggregate or isinstance(report, AggregateReport)
 
     # FIXME: we don't mark the previous scans historical until here
     #    because we create the report, THEN log and mark the previous scans

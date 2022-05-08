@@ -182,13 +182,13 @@ class ScanType(Protocol):
         """Returns the `n` most severe vulnerabilities (if any), optionally only upgradable ones."""
 
     @property
-    def upgrade_paths(self) -> list[str]:
+    def upgrade_paths(self) -> Collection[str]:
         """
         Return a list of upgrade paths for all vulnerabilities.
         """
 
     @property
-    def dockerfile_instructions(self) -> list[str]:
+    def dockerfile_instructions(self) -> Collection[str]:
         """Get list of Dockerfile instructions for all vulnerabilities."""
 
     def cvss_scores(self, ignore_zero: bool) -> list[float]:
@@ -217,24 +217,6 @@ class ScanType(Protocol):
 
     def get_exploitable(self) -> Iterable[VulnerabilityType]:
         """Get list of vulnerabilities that are exploitable."""
-
-
-@runtime_checkable
-class ScanTypeSingle(ScanType, Protocol):
-    """Specialization of ScanType for single image scans."""
-
-
-@runtime_checkable
-class ScanTypeAggregate(ScanType, Protocol):
-    """Specialization of ScanType for aggregate scans."""
-
-    @property
-    def scans(self) -> list[ScanTypeSingle]:
-        """All reports in the aggregate."""
-
-    @property  # bandaid until everything is renamed from "scan" to "report"
-    def reports(self) -> list[ScanTypeSingle]:
-        """All reports in the aggregate (alias)."""
 
 
 @runtime_checkable

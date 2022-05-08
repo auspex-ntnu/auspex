@@ -19,7 +19,7 @@ from .backends.snyk.model import SnykContainerScan
 from .config import AppConfig
 from .frontends.latex import create_document
 from auspex_core.models.api.report import ReportRequestIn
-from .types.protocols import ScanTypeSingle
+from .types.protocols import ScanType
 from .utils.firestore import get_firestore_document
 from .db import get_prev_scans
 
@@ -110,7 +110,7 @@ def get_mock_reportdata(
     ]
 
 
-async def get_mock_report(docid: str) -> ScanTypeSingle:
+async def get_mock_report(docid: str) -> ScanType:
     from .main import scan_from_docid
 
     try:

@@ -336,7 +336,7 @@ class SnykContainerScan(BaseModel):
         return id(self)
 
     def __repr__(self) -> str:
-        return f"SnykVulnerabilityScan(path={self.path}, platform={self.platform})"
+        return f"SnykContainerScan(path={self.path}, platform={self.platform})"
 
     def get_timestamp(
         self, image: bool = True, mode: ImageTimeMode = ImageTimeMode.CREATED

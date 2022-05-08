@@ -1,7 +1,5 @@
 from reporter.types.protocols import (
     ScanType,
-    ScanTypeAggregate,
-    ScanTypeSingle,
     VulnerabilityType,
 )
 from reporter.backends.snyk.model import SnykContainerScan, SnykVulnerability
@@ -15,16 +13,15 @@ from hypothesis import strategies as st, given, settings, HealthCheck
 def test_snykcontainerscan_protocol(scan: SnykContainerScan) -> None:
     takes_scantype(scan)
     assert isinstance(scan, ScanType)
-    assert isinstance(scan, ScanTypeSingle)
+    assert isinstance(scan, ScanType)
 
 
-def test_aggregatereport_protocol() -> None:
+@given(st.builds(AggregateReport, reports=st.lists(st.builds(SnykContainerScan))))
+@settings(max_examples=10, suppress_health_check=[HealthCheck.too_slow])
+def test_aggregatereport_protocol(report: AggregateReport) -> None:
     ag = AggregateReport(reports=[])
-    takes_scantype(ag)
-    assert isinstance(ag, ScanType)
-    # NOTE: this will fail due to the lack of a `scans` attr
-    # Remove all references to `scans` to make this pass.
-    assert isinstance(ag, ScanTypeAggregate)
+    takes_scantype(report)
+    assert isinstance(report, ScanType)
 
 
 # Just so mypy can give intellisense warnings about missing attrs/methods
@@ -33,7 +30,7 @@ def takes_scantype(scan: ScanType) -> None:
 
 
 @given(st.builds(SnykVulnerability))
-@settings(max_examples=1, suppress_health_check=[HealthCheck.too_slow])
+@settings(max_examples=5, suppress_health_check=[HealthCheck.too_slow])
 def test_snykvulnerability_protocol(vuln: VulnerabilityType) -> None:
     takes_vulntype(vuln)
     assert isinstance(vuln, VulnerabilityType)

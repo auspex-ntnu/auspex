@@ -3,6 +3,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from functools import _lru_cache_wrapper, cache, cached_property
 from itertools import chain
+import itertools
 from typing import Iterable, Iterator, Optional, TypeVar
 from auspex_core.models.cve import CVESeverity
 from auspex_core.models.gcr import ImageInfo, ImageTimeMode
@@ -17,13 +18,13 @@ from auspex_core.models.cve import CVSS
 
 # from .snyk.model import SnykContainerScan, SnykVulnerability
 from ..utils import npmath
-from ..types.protocols import ScanTypeSingle, VulnerabilityType
+from ..types.protocols import ScanType, ScanType, VulnerabilityType
 import time
 from ..frontends.shared.models import VulnAgePoint
 
 # TODO: move this out the snyk module
 class AggregateReport(BaseModel):
-    reports: list[ScanTypeSingle]
+    reports: list[ScanType]
     id: str = ""
     timestamp: datetime = Field(default_factory=datetime.now)
     # OR
@@ -44,7 +45,7 @@ class AggregateReport(BaseModel):
 
     # FIXME: remove. Only in place to make tests pass for now
     @property
-    def scans(self) -> list[ScanTypeSingle]:
+    def scans(self) -> list[ScanType]:
         return self.reports
 
     @property
@@ -54,20 +55,22 @@ class AggregateReport(BaseModel):
     @property
     def image(self) -> ImageInfo:
         return ImageInfo(
-            imageSizeBytes=sum(map(lambda s: s.image.imageSizeBytes, self.reports)),
-            layerId="",
-            tag=list(set(map(lambda s: s.image.tag, self.reports))),
-            timeCreatedMs=min(
-                map(lambda s: s.image.timeCreatedMs, self.reports),
+            image_size_bytes="",  # we have to verify these values are numeric before we can use them
+            layer_id="",
+            tag=list(
+                set(chain.from_iterable([report.image.tag for report in self.reports]))
+            ),
+            created=min(
+                [r.image.created for r in self.reports],
                 default=datetime.utcnow(),
             ),
-            timeUploadedMs=min(
-                map(lambda s: s.image.timeCreated, self.reports),
+            uploaded=min(
+                [r.image.uploaded for r in self.reports],
                 default=datetime.utcnow(),
             ),
             digest="",  # NOTE: hash digests of all reports?
-            image=", ".join(map(lambda s: s.image.image, self.reports)),
-            mediaType="",
+            image=", ".join([r.image.image for r in self.reports if r.image.image]),
+            media_type="",
         )
 
     @property
@@ -210,11 +213,10 @@ class AggregateReport(BaseModel):
         return [report.id for report in self.reports]
 
     @property
-    def vulnerabilities(self) -> Iterator[VulnerabilityType]:
+    def vulnerabilities(self) -> Iterable[VulnerabilityType]:
         """Generator that yields vulnerabilities from all scans."""
         for scan in self.reports:
-            for vuln in scan.vulnerabilities:
-                yield vuln
+            yield from scan.vulnerabilities
 
     @property
     def most_severe(self) -> Optional[VulnerabilityType]:

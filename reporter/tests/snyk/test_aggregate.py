@@ -1,4 +1,6 @@
 from pathlib import Path
+from auspex_core.models.cve import SEVERITIES
+from auspex_core.models.gcr import ImageTimeMode
 from hypothesis import HealthCheck, given, settings, strategies as st
 import pytest
 
@@ -21,6 +23,11 @@ def test_fuzz_AggregateReport(ag: AggregateReport) -> None:
     most_severe = ag.most_severe_n(n=N)
     assert len(most_severe) <= N
     assert most_severe == sorted(most_severe, key=lambda v: v.cvssScore)
+
+    most_severe_upg = ag.most_severe_n(n=N, upgradable=True)
+    assert all(v.is_upgradable for v in most_severe_upg)
+    assert len(most_severe_upg) <= N
+    assert most_severe_upg == sorted(most_severe_upg, key=lambda v: v.cvssScore)
 
     assert ag.cvss_max >= ag.cvss_min
     if any(score != 0.0 for score in ag.cvss_scores()):
@@ -87,3 +94,32 @@ def test_fuzz_AggregateReport(ag: AggregateReport) -> None:
     # Test age, score, color retrieval
     asc = ag.get_vulns_age_score_color()
     assert len(asc) == len(list(ag.vulnerabilities))
+
+    # Test timestamp (just invoke the method)
+    ag.get_timestamp()
+    # Test that parameters do nothing for this method
+    assert ag.get_timestamp(image=False) == ag.get_timestamp()
+    assert ag.get_timestamp(image=True) == ag.get_timestamp()
+    assert (
+        ag.get_timestamp(image=False, mode=ImageTimeMode.UPLOADED) == ag.get_timestamp()
+    )
+    assert ag.get_timestamp(mode=ImageTimeMode.UPLOADED) == ag.get_timestamp(
+        mode=ImageTimeMode.CREATED
+    )
+
+    # Distribution by severity
+    distrib = ag.get_distribution_by_severity()
+
+    # Skip until we can be certain value of "severity" for vulnerabilities
+    # conform to the CVE severity scale. Hypothesis will assign random values.
+    #
+    # total = sum(distrib.values())
+    # assert total == len(list(ag.vulnerabilities))
+
+    for severity, count in distrib.items():
+        assert severity in SEVERITIES
+        assert count <= len(list(ag.vulnerabilities))
+        assert count >= 0
+
+    # Test len of get_exploitable() does not exceed total len
+    assert len(list(ag.get_exploitable())) <= len(list(ag.vulnerabilities))

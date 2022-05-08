@@ -26,13 +26,13 @@ from loguru import logger
 from pydantic import ValidationError
 
 from .config import AppConfig
-from .types.protocols import ScanTypeSingle, ScanType
+from .types.protocols import ScanType, ScanType
 
-# async def log_report(scan: ScanTypeSingle) -> WriteResult:
+# async def log_report(scan: ScanType) -> WriteResult:
 #     client = get_firestore_client()
 #     transaction = client.transaction()
 # async def _log_report(
-#     transaction: firestore.AsyncTransaction, scan: ScanTypeSingle
+#     transaction: firestore.AsyncTransaction, scan: ScanType
 # ) -> WriteResult:
 
 
@@ -197,7 +197,13 @@ async def get_prev_scans(
             continue
 
         # Ignore historical (older versions of) reports
-        if skip_historical and d.get("historical") == True:
+        #
+        # NOTE: This does not apply for aggregate reports.
+        # Report are only marked historical when a newer report of the _SAME_
+        # image is created. Aggregate reports do not work under the same principle,
+        # since we don't factor in which images are in the aggregate, and thus
+        # every aggregate report is considered to be the same image.
+        if not aggregate and (skip_historical and d.get("historical") == True):
             continue
 
         # Verify that doc has a timestamp and retrieve it
@@ -226,7 +232,7 @@ async def get_prev_scans(
 
 
 async def mark_reports_historical(
-    client: AsyncClient, collection: str, report: ScanTypeSingle
+    client: AsyncClient, collection: str, report: ScanType
 ) -> None:
     """Mark all older reports with the same image as the input scan as historical.
 
@@ -235,7 +241,7 @@ async def mark_reports_historical(
 
     Parameters
     ----------
-    report : `ScanTypeSingle`
+    report : `ScanType`
         The scan to use as a reference for finding older reports.
     collection : `str`
         The collection to search for reports in.
