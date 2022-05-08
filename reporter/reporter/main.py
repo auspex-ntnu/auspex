@@ -1,9 +1,4 @@
 # NOTE: ONLY SUPPORTS GCP RIGHT NOW
-
-
-import asyncio
-import os
-
 from datetime import timedelta
 from functools import partial
 from typing import Optional
@@ -23,22 +18,11 @@ from loguru import logger
 
 
 from .config import AppConfig
-from .db import get_prev_scans, get_reports_filtered, log_report
-from .exceptions import combine_exception_messages
-from .frontends.latex import create_document
-from .report import parse_scan
+from .db import get_prev_scans, get_reports_filtered
+from .report import create_and_upload_report, get_report
 from .backends.aggregate import AggregateReport
 from .types.protocols import ScanTypeSingle
-from .utils.storage import upload_report_to_bucket
 
-if os.getenv("DEBUG") == "1":
-    import debugpy
-
-    DEBUG_PORT = 5678
-    debugpy.listen(("0.0.0.0", DEBUG_PORT))
-    logger.debug(f"Debugger is listening on port {DEBUG_PORT}")
-    # debugpy.wait_for_client()
-    # debugpy.breakpoint()
 
 app = FastAPI()
 
@@ -64,6 +48,8 @@ async def generate_report(r: ReportRequestIn):
     failed: list[FailedReport] = []
     for scan_id in r.scan_ids:
         try:
+            # We don't create in parallel here due to thread safety
+            # See: frontends/latex/latex.py
             report = await create_single_report(scan_id, r)
             reports.append(report)
         except Exception as e:
@@ -83,7 +69,7 @@ async def generate_report(r: ReportRequestIn):
     msg = ""
     if r.aggregate:
         if len(reports) > 1:
-            aggregate = await create_aggregate_report(reports)
+            aggregate = await create_aggregate_report(reports, r)
         else:
             msg = "Aggregate report requested but only one scan was provided."
             logger.warning(msg)
@@ -92,7 +78,7 @@ async def generate_report(r: ReportRequestIn):
 
 
 async def create_single_report(scan_id: str, settings: ReportRequestIn) -> ReportData:
-    report = await parse_scan(scan_id)
+    report = await get_report(scan_id)
     prev_scans = await get_prev_scans(
         report,
         collection=AppConfig().collection_reports,
@@ -100,40 +86,45 @@ async def create_single_report(scan_id: str, settings: ReportRequestIn) -> Repor
         ignore_self=True,
         skip_historical=False,  # FIXME: set to True & should be envvar
     )
+    # TODO: add support for multiple frontends
+    # Right not we just assume it's latex
 
-    doc = await create_document(report, prev_scans)
-    if not doc.path.exists():
-        raise HTTPException(500, "Failed to generate report.")
-    status = await upload_report_to_bucket(doc.path, AppConfig().bucket_reports)
-
-    # FIXME: we don't mark the previous scans historical until here
-    #    because we create the report, THEN log and mark the previous scans
-
-    try:
-        report_data = await log_report(report, status.mediaLink)
-    except Exception as e:
-        logger.error(f"Failed to log scan: {e}")
-        raise HTTPException(500, f"Failed to log scan: {e}")
-    return report_data
+    # Create and upload the LaTeX document
+    return await create_and_upload_report(report, prev_scans, settings)
 
 
-async def create_aggregate_report(reports: list[ScanTypeSingle]) -> ReportData:
+async def create_aggregate_report(
+    reports: list[ScanTypeSingle], settings: ReportRequestIn
+) -> ReportData:
+    """Creates an aggregate report from a list of reports.
+
+    Parameters
+    ----------
+    reports : `list[ScanTypeSingle]`
+        A list of reports to aggregate.
+    settings : `ReportRequestIn`
+        The settings to use for the aggregate report.
+
+    Returns
+    -------
+    `ReportData`
+        The aggregate report as represented in the database.
+
+    Raises
+    ------
+    HTTPException
+        If the aggregate report fails to be created.
+    """
     report = AggregateReport(reports=reports)
     prev_scans = await get_prev_scans(
         report,
         collection=AppConfig().collection_reports,
         max_age=timedelta(weeks=AppConfig().trend_weeks),
         ignore_self=True,
-        skip_historical=False,  # NOTE: MUST be True for aggregate reports
+        skip_historical=False,  # NOTE: MUST be True for aggregate reports (why?)
         aggregate=True,
     )
-
-    doc = await create_document(report, prev_scans)
-    if not doc.path.exists():
-        raise HTTPException(500, "Failed to generate report.")
-    status = await upload_report_to_bucket(doc.path, AppConfig().bucket_reports)
-    await log_report(report, status.mediaLink)
-    return report
+    return await create_and_upload_report(report, prev_scans, settings)
 
 
 @app.get("/reports")  # name TBD
