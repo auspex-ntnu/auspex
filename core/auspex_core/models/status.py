@@ -23,11 +23,23 @@ class ServiceStatus(BaseModel):
     class Config:
         extra = "allow"
         schema_extra = {
-            "example": {
-                "status": "OK",
-                "message": "Service is running",
-                "url": "http://localhost:5000",
-            }
+            "examples": [
+                {
+                    "status": "OK",
+                    "message": "Service is running.",
+                    "url": "http://localhost:5000",
+                },
+                {
+                    "status": "DOWN",
+                    "message": "Unable to contact service.",
+                    "url": "http://localhost:5000",
+                },
+                {
+                    "status": "ERROR",
+                    "message": "Unable to contact database.",
+                    "url": "http://localhost:5000",
+                },
+            ]
         }
 
     @validator("url", pre=True)
@@ -43,21 +55,23 @@ class ServiceStatusAggregate(BaseModel):
     class Config:
         extra = "allow"
         schema_extra = {
-            "example": {
-                "reporter": {
-                    "status": "OK",
-                    "message": "Service is running",
-                    "url": "http://localhost:5000",
+            "examples": [
+                {
+                    "reporter": {
+                        "status": "OK",
+                        "message": "Service is running",
+                        "url": "http://localhost:5000",
+                    },
+                    "restapi": {
+                        "status": "OK",
+                        "message": "Service is running",
+                        "url": "http://localhost:5001",
+                    },
+                    "scanner": {
+                        "status": "ERROR",
+                        "message": "Snyk executable not found",
+                        "url": "http://localhost:5002",
+                    },
                 },
-                "restapi": {
-                    "status": "OK",
-                    "message": "Service is running",
-                    "url": "http://localhost:5001",
-                },
-                "scanner": {
-                    "status": "ERROR",
-                    "message": "Snyk executable not found",
-                    "url": "http://localhost:5002",
-                },
-            }
+            ]
         }

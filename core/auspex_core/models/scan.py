@@ -6,7 +6,10 @@ from .gcr import ImageInfo, ImageTimeMode
 from .cve import CVSS
 
 # Very similar definition of Scan from /functions/logger/gcp/main.py
+
+
 class ScanLog(BaseModel):
+    # TODO: move to auspex_core/models/api/scan.py
     """Model for documents in scanner's collection"""
 
     image: ImageInfo
@@ -59,32 +62,34 @@ class ReportData(BaseModel):
 
     class Config:
         schema_extra = {
-            "example": {
-                "id": "image_name_1",
-                "image": {
-                    "image_size_bytes": "12345",
-                    "layerId": "sha256:12345",
-                    "mediaType": "application/vnd.docker.image.rootfs.diff.tar.gzip",
-                    "tag": ["latest", "1.0"],
-                    "timeCreatedMs": "1577836800000",  # TODO: fix these example timestamps
-                    "timeUploadedMs": "1577836800000",
+            "examples": [
+                {
+                    "id": "image_name_1",
+                    "image": {
+                        "image_size_bytes": "12345",
+                        "layerId": "sha256:12345",
+                        "mediaType": "application/vnd.docker.image.rootfs.diff.tar.gzip",
+                        "tag": ["latest", "1.0"],
+                        "timeCreatedMs": "1577836800000",  # TODO: fix these example timestamps
+                        "timeUploadedMs": "1577836800000",
+                    },
+                    "timestamp": "2020-01-01T00:00:00Z",
+                    "cvss": {"base": 7.5, "vector": "AV:N/AC:L/Au:N/C:N/I:N/A:P"},
+                    "vulnerabilities": {
+                        "low": 10,
+                        "medium": 15,
+                        "high": 5,
+                        "critical": 1,
+                    },
+                    "report_url": "https://example.com/report",
+                    "aggregate": True,
+                    "schema_version": "1",
+                    "historical": False,
+                    "updated": "2020-01-01T00:00:00Z",
+                    "upgrade_paths": ["libc@6.6.6"],
+                    "dockerfile_instructions": ["sudo apt-get install -y libc666"],
                 },
-                "timestamp": "2020-01-01T00:00:00Z",
-                "cvss": {"base": 7.5, "vector": "AV:N/AC:L/Au:N/C:N/I:N/A:P"},
-                "vulnerabilities": {
-                    "low": 10,
-                    "medium": 15,
-                    "high": 5,
-                    "critical": 1,
-                },
-                "report_url": "https://example.com/report",
-                "aggregate": True,
-                "schema_version": "1",
-                "historical": False,
-                "updated": "2020-01-01T00:00:00Z",
-                "upgrade_paths": ["libc@6.6.6"],
-                "dockerfile_instructions": ["sudo apt-get install -y libc666"],
-            }
+            ]
         }
 
     # Has subcollection of vulnerabilities

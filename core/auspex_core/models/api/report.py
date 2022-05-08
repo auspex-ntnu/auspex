@@ -143,10 +143,16 @@ class FailedReport(BaseModel):
 
     class Config:
         schema_extra = {
-            "example": {
-                "scan_id": "12345",
-                "error": "Failed to retrieve report.",
-            }
+            "examples": [
+                {
+                    "scan_id": "12345",
+                    "error": "Failed to retrieve report.",
+                },
+                {
+                    "scan_id": "123456",
+                    "error": "Failed to parse report contents.",
+                },
+            ]
         }
 
 
