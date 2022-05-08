@@ -54,12 +54,32 @@ from .utils import hyperlink
 
 # TODO: support aggregate scans
 
+# NOTE ON MUTEX LOCK:
+# We create a mutex here to avoid race conditions that can occur when using
+# both (Py)Latex and Matplotlib.
+#
+# We discovered that figures would be mangled if trying to create multiple documents
+# in parallel when calling plt.clf(), which is not a threadsafe function.
+# We removed the offending plt.clf() calls (they were redundant), however
+# it still proves that the issue exists, and future additions to the code could easily
+# make it resurface if a developer uses a non-threadsafe Matplotlib function.
+#
+# For that reason, we keep the mutex in, as it is safer, and latency is not a huge issue.
+lock = asyncio.Lock()
+
 
 async def create_document(
     scan: ScanType, prev_scans: list[ReportData]
 ) -> "LatexDocument":
     loop = asyncio.get_event_loop()
-    return await loop.run_in_executor(None, _do_create_document, scan, prev_scans)
+    # NOTE: it is safer to use a mutex here, because running Matplotlib
+    # and pylatex in parallel can cause issues.
+    # Calling certain plt.<function> will _very likely_ affect other threads.
+    #
+    # We could of course make the entire function blocking (replace function body with _do_create_document),
+    # but that makes its design inconsistent with the rest of the application code (async).
+    async with lock:
+        return await loop.run_in_executor(None, _do_create_document, scan, prev_scans)
 
 
 def _do_create_document(
@@ -285,9 +305,9 @@ class LatexDocument:
             # We use a null context when no caption is needed
             # The reason we have to do this, is that longtabularx
             # breaks when attempting to wrap it in a Table.
-            # Users can still use whatever Tabular environment they want,
+            # Developers can still use whatever Tabular environment they want,
             # but we can't add a caption to tables that span multiple pages.
-            # This is something users should be aware of when using this method.
+            # This is something developers should be aware of when using this method.
             ctx = contextlib.nullcontext()
 
         with ctx as table:
