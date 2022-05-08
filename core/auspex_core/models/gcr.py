@@ -55,8 +55,9 @@ class ImageInfo(BaseModel):
     tag: list[str]
     created: datetime = Field(..., alias="timeCreatedMs")
     uploaded: datetime = Field(..., alias="timeUploadedMs")
+    # TODO: change type to str for these two fields
     digest: Optional[str]  # injected by ImageManifest (see its root_validator)
-    image: Optional[str]  # injected by get_image_info()
+    image: Optional[str] = ""  # injected by get_image_info()
     # TODO: add name:tag used to reference this image
 
     # Parse the timestamps in milliseconds to datetime objects
