@@ -33,7 +33,6 @@ steps:
         gcloud builds submit --config=${config} .
       ) &
     done
-    wait
 tags:
   - monorepo_builder
 timeout: 1200s
