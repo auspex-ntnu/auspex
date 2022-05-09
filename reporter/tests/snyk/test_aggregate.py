@@ -1,11 +1,13 @@
+import itertools
 from pathlib import Path
-from auspex_core.models.cve import SEVERITIES
+from auspex_core.models.cve import SEVERITIES, CVESeverity
 from auspex_core.models.gcr import ImageTimeMode
 from hypothesis import HealthCheck, given, settings, strategies as st
 import pytest
 
 from reporter.backends.aggregate import AggregateReport
 from reporter.backends.snyk.model import VulnerabilityList, SnykContainerScan
+from ..strategies import CLASS_STRATEGIES
 
 
 def test_AggregateReport_from_file() -> None:
@@ -16,8 +18,8 @@ def test_AggregateReport_from_file() -> None:
     assert len(list(ag.vulnerabilities)) == len(scan.vulnerabilities)
 
 
-@settings(max_examples=10)
-@given(st.builds(AggregateReport, reports=st.lists(st.builds(SnykContainerScan))))
+@given(CLASS_STRATEGIES[AggregateReport])
+@settings(max_examples=10, suppress_health_check=[HealthCheck.too_slow])
 def test_fuzz_AggregateReport(ag: AggregateReport) -> None:
     N = 5
     most_severe = ag.most_severe_n(n=N)
@@ -40,29 +42,36 @@ def test_fuzz_AggregateReport(ag: AggregateReport) -> None:
         assert v is not None
 
     # Test retrieving all vulnerabilities by severity
-    props = {
-        "low": ag.low,
-        "medium": ag.medium,
-        "high": ag.high,
-        "critical": ag.critical,
+    severities = {
+        CVESeverity.LOW.name.lower(): ag.low,
+        CVESeverity.MEDIUM.name.lower(): ag.medium,
+        CVESeverity.HIGH.name.lower(): ag.high,
+        CVESeverity.CRITICAL.name.lower(): ag.critical,
     }
-    for severity, vuln_prop in props.items():
-        for vuln in vuln_prop:
+    for severity, vulns in severities.items():
+        for vuln in vulns:
             assert vuln.severity == severity
 
     # Test retrieving number of vulnerabilities by severity
     sevvulns = {"low": 0, "medium": 0, "high": 0, "critical": 0}
-    for severity in sevvulns:
-        for scan in ag.reports:
-            for vuln in scan.vulnerabilities:
-                try:
-                    sevvulns[vuln.severity] += 1
-                except:
-                    pass
+    for scan in ag.reports:
+        for vuln in scan.vulnerabilities:
+            try:
+                sevvulns[vuln.severity] += 1
+            except:
+                pass
+
+    assert ag.n_low == len(list(ag.low))
     assert ag.n_low == sevvulns["low"]
     assert ag.n_medium == sevvulns["medium"]
     assert ag.n_high == sevvulns["high"]
     assert ag.n_critical == sevvulns["critical"]
+
+    # Test that image info is generated without errors
+    assert ag.image is not None
+    assert len(ag.image.tag) == len(
+        set(itertools.chain.from_iterable([r.image.tag for r in ag.reports]))
+    )
 
     # Test that correct number of scan IDs are retrieved
     assert len(ag.get_report_ids()) == len(list(ag.reports))

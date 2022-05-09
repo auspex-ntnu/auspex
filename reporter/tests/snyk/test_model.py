@@ -3,6 +3,7 @@ from datetime import datetime
 import math
 from pathlib import Path
 from typing import Any
+from auspex_core.models.cve import CVESeverity
 
 from hypothesis import HealthCheck, given, settings, strategies as st
 from reporter.cve import CVETimeType, DateDescription, UpgradabilityCounter
@@ -14,6 +15,8 @@ from reporter.backends.snyk.model import (
     SnykVulnerability,
 )
 import pytest
+
+from ..strategies import CLASS_STRATEGIES
 
 
 def test_SnykContainerScan_from_file() -> None:
@@ -27,8 +30,8 @@ def test_SnykContainerScan_from_file() -> None:
 
 
 # Fuzzing test with hypothesis
-@settings(max_examples=10)
-@given(st.builds(SnykContainerScan))
+@settings(max_examples=10, suppress_health_check=[HealthCheck.too_slow])
+@given(CLASS_STRATEGIES[SnykContainerScan])
 def test_fuzz_SnykContainerScan(scan: SnykContainerScan) -> None:
     # CVSS sanity tests
     assert scan.cvss_max >= scan.cvss_min
@@ -57,11 +60,15 @@ def test_fuzz_SnykContainerScan(scan: SnykContainerScan) -> None:
         assert scan.least_severe is None
 
     # Test properties that return vulnerabilities of a given severity
-    # TODO: custom strategy for `severity` attribute so we know these lists are populated
-    levels = [scan.low, scan.medium, scan.high, scan.critical]
-    for level in levels:
-        for vuln in level:  # type: SnykVulnerability
-            assert vuln.severity == level
+    sev_vulns = {
+        CVESeverity.LOW.name.lower(): scan.low,
+        CVESeverity.MEDIUM.name.lower(): scan.medium,
+        CVESeverity.HIGH.name.lower(): scan.high,
+        CVESeverity.CRITICAL.name.lower(): scan.critical,
+    }
+    for severity, vulns in sev_vulns.items():
+        for vuln in vulns:  # type: SnykVulnerability
+            assert vuln.severity == severity
 
     # Test properties that return UpgradabilityCounter
     for upg in [
@@ -133,12 +140,11 @@ def test_fuzz_SnykContainerScan(scan: SnykContainerScan) -> None:
 
 # TODO: Create strategy for constructing SnykVulnerability objects
 
-# Fuzzing test with hypothesis
+
 @settings(max_examples=10, suppress_health_check=[HealthCheck.too_slow])
 @given(st.builds(VulnerabilityList))
 def test_fuzz_VulnerabilityList(v: VulnerabilityList) -> None:
     # Test dunder methods
-
     assert iter(v)  # __iter__
     if len(v) > 0:  # __getitem__
         for i in range(len(v)):
@@ -147,7 +153,7 @@ def test_fuzz_VulnerabilityList(v: VulnerabilityList) -> None:
 
 
 @settings(max_examples=10, suppress_health_check=[HealthCheck.too_slow])
-@given(st.builds(SnykVulnerability))
+@given(CLASS_STRATEGIES[SnykVulnerability])
 def test_fuzz_SnykVulnerability(vuln: SnykVulnerability) -> None:
     assert vuln.get_numpy_color() is not None
     assert len(vuln.get_numpy_color()) == 4

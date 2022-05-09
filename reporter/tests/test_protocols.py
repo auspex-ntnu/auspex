@@ -6,9 +6,10 @@ from reporter.backends.snyk.model import SnykContainerScan, SnykVulnerability
 from reporter.backends.aggregate import AggregateReport
 
 from hypothesis import strategies as st, given, settings, HealthCheck
+from .strategies import CLASS_STRATEGIES
 
 
-@given(st.builds(SnykContainerScan))
+@given(CLASS_STRATEGIES[SnykContainerScan])
 @settings(max_examples=10, suppress_health_check=[HealthCheck.too_slow])
 def test_snykcontainerscan_protocol(scan: SnykContainerScan) -> None:
     takes_scantype(scan)
@@ -16,7 +17,7 @@ def test_snykcontainerscan_protocol(scan: SnykContainerScan) -> None:
     assert isinstance(scan, ScanType)
 
 
-@given(st.builds(AggregateReport, reports=st.lists(st.builds(SnykContainerScan))))
+@given(CLASS_STRATEGIES[AggregateReport])
 @settings(max_examples=10, suppress_health_check=[HealthCheck.too_slow])
 def test_aggregatereport_protocol(report: AggregateReport) -> None:
     ag = AggregateReport(reports=[])
