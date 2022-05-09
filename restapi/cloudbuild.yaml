@@ -47,9 +47,6 @@ substitutions:
     _IMAGE_NAME: 'eu.gcr.io/${PROJECT_ID}/auspex/restapi'
     _SERVICE_NAME: 'restapi'
     _PORT: "80"
-    # _SERVICE_REGION: "europe-north1"
-    # _URL_SCANNER: https://scanner-qk6stf4ejq-lz.a.run.app
-    # _URL_REPORTER: https://reporter-qk6stf4ejq-lz.a.run.app
 options:
     dynamic_substitutions: true
     substitution_option: 'ALLOW_LOOSE'

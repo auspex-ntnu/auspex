@@ -50,13 +50,8 @@ images:
 substitutions:
     _IMAGE_NAME: 'eu.gcr.io/${PROJECT_ID}/auspex/scanner'
     _SERVICE_NAME: 'scanner'
-    # _SERVICE_REGION: 'europe-north1'
     _SNYK_TOKEN_FILE: /run/secrets/SNYK_TOKEN_FILE
     _SCANNER_CREDENTIALS: /run/secrets/gcpcreds/SCANNER_CREDENTIALS
-    # _SECRET_SNYK_TOKEN: SNYK_TOKEN:latest
-    # _SECRET_CREDENTIALS: SCANNER_CREDENTIALS:latest
-    # _COLLECTION_SCANS: auspex-scans
-    # _BUCKET_SCANS: auspex-scans
     _PORT: "80"
     _MEMORY: "2Gi"
 options:

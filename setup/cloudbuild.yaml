@@ -21,12 +21,6 @@ tags:
 images:
 - ${_IMAGE_NAME}
 # https://cloud.google.com/build/docs/configuring-builds/substitute-variable-values#dynamic_substitutions
-substitutions:
-    _IMAGE_NAME: 'eu.gcr.io/${PROJECT_ID}/auspex/setup'
-    _BUCKET_REPORTS: auspex-reports
-    _COLLECTION_REPORTS: auspex-reports
-    _COLLECTION_SCANS: auspex-scans
-    _BUCKET_SCANS: auspex-scans
 options:
     dynamic_substitutions: true
     substitution_option: 'ALLOW_LOOSE'

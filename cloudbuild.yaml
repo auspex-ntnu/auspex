@@ -50,4 +50,3 @@ substitutions:
   _SECRET_CREDENTIALS: SCANNER_CREDENTIALS:latest
 options:
     dynamic_substitutions: true
-    substitution_option: 'ALLOW_LOOSE'
