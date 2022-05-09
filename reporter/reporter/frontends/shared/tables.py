@@ -16,7 +16,9 @@ from .format import format_decimal
 from .models import Hyperlink, TableData
 
 
-def top_vulns_table(report: ScanType, upgradable: bool, maxrows: int) -> TableData:
+def top_vulns_table(
+    report: ScanType, upgradable: bool, maxrows: Optional[int]
+) -> TableData:
     """Generates the data used to display the top vulnerabilities in a report.
 
     Parameters
@@ -25,7 +27,7 @@ def top_vulns_table(report: ScanType, upgradable: bool, maxrows: int) -> TableDa
         A report, either a single report or an aggregate report.
     upgradable : `bool`
         Whether or not to only display upgradable vulnerabilities.
-    maxrows : `int`
+    maxrows : `Optional[int]`
         Maximum number of rows to return.
 
     Returns
@@ -173,18 +175,16 @@ def statistics_table(report: ScanType) -> TableData:
             highest_severity = p
             break
 
+    # FIXME: we don't seem to use this value?
     highest_severity = highest_severity.title()
+
     rows = []
     if isinstance(report, AggregateReport):
         for r in report.reports:
             row = _get_report_statistics_row(r)
             row.insert(0, r.image.image)
-    elif isinstance(report, ScanType):
-        rows.append(_get_report_statistics_row(report))
     else:
-        raise ValueError("report must be a ScanType or AggregateReport")
-
-    assert len(rows[0]) == len(columns)
+        rows.append(_get_report_statistics_row(report))
 
     return TableData(
         title="Statistics",
