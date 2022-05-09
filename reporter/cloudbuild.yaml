@@ -25,7 +25,7 @@ steps:
     'URL_SCANNER=${_URL_SCANNER},COLLECTION_REPORTS=${_COLLECTION_REPORTS},BUCKET_REPORTS=${_BUCKET_REPORTS}',
     '--project',
     '${PROJECT_ID}',
-]
+  ]
 - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
   entrypoint: gcloud
   args: [
@@ -47,9 +47,10 @@ substitutions:
     _IMAGE_NAME: 'eu.gcr.io/${PROJECT_ID}/auspex/reporter'
     _SERVICE_NAME: 'reporter'
     _PORT: "80"
-    _SERVICE_REGION: "europe-north1"
-    _URL_SCANNER: https://scanner-qk6stf4ejq-lz.a.run.app
-    _BUCKET_REPORTS: auspex-reports
-    _COLLECTION_REPORTS: auspex-reports
+    # _SERVICE_REGION: "europe-north1"
+    # _URL_SCANNER: https://scanner-qk6stf4ejq-lz.a.run.app
+    # _BUCKET_REPORTS: auspex-reports
+    # _COLLECTION_REPORTS: auspex-reports
 options:
     dynamic_substitutions: true
+    substitution_option: 'ALLOW_LOOSE'

@@ -29,3 +29,4 @@ substitutions:
     _BUCKET_SCANS: auspex-scans
 options:
     dynamic_substitutions: true
+    substitution_option: 'ALLOW_LOOSE'
