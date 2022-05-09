@@ -36,3 +36,4 @@ steps:
     wait
 tags:
   - monorepo_builder
+timeout: 1200s
