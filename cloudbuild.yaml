@@ -6,6 +6,7 @@
 # Source: https://stackoverflow.com/a/52894592
 # Modifications to answer:
 #   Changed context from $d to .
+#   Pass substitutions to builds
 #
 # All our Dockerfiles assume the build context is the project root - NOT their own directory
 
@@ -29,12 +30,10 @@ steps:
       fi
 
       echo "Building $d ... "
-      (
-        gcloud builds submit --config=${config} . \
-        --substitutions _SERVICE_REGION=${_SERVICE_REGION},_COLLECTION_REPORTS=${_COLLECTION_REPORTS},_COLLECTION_SCANS=${_COLLECTION_SCANS},_BUCKET_SCANS=${_BUCKET_SCANS},_BUCKET_REPORTS=${_BUCKET_REPORTS},_GOOGLE_CLOUD_PROJECT=${PROJECT_ID},_URL_SCANNER=${_URL_SCANNER},_URL_REPORTER=${_URL_REPORTER},_SECRET_SNYK_TOKEN=${_SECRET_SNYK_TOKEN},_SECRET_CREDENTIALS=${_SECRET_CREDENTIALS},\
-      ) &
+      gcloud builds submit --config=${config} . \
+      --substitutions _SERVICE_REGION=${_SERVICE_REGION},_COLLECTION_REPORTS=${_COLLECTION_REPORTS},_COLLECTION_SCANS=${_COLLECTION_SCANS},_BUCKET_SCANS=${_BUCKET_SCANS},_BUCKET_REPORTS=${_BUCKET_REPORTS},_GOOGLE_CLOUD_PROJECT=${PROJECT_ID},_URL_SCANNER=${_URL_SCANNER},_URL_REPORTER=${_URL_REPORTER},_SECRET_SNYK_TOKEN=${_SECRET_SNYK_TOKEN},_SECRET_CREDENTIALS=${_SECRET_CREDENTIALS},\
+      --async
     done
-    wait
 tags:
   - monorepo_builder
 timeout: 1200s
