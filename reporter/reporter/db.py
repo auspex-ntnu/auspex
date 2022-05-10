@@ -27,6 +27,7 @@ from pydantic import ValidationError
 
 from .config import AppConfig
 from .types.protocols import ScanType, ScanType
+from .utils.types import get_reportdata
 
 # async def log_report(scan: ScanType) -> WriteResult:
 #     client = get_firestore_client()
@@ -79,16 +80,7 @@ async def _log_report(
     aggregate: bool,
 ) -> ReportData:
     """Store results of parsed container scan in the database."""
-    r = ReportData(
-        image=scan.image.dict(),
-        id=scan.id,
-        cvss=scan.cvss,  # TODO: use dedicated type
-        vulnerabilities=scan.get_distribution_by_severity(),
-        report_url=report_url,
-        upgrade_paths=scan.upgrade_paths,
-        dockerfile_instructions=scan.dockerfile_instructions,
-        aggregate=aggregate,
-    )
+    r = get_reportdata(scan, report_url)
 
     doc = client.collection(collection).document()
 
