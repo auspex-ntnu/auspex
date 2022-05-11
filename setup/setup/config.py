@@ -7,3 +7,4 @@ class AppConfig(BaseSettings):
     bucket_scans: str = Field(..., env="BUCKET_SCANS")
     bucket_reports: str = Field(..., env="BUCKET_REPORTS")
     credentials: str = Field("", env="GOOGLE_APPLICATION_CREDENTIALS")
+    service_region: str = Field(..., env="SERVICE_REGION")

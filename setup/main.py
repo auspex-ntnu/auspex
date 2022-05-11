@@ -4,6 +4,8 @@ from setup import firestore, storage
 
 
 class Initable(Protocol):
+    """Protocol for modules that implement initialization logic."""
+
     def init(self) -> None:
         """Runs the initialization logic for the given GCP service."""
         ...

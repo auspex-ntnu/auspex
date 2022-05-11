@@ -36,7 +36,7 @@ def create_bucket(client: storage.Client, bucketname: str) -> None:
     if bucket.exists():
         logger.debug(f"Bucket {bucketname} already exists")
         return
-    client.create_bucket(bucketname)
+    client.create_bucket(bucketname, location=AppConfig().service_region)
     logger.info("Created bucket {}", bucketname)
 
 
