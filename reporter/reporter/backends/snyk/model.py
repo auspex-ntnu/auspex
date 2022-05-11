@@ -374,7 +374,7 @@ class SnykContainerScan(BaseModel):
     @property
     def title(self) -> str:
         """Returns the title of the report. The title is the scanned image."""
-        return self.image.image
+        return self.image.image_name
 
     @property
     def is_aggregate(self) -> bool:
