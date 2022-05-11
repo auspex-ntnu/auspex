@@ -18,7 +18,9 @@ from ...cve import CVSS_DATE_BRACKETS
 from .models import PlotData, PlotType
 
 
-def piechart_severity(report: ScanType, basename: Optional[str] = None) -> PlotData:
+def piechart_severity(
+    report: ScanType, basename: Optional[str] = None, exploitable: bool = False
+) -> PlotData:
     """Generates a pie chart of the severity distribution of vulnerabilities.
 
     Parameters
@@ -33,10 +35,33 @@ def piechart_severity(report: ScanType, basename: Optional[str] = None) -> PlotD
         A plot data object containing everything required to insert
         the plot into the report.
     """
+    e = "Exploitable " if exploitable else ""
+    title = f"Distribution of {e}Vulnerabilities by Severity"
+    p = PlotData(
+        title=title,
+        description="No vulnerabilities found.",
+        caption=title,
+        path=None,
+        plot_type=PlotType.PIE,
+    )
+
     fig, ax = plt.subplots()
 
     size = 0.3
-    dist = report.get_distribution_by_severity()
+    if exploitable:
+        dist = {"low": 0, "medium": 0, "high": 0, "critical": 0}
+        vulns = report.get_exploitable()
+        for vuln in vulns:
+            sev = vuln.severity.lower()
+            if dist.get(sev) is not None:
+                dist[sev] += 1
+
+    else:
+        dist = report.get_distribution_by_severity()
+
+    if all(v == 0 for v in dist.values()):
+        return p
+
     labels = [d.title() for d in dist.keys()]
     values = [d for d in dist.values()]
 
@@ -77,14 +102,13 @@ def piechart_severity(report: ScanType, basename: Optional[str] = None) -> PlotD
     # Save fig and store its filename
     # TODO: fix filename
     path = save_fig(fig, report, basename, "piechart_severity")
-    return PlotData(
-        title="Distribution of Vulnerabilities by Severity",
-        path=path,
-        caption="Distribution of Vulnerabilities by Severity",
-        # TODO: handle aggregate title
-        description="The following pie chart shows the distribution of vulnerabilities by severity for the current image.",
-        plot_type=PlotType.PIE,
+    p.path = path
+    p.description = (
+        f"The pie chart shows the distribution of {e.lower()}vulnerabilities by severity. "
+        "Severities are grouped by colour, as described by the legend. "
+        "Each slice of the pie denotes the percentage of the total, and sum of vulnerabilities for each severity."
     )
+    return p
 
 
 def scatter_mean_trend(
@@ -107,6 +131,16 @@ def scatter_mean_trend(
         A plot data object containing everything required to insert
         the plot into the report.
     """
+
+    p = PlotData(
+        title="CVSSv3 Mean Score Trend",
+        caption="CVSSv3 Mean Score Over Time",
+        description="No previous reports to compare with.",
+        plot_type=PlotType.SCATTER,
+    )
+    if len(prev_reports) == 0:
+        return p
+
     fig, ax = plt.subplots()
 
     # Set up axes and labels
@@ -158,8 +192,8 @@ def scatter_mean_trend(
     # Trend line
     time_ts = [t.timestamp() for t in time]
     z = np.polyfit(time_ts, score, 1)
-    p = np.poly1d(z)
-    ax.plot(time, p(time_ts), color="r")
+    poly = np.poly1d(z)
+    ax.plot(time, poly(time_ts), color="r")
 
     # Add legend and grid
     fig.legend(["Previous Reports", "Current Report"])
@@ -167,16 +201,10 @@ def scatter_mean_trend(
     ax.set_axisbelow(True)
 
     # Save fig and store its filename
-    path = save_fig(fig, report, basename, "scatter_mean_trend")
+    p.path = save_fig(fig, report, basename, "scatter_mean_trend")
     nreports = len(prev_reports) + 1  # prev + current
-    title = f"Mean CVSSv3 score trend for the {nreports} most recent reports"
-    return PlotData(
-        title=title,
-        caption="CVSSv3 Mean Score Over Time",
-        description=title,
-        path=path,
-        plot_type=PlotType.SCATTER,
-    )
+    p.description = f"Mean CVSSv3 score trend for the {nreports} most recent reports"
+    return p
 
 
 def scatter_vulnerability_age(
