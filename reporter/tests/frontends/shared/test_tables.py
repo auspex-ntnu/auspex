@@ -1,3 +1,18 @@
+"""This module tests that table data is generated correctly.
+
+While high coverage is good, the most important thing to test
+is that the data is structured as expected. This means testing that
+the number of rows is correct, headers match number of columns, etc.
+
+Furthermore, we have to test for multiple scenarios:
+- Single report
+- Single report with 0 vulnerabilities
+- Aggregate report
+- Aggregate report with 0 reports
+- Aggregate report where none of the reports have vulnerabilities
+- + more
+"""
+
 from typing import Optional
 from auspex_core.models.cve import SEVERITIES, CVESeverity
 from hypothesis import HealthCheck, given, settings, strategies as st
@@ -138,4 +153,9 @@ def test_statistics_table(report: ScanType) -> None:
         pass  # implement this
     else:
         assert int(table.rows[0][-1]) == len(list(report.vulnerabilities))
+
+    if isinstance(report, AggregateReport):
+        assert len(table.rows) == len(report.reports)
+    else:
+        assert len(table.rows) == 1
     # TODO: add more tests to ensure the table data is correct
