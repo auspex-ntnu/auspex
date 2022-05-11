@@ -20,7 +20,8 @@ tags:
   - setup
 images:
 - ${_IMAGE_NAME}
-# https://cloud.google.com/build/docs/configuring-builds/substitute-variable-values#dynamic_substitutions
+substitutions:
+  _IMAGE_NAME: 'eu.gcr.io/${PROJECT_ID}/auspex/setup'
 options:
     dynamic_substitutions: true
     substitution_option: 'ALLOW_LOOSE'
