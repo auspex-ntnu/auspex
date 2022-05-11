@@ -21,27 +21,35 @@ from ..utils import npmath
 from ..types.protocols import ScanType, ScanType, VulnerabilityType
 import time
 from ..frontends.shared.models import VulnAgePoint
+from dataclasses import dataclass, field
 
 # TODO: move this out the snyk module
-class AggregateReport(BaseModel):
+@dataclass
+class AggregateReport:
     reports: list[ScanType]
     id: str = ""
-    timestamp: datetime = Field(default_factory=datetime.now)
+    timestamp: datetime = field(default_factory=datetime.now)
     # OR
     # scans: list[ScanType]
 
-    class Config:
-        # arbitrary_types_allowed = True
-        extra = "allow"  # should we allow or disallow this?
-        validate_assignment = True
-        keep_untouched = (cached_property, _lru_cache_wrapper)
-        arbitrary_types_allowed = True
+    # class Config:
+    #     # arbitrary_types_allowed = True
+    #     extra = "allow"  # should we allow or disallow this?
+    #     validate_assignment = True
+    #     keep_untouched = (cached_property, _lru_cache_wrapper)
+    #     arbitrary_types_allowed = True
 
-    @validator("id", always=True)
-    def set_id(cls, v: str) -> str:
-        if v:
-            return v
-        return f"AggregateReport_{int(time.time())}"
+    def __post_init__(self) -> None:
+        if self.id:
+            return  # already set
+        # TODO: use isoformat instead
+        self.id = f"AggregateReport_{int(time.time())}"
+
+    # @validator("id", always=True)
+    # def set_id(cls, v: str) -> str:
+    #     if v:
+    #         return v
+    #     return f"AggregateReport_{int(time.time())}"
 
     # FIXME: remove. Only in place to make tests pass for now
     @property
