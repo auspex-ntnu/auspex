@@ -1,11 +1,12 @@
 # NOTE: ONLY SUPPORTS GCP RIGHT NOW
+import asyncio
+from dataclasses import dataclass
 from datetime import timedelta
 from functools import partial
 from typing import Optional
 
 from auspex_core.gcp.firestore import check_db_exists
 from auspex_core.models.api.report import (
-    FailedReport,
     ReportOut,
     ReportQuery,
     ReportRequestIn,
@@ -18,8 +19,8 @@ from loguru import logger
 
 
 from .config import AppConfig
-from .db import get_prev_scans, get_reports_filtered
-from .report import create_and_upload_report, get_report
+from .db import get_reports_filtered
+from .report import SingleReportResult, create_single_report, create_aggregate_report
 from .backends.aggregate import AggregateReport
 from .types.protocols import ScanType
 
@@ -43,26 +44,33 @@ async def on_app_startup():
 
 @app.post("/reports", response_model=ReportOut)
 async def generate_report(r: ReportRequestIn):
-    # Create reports for all reports in the request
-    reports: list[ReportData] = []
-    failed: list[FailedReport] = []
-    for scan_id in r.scan_ids:
-        try:
-            # We don't create in parallel here due to thread safety
-            # See: frontends/latex/latex.py
-            report = await create_single_report(scan_id, r)
-            reports.append(report)
-        except Exception as e:
-            logger.warning(e)
-            failed.append((scan_id, str(e)))
+    """Create one or more reports. Optionally aggregate the results."""
+    # Create single reports in parallel
+    # See frontends/latex/latex.py for limitations
+    # TODO: use multiprocessing instead
+    results = await asyncio.gather(
+        *[create_single_report(scan_id, r) for scan_id in r.scan_ids],
+        # We don't need to do return_exceptions=True
+        # because we're already catching exceptions
+    )
 
+    failed = [r for r in results if r.error]  # type: list[SingleReportResult]
     if failed:
         detail = {
             "message": f"One or more scans failed to be parsed.",
-            "reports": [f.dict() for f in failed],
+            "scans": [r.scan_id for r in failed],
         }
+        # TODO: fix this message
         if not r.ignore_failed:
             raise HTTPException(status_code=500, detail=detail)
+
+    # TODO: check if any reports contain the same image
+    # if so, select the newest one
+
+    reports = [r.report for r in results if r.report]  # type: list[ScanType]
+    reports_out = [
+        r.report_data for r in results if r.report_data
+    ]  # type: list[ReportData]
 
     # Create aggregate report if specified and there are multiple reports
     aggregate: Optional[AggregateReport] = None
@@ -74,63 +82,14 @@ async def generate_report(r: ReportRequestIn):
             msg = "Aggregate report requested but only one scan was provided."
             logger.warning(msg)
     # TODO: determine failed scans and return them in the response
-    return ReportOut(reports=reports, aggregate=aggregate, message=msg, failed=[])
-
-
-async def create_single_report(scan_id: str, settings: ReportRequestIn) -> ReportData:
-    report = await get_report(scan_id)
-    prev_scans = await get_prev_scans(
-        report,
-        collection=AppConfig().collection_reports,
-        max_age=timedelta(weeks=AppConfig().trend_weeks),
-        ignore_self=True,
-        skip_historical=False,  # FIXME: set to True & should be envvar
-    )
-    # TODO: add support for multiple frontends
-    # Right not we just assume it's latex
-
-    # Create and upload the LaTeX document
-    return await create_and_upload_report(report, prev_scans, settings)
-
-
-async def create_aggregate_report(
-    reports: list[ScanType], settings: ReportRequestIn
-) -> ReportData:
-    """Creates an aggregate report from a list of reports.
-
-    Parameters
-    ----------
-    reports : `list[ScanType]`
-        A list of reports to aggregate.
-    settings : `ReportRequestIn`
-        The settings to use for the aggregate report.
-
-    Returns
-    -------
-    `ReportData`
-        The aggregate report as represented in the database.
-
-    Raises
-    ------
-    HTTPException
-        If the aggregate report fails to be created.
-    """
-    report = AggregateReport(reports=reports)
-    prev_scans = await get_prev_scans(
-        report,
-        collection=AppConfig().collection_reports,
-        max_age=timedelta(weeks=AppConfig().trend_weeks),
-        ignore_self=True,
-        skip_historical=False,  # NOTE: MUST be False for aggregate reports. Aggregates can't be historical.
-        aggregate=True,
-    )
-    return await create_and_upload_report(report, prev_scans, settings)
+    return ReportOut(reports=reports_out, aggregate=aggregate, message=msg, failed=[])
 
 
 @app.get("/reports")  # name TBD
 async def get_reports(
     params: ReportQuery = Depends(),
 ) -> list[ReportData]:
+    """Fetch reports from the database."""
     try:
         return await get_reports_filtered(params)
     except Exception as e:
@@ -140,6 +99,7 @@ async def get_reports(
 
 @app.get("/status", response_model=ServiceStatus)
 async def get_status(request: Request) -> ServiceStatus:
+    """Get the status of the service."""
     status = partial(ServiceStatus, url=request.url)
     if await check_db_exists(AppConfig().collection_reports):
         return status(

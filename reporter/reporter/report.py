@@ -1,5 +1,7 @@
+from dataclasses import dataclass
+from datetime import timedelta
 from json import JSONDecodeError
-from typing import Any
+from typing import Any, Optional
 from auspex_core.gcp.storage import fetch_json_blob
 from auspex_core.models.api.report import ReportRequestIn
 
@@ -15,7 +17,76 @@ from .types.protocols import ScanType
 from .backends.aggregate import AggregateReport
 from .frontends.latex import create_document
 from .utils.storage import upload_report_to_bucket
-from .db import log_report
+from .db import get_prev_scans, log_report
+
+# Class to collect results from asyncio.gather
+@dataclass
+class SingleReportResult:
+    """Class that collects results from an asynchronous create_single_report() task"""
+
+    scan_id: str
+    report: Optional[ScanType] = None
+    report_data: Optional[ReportData] = None
+    error: Optional[Exception] = None
+
+
+async def create_single_report(
+    scan_id: str, settings: ReportRequestIn
+) -> SingleReportResult:
+    r = SingleReportResult(
+        scan_id=scan_id,
+    )
+    try:
+        r.report = await get_report(scan_id)
+        prev_scans = await get_prev_scans(
+            r.report,
+            collection=AppConfig().collection_reports,
+            max_age=timedelta(weeks=AppConfig().trend_weeks),
+            ignore_self=True,
+            skip_historical=False,  # FIXME: set to True & should be envvar
+        )
+        # TODO: add support for multiple frontends
+        # Right not we just assume it's latex
+
+        # Create and upload the LaTeX document
+        r.report_data = await create_and_upload_report(r.report, prev_scans, settings)
+    except Exception as e:
+        r.error = e
+    return r
+
+
+async def create_aggregate_report(
+    reports: list[ScanType], settings: ReportRequestIn
+) -> ReportData:
+    """Creates an aggregate report from a list of reports.
+
+    Parameters
+    ----------
+    reports : `list[ScanType]`
+        A list of reports to aggregate.
+    settings : `ReportRequestIn`
+        The settings to use for the aggregate report.
+
+    Returns
+    -------
+    `ReportData`
+        The aggregate report as represented in the database.
+
+    Raises
+    ------
+    HTTPException
+        If the aggregate report fails to be created.
+    """
+    report = AggregateReport(reports=reports)
+    prev_scans = await get_prev_scans(
+        report,
+        collection=AppConfig().collection_reports,
+        max_age=timedelta(weeks=AppConfig().trend_weeks),
+        ignore_self=True,
+        skip_historical=False,  # NOTE: MUST be False for aggregate reports. Aggregates can't be historical.
+        aggregate=True,
+    )
+    return await create_and_upload_report(report, prev_scans, settings)
 
 
 async def get_report(scan_id: str) -> ScanType:
@@ -101,21 +172,24 @@ async def create_and_upload_report(
 ) -> ReportData:
     # TODO: pass in frontend creation function
     # TODO: Make this function frontend-agnostic
-    doc = await create_document(report, prev_scans)
-    if not doc.path.exists():
-        logger.error(f"Expected {doc.path} to exist, but it doesn't. Exiting.")
-        raise HTTPException(500, "Failed to generate report.")
-    status = await upload_report_to_bucket(doc.path, AppConfig().bucket_reports)
+    report_url = None  # type: Optional[str]
 
-    # TODO: don't rely on isinstance check here. Implement .aggregate property?
+    # Only create an individual report if individual==True
     aggregate = report.is_aggregate or isinstance(report, AggregateReport)
+    if aggregate or settings.individual:
+        doc = await create_document(report, prev_scans)
+        if not doc.path.exists():
+            logger.error(f"Expected {doc.path} to exist, but it doesn't. Exiting.")
+            raise HTTPException(500, "Failed to generate report.")
+        status = await upload_report_to_bucket(doc.path, AppConfig().bucket_reports)
+        report_url = status.mediaLink
 
     # FIXME: we don't mark the previous scans historical until here
     #    because we create the report, THEN log and mark the previous scans
     #
     # Edit 2022-05-08: I'm not sure why this is an issue?
     try:
-        report = await log_report(report, status.mediaLink, aggregate)
+        report = await log_report(report, report_url, aggregate)
     except Exception as e:
         logger.error(f"Failed to log report: {e}")
         raise HTTPException(500, f"Failed to log report: {e}")
