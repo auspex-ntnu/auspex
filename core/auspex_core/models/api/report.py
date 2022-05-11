@@ -15,7 +15,11 @@ from pydantic import BaseModel, Field, validator
 
 class ReportRequestBase(BaseModel):
     aggregate: bool = Field(
-        False, description="Aggregate results in an aggregate report."
+        True, description="Aggregate results in an aggregate report."
+    )
+    individual: bool = Field(
+        True,
+        description="Whether or not to generate PDF for individual reports.",
     )
     ignore_failed: bool = Field(
         False,
@@ -138,6 +142,7 @@ DEFAULT_FORMAT = os.getenv("REPORTER_DEFAULT_FORMAT") or "latex"
 
 
 class FailedReport(BaseModel):
+    # FIXME: unused
     scan_id: str
     error: str
 
