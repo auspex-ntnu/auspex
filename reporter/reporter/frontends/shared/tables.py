@@ -3,13 +3,13 @@ This module implements functions that are used to generate the data
 used to display vulnerability tables in reports.
 """
 
-from typing import Any, NamedTuple, Optional, Union
+from typing import Any, Optional, cast
 
 from auspex_core.models.cve import CVESeverity
 from auspex_core.models.gcr import ImageInfo
 from loguru import logger
 
-from ...types.protocols import ScanType, VulnerabilityType
+from ...types.protocols import ScanType
 from ...backends.aggregate import AggregateReport
 
 from .format import format_decimal
@@ -43,31 +43,53 @@ def top_vulns_table(
         "Upgradable",  # Yes/No
     ]
 
+    is_aggregate = isinstance(report, AggregateReport)
+
     # Add image column if we have an aggregated report
-    aggregate = isinstance(report, AggregateReport)
-    if aggregate:
+    if is_aggregate:
         header.insert(0, "Image")
 
+    # HACK: this is a workaround for the fact that ScanType.most_severe_n
+    # does not provide us with any information about the image the vulnerability
+    # is associated with.
+    #
+    # This means that running AggregateReport.most_severe_n gives us a list
+    # of vulnerabilities without including which image they are associated with.
+    #
+    # We therefore simply iterate through all reports and get the top N vulnerabilties
+    # for each one. This is quite clunky, as it would have been better to use the
+    # same interface for both ScanType and AggregateReport.
+    #
+    # However, it means that we can make sure we display at least N vulnerabilties
+    # from each image, and that we don't ommit any image completely because it didn't
+    # make the `maxrows` cutoff.
     rows = []
-    most_severe = report.most_severe_n(maxrows, upgradable)
-    for vuln in most_severe:
-        row = [
-            vuln.title,
-            Hyperlink(text=vuln.get_id(), url=vuln.url),
-            format_decimal(vuln.cvssScore),  # TODO: format
-            vuln.severity.title(),
-            vuln.is_upgradable,
-        ]
-        if aggregate:
-            # TODO: add image name
-            # we currently don't return image name along with the vulnerability
-            # Find a way to do this without breaking the current interface
-            row.insert(0, "IMAGE GOES HERE")
-        rows.append(row)
-    if upgradable:
-        title = f"Top {len(most_severe)} Most Critical Upgradable Vulnerabilities"
+    reports = []
+    if isinstance(report, AggregateReport):
+        # We have to run isinstance here, lest mypy freaks out
+        reports = report.reports
     else:
-        title = f"Top {len(most_severe)} Most Critical Vulnerabilities"
+        reports = [report]
+
+    # Get list of vulnerabilities per image
+    for r in reports:
+        most_severe = r.most_severe_n(maxrows, upgradable)
+        for vuln in most_severe:
+            row = [
+                vuln.title,
+                Hyperlink(text=vuln.get_id(), url=vuln.url),
+                format_decimal(vuln.cvssScore),  # TODO: format
+                vuln.severity.title(),
+                vuln.is_upgradable,
+            ]
+            if is_aggregate:
+                row.insert(0, r.image.image_name)
+            rows.append(row)
+
+    up = " Upgradable " if upgradable else " "
+    ag = " by Image" if is_aggregate else ""
+    title = f"Most Critical{up}Vulnerabilities{ag}"
+
     return TableData(title, header, rows)
 
 
@@ -182,7 +204,8 @@ def statistics_table(report: ScanType) -> TableData:
     if isinstance(report, AggregateReport):
         for r in report.reports:
             row = _get_report_statistics_row(r)
-            row.insert(0, r.image.image)
+            row.insert(0, r.image.image_name)
+            rows.append(row)
     else:
         rows.append(_get_report_statistics_row(report))
 
@@ -236,15 +259,20 @@ def cvss_intervals() -> TableData:
     ]
 
     return TableData(
-        title="CVSS Intervals",
+        title="CVSSv3 Scoring System",
         header=columns,
         rows=intervals,
-        caption="",
-        description="",
+        caption="CVSSv3 Severity Intervals",
+        description=(
+            "The following intervals are used to define the severity of a vulnerability. "
+            "Scoring interval is based on the CVSSv3 scoring system, "
+            "rating vulnerabilities from 0.0 to 10.0 and ranking them by severity, "
+            "'Low'  to 'Critical' according to their score."
+        ),
     )
 
 
-def image_info(report: ScanType, digest_limit: int = 8) -> TableData:
+def image_info(report: ScanType, digest_limit: Optional[int] = 8) -> TableData:
     """Generates the table data used to display the info for an image.
 
     Parameters
@@ -273,8 +301,12 @@ def image_info(report: ScanType, digest_limit: int = 8) -> TableData:
     else:
         rows.append(_get_image_info_row(report.image, digest_limit))
 
+    if isinstance(report, AggregateReport):
+        title = "Images in This Report"
+    else:
+        title = "Image Information"
     return TableData(
-        title="Image Statistics",
+        title=title,
         header=columns,
         rows=rows,
         caption="",
@@ -282,7 +314,7 @@ def image_info(report: ScanType, digest_limit: int = 8) -> TableData:
     )
 
 
-def _get_image_info_row(image: ImageInfo, digest_limit: int = 8) -> list[str]:
+def _get_image_info_row(image: ImageInfo, digest_limit: Optional[int]) -> list[str]:
     # Move this to ImageInfo.get_digest(maxlen=8)?
     digest = "-"
     if image.digest is not None:
@@ -302,7 +334,7 @@ def _get_image_info_row(image: ImageInfo, digest_limit: int = 8) -> list[str]:
         logger.warning(f"No image name for image with digest {image.digest}")
 
     return [
-        image.image or "-",
+        image.image_name or "-",
         image.created.strftime("%Y-%m-%d %H:%M:%S"),
         tags,
         digest,
@@ -322,7 +354,11 @@ def exploitable_vulns(report: ScanType) -> TableData:
     `TableData`
         A named tuple containing the data used to display the exploitable vulnerabilities.
     """
-    columns = [
+    td = TableData(
+        title="Exploitable Vulnerabilities",
+    )
+
+    td.header = [
         "Title",
         "CVSS ID",
         "CVSS Score",
@@ -330,7 +366,6 @@ def exploitable_vulns(report: ScanType) -> TableData:
         "Upgradable",
     ]
 
-    rows = []
     for vuln in report.get_exploitable():
         row = [
             vuln.title,
@@ -339,12 +374,13 @@ def exploitable_vulns(report: ScanType) -> TableData:
             vuln.severity.title(),
             vuln.is_upgradable,
         ]
-        rows.append(row)
+        td.rows.append(row)
 
-    return TableData(
-        title="Exploitable Vulnerabilities",
-        header=columns,
-        rows=rows,
-        caption="",
-        description="",
-    )
+    if not td.rows:
+        td.description = "No exploitable vulnerabilities found."
+    else:
+        td.description = (
+            "The following vulnerabilities are exploitable. "
+            "An exploitable vulnerability has a functional exploit that can be abused."
+        )
+    return td
