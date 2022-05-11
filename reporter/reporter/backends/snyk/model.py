@@ -29,6 +29,7 @@ from ...cve import (
 from ...utils import npmath
 from ...frontends.shared.models import VulnAgePoint
 
+
 # JSON: .vulnerabilities[n].identifiers
 class Identifiers(BaseModel):
     ALTERNATIVE: list[str] = Field(default=[])
@@ -213,10 +214,16 @@ class BaseImageRemediation(BaseModel):
     )  # TODO: why does default_factory=list break hypothesis test?
 
 
+class BinariesVulns(BaseModel):
+    issuedData: dict[str, Any] = Field(default_factory=dict)
+    affectedPkgs: dict[str, Any] = Field(default_factory=dict)
+
+
 # JSON: .docker
 class SnykDocker(BaseModel):
-    baseImage: str
-    baseImageRemediation: BaseImageRemediation
+    baseImage: Optional[str] = None
+    baseImageRemediation: Optional[BaseImageRemediation] = None
+    binariesVulns: Optional[BinariesVulns] = None
 
 
 # JSON: .filtered.ignore[n]
@@ -281,7 +288,7 @@ class SnykContainerScan(BaseModel):
     licensesPolicy: LicensesPolicy
     packageManager: str
     ignoreSettings: Any
-    docker: SnykDocker
+    docker: Optional[SnykDocker] = None
     summary: str
     filesystemPolicy: bool
     filtered: SnykFiltered
