@@ -68,29 +68,6 @@ class ImageInfo(BaseModel):
         _validate_imageinfo_ts
     )
 
-    def get_timestamp(self, mode: ImageTimeMode = ImageTimeMode.CREATED) -> datetime:
-        """Get the timestamp for the image in the given mode"""
-        if mode == ImageTimeMode.CREATED:
-            return self.created
-        elif mode == ImageTimeMode.UPLOADED:
-            return self.uploaded
-        else:
-            raise ValueError(f"Invalid mode '{mode}'")
-
-    @classmethod
-    def init_empty(cls) -> "ImageInfo":
-        """Initialize an empty ImageInfo object"""
-        return cls(
-            image_size_bytes="",
-            layer_id="",
-            media_type="",
-            tag=[],
-            created=datetime.utcnow(),
-            uploaded=datetime.utcnow(),
-            digest=None,
-            image=None,
-        )
-
     class Config:
         # Allow population using both camelCase and snake_case
         allow_population_by_field_name = True
@@ -107,6 +84,38 @@ class ImageInfo(BaseModel):
                 },
             ]
         }
+
+    @classmethod
+    def init_empty(cls) -> "ImageInfo":
+        """Initialize an empty ImageInfo object"""
+        return cls(
+            image_size_bytes="",
+            layer_id="",
+            media_type="",
+            tag=[],
+            created=datetime.utcnow(),
+            uploaded=datetime.utcnow(),
+            digest=None,
+            image=None,
+        )
+
+    @property
+    def image_name(self) -> str:
+        """Returns a formatted version of the image name with
+        only the last 2 path segments."""
+        if self.image is None:
+            raise ValueError("Image name not set")
+        # TODO: add tags? Handle multiple tags how?
+        return "/".join(self.image.split("/")[-2:])
+
+    def get_timestamp(self, mode: ImageTimeMode = ImageTimeMode.CREATED) -> datetime:
+        """Get the timestamp for the image in the given mode"""
+        if mode == ImageTimeMode.CREATED:
+            return self.created
+        elif mode == ImageTimeMode.UPLOADED:
+            return self.uploaded
+        else:
+            raise ValueError(f"Invalid mode '{mode}'")
 
 
 class ImageNameMode(Enum):
