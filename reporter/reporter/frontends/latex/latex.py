@@ -49,7 +49,7 @@ from ..shared.tables import (
     statistics_table,
     top_vulns_table,
 )
-from ..shared.models import TableData
+from ..shared.models import TableData, PlotData
 from .table import init_longtable, add_row
 from .utils import hyperlink
 
@@ -141,7 +141,7 @@ class LatexDocument:
         """Fills the document with content and generates a PDF."""
         try:
             self.add_packages()
-            self.add_preamble()
+            # self.add_preamble()
             self.add_header()
             self.add_table_cvss_intervals()
             self.add_table_image_info()
@@ -152,12 +152,8 @@ class LatexDocument:
             self.add_plot_severity_piechart()
             self.add_plot_scatter_vuln_age()
             self.add_table_exploitable_vulns()
+            self.add_plot_severity_piechart_exploitable()
             self.add_table_all_critical()
-            # self.add_vulnerability_scatterplot()
-            # self.add_vulnerability_table()
-            # self.add_vulnerability_table_by_severity()
-            # self.add_vulnerability_table_by_package()
-
             self.doc.generate_pdf(compiler_args=["-f"])
             logger.debug("Generated PDF: {}", self.path)
         finally:
@@ -216,11 +212,22 @@ class LatexDocument:
 
     def add_table_cvss_intervals(self) -> None:
         tabledata = cvss_intervals()
-        self._add_longtable(tabledata, row_height=ROWHEIGHT_SINGLEROW)
+        self._add_section_longtable(
+            tabledata, numbering=False, newpage=False, row_height=ROWHEIGHT_SINGLEROW
+        )
+        self.doc.append(NoEscape(r"\noindent\rule{\textwidth}{1pt}"))
 
     def add_table_image_info(self) -> None:
         tabledata = image_info(self.scan)
-        self._add_longtable(tabledata, row_height=ROWHEIGHT_SINGLEROW)
+        self._add_section_longtable(
+            tabledata, newpage=False, row_height=ROWHEIGHT_SINGLEROW
+        )
+
+    def add_table_statistics(self) -> None:
+        """Adds a table with statistics about the scanned image(s)."""
+        # TODO: rewrite using _add_section_longtable
+        tabledata = statistics_table(self.scan)
+        self._add_section_longtable(tabledata, newpage=False)
 
     def add_table_top_vuln(self) -> None:
         """Adds a table with the top N vulnerabilities."""
@@ -246,13 +253,42 @@ class LatexDocument:
             return
         self._add_section_longtable(tabledata)
 
+    def add_plot_mean_trend(self) -> None:
+        """Attempts to add a mean CVSSv3 score trend plot to the document."""
+        plotdata = scatter_mean_trend(self.scan, self.prev_scans)
+        self._add_section_plot(plotdata)
+
+    def add_plot_severity_piechart(self) -> None:
+        """Adds pie chart of CVSS severity distribution."""
+        plot = piechart_severity(self.scan, self.filename)
+        self._add_section_plot(plot)
+
+    def add_plot_severity_piechart_exploitable(self) -> None:
+        plot_exploitable = piechart_severity(self.scan, self.filename, exploitable=True)
+        self._add_section_plot(plot_exploitable)
+
+    def add_plot_scatter_vuln_age(self) -> None:
+        """Adds a scatter plot of vulnerability age vs. CVSSv3 score."""
+        plot = scatter_vulnerability_age(self.scan, self.filename)
+        self._add_section_plot(plot)
+
+    def add_table_exploitable_vulns(self) -> None:
+        """Adds a table of exploitable vulnerabilities."""
+        tabledata = exploitable_vulns(self.scan)
+        self._add_section_longtable(tabledata)
+        # if tabledata.rows:
+        #     self._add_section_longtable(tabledata)
+        # else:
+        #     with self.doc.create(Section(title=tabledata.title)):
+        #         self.doc.append("No exploitable vulnerabilities found.")
+
     def _add_section_longtable(
         self,
         tabledata: TableData,
         numbering: bool = True,
         newpage: bool = True,
         **kwargs,
-    ) -> None:
+    ) -> Section:
         """Adds a section with a longtable of the given table data.
 
         Parameters
@@ -264,7 +300,7 @@ class LatexDocument:
         **kwargs
             Additional keyword arguments to pass to `_add_longtable`
         """
-        if newpage:
+        if newpage and not tabledata.empty:  # only make new page if we have rows
             self.doc.append(NewPage())
         with self.doc.create(
             Section(tabledata.title, numbering=numbering)
@@ -272,7 +308,10 @@ class LatexDocument:
             if tabledata.description:
                 section.append(tabledata.description)
             section = cast(Section, section)  # mypy
-            self._add_longtable(tabledata, LongTabularx)
+            # Only add table if we have rows
+            if not tabledata.empty:
+                self._add_longtable(tabledata, LongTabularx, **kwargs)
+        return section
 
     def _add_longtable(
         self,
@@ -322,85 +361,40 @@ class LatexDocument:
                 table = cast(Table, table)  # mypy
                 table.add_caption(tabledata.caption)
 
-    def add_plot_mean_trend(self) -> None:
-        """Attempts to add a mean CVSSv3 score trend plot to the document."""
-        self.doc.append(NewPage())
-        section = self.doc.create(Section("Trend"))
-        if self.prev_scans:
-            # Actually add the plot if we have previous scans to compare to
-            self._do_add_plot_mean_trend(section)
-        else:
-            # Otherwise, just add a placeholder
-            self._do_add_plot_mean_trend_none(section)
+    def _add_section_plot(
+        self, plotdata: PlotData, numbering: bool = True, newpage: bool = True, **kwargs
+    ) -> Section:
+        """Adds a section with a plot.
 
-    def _do_add_plot_mean_trend_none(self, section: SectionContext) -> None:
-        logger.info("No previous data to compare with.")
-        with section:
-            self.doc.append(
-                NoEscape(
-                    r"\begin{center} \textbf{No previous scans to compare to.} \end{center}"
+        Parameters
+        ----------
+        plotdata : `PlotData`
+            Plot data to add
+        numbering : `bool`, optional
+            Whether to number section, by default `True`
+        newpage : `bool`, optional
+            Whether to start a new page, by default `True`
+        """
+        if newpage and plotdata.path:
+            self.doc.append(NewPage())
+        with self.doc.create(
+            Section(plotdata.title, numbering=numbering)
+        ) as section:  # type: Section
+            if plotdata.description:
+                section.append(plotdata.description)
+            section = cast(Section, section)  # mypy
+            self._add_plot(plotdata, **kwargs)
+        return section
+
+    def _add_plot(
+        self, plotdata: PlotData, width: float = 1.0, position: str = "h"
+    ) -> None:
+        """Adds a plot to the document."""
+        if plotdata.path is not None:
+            self.plots.append(plotdata.path)
+            with self.doc.create(Figure(position=position)) as fig:
+                fig = cast(Figure, fig)  # mypy
+                fig.add_image(
+                    str(plotdata.path), width=NoEscape(f"{width}" + r"\textwidth")
                 )
-            )
-
-    def _do_add_plot_mean_trend(self, section: SectionContext) -> None:
-        """Adds a mean CVSSv3 score trend plot to the document by comparing
-        the current scan to the previous scans and creating a scatter plot."""
-        plot = scatter_mean_trend(self.scan, self.prev_scans, self.filename)
-        self.plots.append(plot.path)
-
-        with section:
-            self.doc.append(plot.description)
-            with self.doc.create(Figure(position="h")) as fig:
-                fig.add_image(str(plot.path), width=NoEscape(r"\textwidth"))
-                fig.add_caption(plot.caption)
-
-    def add_table_statistics(self) -> None:
-        """Adds a table with statistics about the scanned image(s)."""
-        # TODO: rewrite using _add_section_longtable
-        self.doc.append(NewPage())
-        tabledata = statistics_table(self.scan)
-        with self.doc.create(Section(tabledata.title)):
-            table_spec = " ".join(["l"] * len(tabledata.header))
-            with self.doc.create(
-                LongTabularx(table_spec, row_height=ROWHEIGHT_SINGLEROW, booktabs=True)
-            ) as table:  # type: LongTable
-                table = cast(LongTabularx, table)
-                init_longtable(table, tabledata.header)
-                for row in tabledata.rows:
-                    add_row(table, row)
-            self.doc.append(NoEscape(italic(tabledata.description)))
-
-    def add_plot_severity_piechart(self) -> None:
-        """Adds pie chart of CVSS severity distribution."""
-        self.doc.append(NewPage())
-        plot = piechart_severity(self.scan, self.filename)
-        self.plots.append(plot.path)
-
-        with self.doc.create(Section(plot.title)):
-            self.doc.append(plot.description)
-            with self.doc.create(Figure(position="h")) as fig:
-                fig.add_image(str(plot.path), width=NoEscape(r"\textwidth"))
-                # fig.add_plot(width=NoEscape(r"0.5\textwidth"), *args, **kwargs)
-                fig.add_caption(plot.caption)
-
-    def add_plot_scatter_vuln_age(self) -> None:
-        """Adds a scatter plot of vulnerability age vs. CVSSv3 score."""
-        self.doc.append(NewPage())
-        plot = scatter_vulnerability_age(self.scan, self.filename)
-        self.plots.append(plot.path)
-
-        with self.doc.create(Section(plot.title)):
-            self.doc.append(plot.description)
-            with self.doc.create(Figure(position="h")) as fig:
-                fig.add_image(str(plot.path), width=NoEscape(r"\textwidth"))
-                fig.add_caption(plot.caption)
-
-    def add_table_exploitable_vulns(self) -> None:
-        """Adds a table of exploitable vulnerabilities."""
-        self.doc.append(NewPage())
-        tabledata = exploitable_vulns(self.scan)
-        if tabledata.rows:
-            self._add_section_longtable(tabledata)
-        else:
-            with self.doc.create(Section(title=tabledata.title)):
-                self.doc.append("No exploitable vulnerabilities found.")
+                fig.add_caption(plotdata.caption)
