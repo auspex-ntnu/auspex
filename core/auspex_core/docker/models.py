@@ -5,6 +5,7 @@ from typing import Any, NamedTuple, Optional, Union
 from pydantic import BaseModel, Field, root_validator, validator
 
 from ..utils.time import timestamp_ms_to_datetime
+from .exceptions import ImageNameNotSet, ImageNotFound, InvalidImageTimeMode
 
 
 class CatalogResponse(BaseModel):
@@ -22,7 +23,7 @@ class CatalogResponse(BaseModel):
         for repo in self.repositories:
             if repo in image:
                 return repo
-        raise ValueError(f"Image '{image}' not found in registry")
+        raise ImageNotFound(f"Image '{image}' not found in registry")
 
 
 def _validate_imageinfo_ts(timestamp_ms: Union[str, int, datetime]) -> datetime:
@@ -104,7 +105,7 @@ class ImageInfo(BaseModel):
         """Returns a formatted version of the image name with
         only the last 2 path segments."""
         if self.image is None:
-            raise ValueError("Image name not set")
+            raise ImageNameNotSet("Image name not initalized.")
         # TODO: add tags? Handle multiple tags how?
         return "/".join(self.image.split("/")[-2:])
 
@@ -115,7 +116,7 @@ class ImageInfo(BaseModel):
         elif mode == ImageTimeMode.UPLOADED:
             return self.uploaded
         else:
-            raise ValueError(f"Invalid mode '{mode}'")
+            raise InvalidImageTimeMode(f"Invalid mode '{mode}'")
 
 
 class ImageNameMode(Enum):
@@ -179,7 +180,7 @@ class ImageManifest(BaseModel):
                 if "latest" in img.tag:
                     return img
 
-        raise ValueError(f"Image '{image_info.image}' not found in registry")
+        raise ImageNotFound(f"Image '{image_info.image}' not found in registry")
 
     def get_newest_image(
         self, mode: ImageTimeMode = ImageTimeMode.UPLOADED

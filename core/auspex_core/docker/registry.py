@@ -15,7 +15,9 @@ from google.oauth2.service_account import Credentials
 from loguru import logger
 from pydantic import ValidationError
 
-from ..models.gcr import (
+from .exceptions import RegistryError, TagsError
+
+from .models import (
     CatalogResponse,
     ImageInfo,
     ImageNameMode,
@@ -108,13 +110,13 @@ async def get_image_info(image: str, project: str) -> ImageInfo:
             f"Status code: {r.status_code} "
             f"Response: {r.text}"
         )
-        raise ValueError(f"Failed to get image info for {image}")
+        raise RegistryError(f"Failed to get image info for {image}")
 
     try:
         tagsresp = TagsResponse.parse_obj(r.json())
     except ValidationError:
         logger.error(f"Failed to parse response from registry: {r.text}")
-        raise ValueError(f"Image '{image}' not found in registry")  # or?
+        raise TagsError(f"Failed to parse response from image registry for '{image}'")
 
     # Parse tags response and retrieve image info
     image_info = tagsresp.manifest.get_image_metadata(versioninfo)

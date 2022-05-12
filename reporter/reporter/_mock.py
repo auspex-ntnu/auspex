@@ -5,7 +5,7 @@ import pickle
 import random
 from typing import Optional
 from auspex_core.models.cve import CVSS
-from auspex_core.models.gcr import ImageInfo
+from auspex_core.docker.models import ImageInfo
 from auspex_core.models.scan import CVSSv3Distribution, ReportData
 
 import fastapi

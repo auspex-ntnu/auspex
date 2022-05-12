@@ -6,7 +6,7 @@ used to display vulnerability tables in reports.
 from typing import Any, Optional, cast
 
 from auspex_core.models.cve import CVESeverity
-from auspex_core.models.gcr import ImageInfo
+from auspex_core.docker.models import ImageInfo
 from loguru import logger
 
 from ...types.protocols import ScanType
@@ -61,7 +61,7 @@ def top_vulns_table(
     # same interface for both ScanType and AggregateReport.
     #
     # However, it means that we can make sure we display at least N vulnerabilties
-    # from each image, and that we don't ommit any image completely because it didn't
+    # from each image, and that we don't omit any image completely because it didn't
     # make the `maxrows` cutoff.
     rows = []
     reports = []

@@ -1,7 +1,6 @@
 """
-This module contains the models used for interservice communicaton in Auspex.
-
-The models define the common interfaces between the services.
+This module contains the models defining the interfaces used for inter-service
+communication within Auspex.
 """
 
 from .report import ReportQuery

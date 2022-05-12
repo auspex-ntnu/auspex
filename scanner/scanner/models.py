@@ -1,5 +1,5 @@
 from typing import Any
-from auspex_core.models.gcr import ImageInfo
+from auspex_core.docker.models import ImageInfo
 from pydantic import BaseModel
 
 

@@ -1,7 +1,7 @@
 import itertools
 from pathlib import Path
 from auspex_core.models.cve import SEVERITIES, CVESeverity
-from auspex_core.models.gcr import ImageTimeMode
+from auspex_core.docker.models import ImageTimeMode
 from hypothesis import HealthCheck, given, settings, strategies as st
 import pytest
 

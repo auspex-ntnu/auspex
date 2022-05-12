@@ -22,7 +22,7 @@ class ScanRequest(BaseModel):
     backend: str = Field(
         default="snyk",
         description="Scanning backend to use.",
-    )  # FIXME: This should be defined in scanner's model
+    )
 
     ignore_failed: bool = Field(
         default=False,

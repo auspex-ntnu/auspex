@@ -12,6 +12,11 @@ app.include_router(reports_router)
 app.include_router(scans_router)
 app.include_router(status_router)
 
+# @app.exception_handler(Exception)
+# async def handle_exception(request, exc):
+#     logger.error("An exception occured", exc)
+#     return JSONResponse(status_code=500, content=exc.args)
+
 
 @app.on_event("startup")
 async def startup():

@@ -3,6 +3,7 @@ from functools import partial
 import json
 import os
 from typing import Any
+from auspex_core.docker.exceptions import DockerRegistryException
 from auspex_core.gcp.firestore import get_document, check_db_exists
 
 import backoff
@@ -14,8 +15,8 @@ from fastapi.exceptions import HTTPException
 from fastapi.responses import JSONResponse, PlainTextResponse
 from loguru import logger
 from pydantic import BaseModel, Field, ValidationError
-from auspex_core.models.gcr import ImageInfo
-from auspex_core.gcp.gcr import get_image_info
+from auspex_core.docker.models import ImageInfo
+from auspex_core.docker.registry import get_image_info
 from auspex_core.models.status import ServiceStatus, ServiceStatusCode
 from json import JSONDecodeError
 
@@ -35,17 +36,16 @@ async def on_app_startup():
     await startup_health_check()
 
 
-# TODO: improve exception handlers
-
-# # TODO: remove this. It just obscures the actual error message
-# @app.exception_handler(ValidationError)
-# async def handle_validation_error(request: Request, exc: ValidationError):
-#     # TODO: improve message
-#     logger.error("A pydantic validation error occured", exc)
-#     return JSONResponse(
-#         status_code=400,
-#         content={"detail": exc.errors()},
-#     )
+@app.exception_handler(DockerRegistryException)
+async def handle_docker_registry_exception(
+    request: Request, exc: DockerRegistryException
+):
+    logger.error(exc)
+    return PlainTextResponse(
+        f"Docker registry error: {exc}",
+        status_code=500,
+        headers={"Content-Type": "text/plain"},
+    )
 
 
 @app.exception_handler(APIError)
@@ -66,7 +66,8 @@ async def scan_image(scan_request: ScanIn) -> ScanLog:
     """Scans a single container image."""
     image_info = await get_image_info(scan_request.image, AppConfig().project)
     logger.debug(image_info)
-    # NOTE: use image name from image_info instead?
+    # TODO: pass ImageInfo object to scan_container
+    #       Only use credentials if scanning image from private repo
     scan = await scan_container(
         image=scan_request.image,
         backend=scan_request.backend,

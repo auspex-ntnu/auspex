@@ -7,7 +7,7 @@ from datetime import datetime, timezone
 from functools import _lru_cache_wrapper, cache, cached_property
 from os import PathLike
 from typing import Any, Iterable, Iterator, Optional, Sequence, Union
-from auspex_core.models.gcr import ImageInfo, ImageTimeMode
+from auspex_core.docker.models import ImageInfo, ImageTimeMode
 
 import numpy as np
 from loguru import logger

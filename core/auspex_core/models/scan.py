@@ -2,7 +2,7 @@ from datetime import datetime, timezone
 from typing import Any, Optional
 from pydantic import BaseModel, Field
 
-from .gcr import ImageInfo, ImageTimeMode
+from ..docker.models import ImageInfo, ImageTimeMode
 from .cve import CVSS
 
 # Very similar definition of Scan from /functions/logger/gcp/main.py

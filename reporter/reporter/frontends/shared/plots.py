@@ -1,7 +1,7 @@
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
-from auspex_core.models.gcr import ImageTimeMode
+from auspex_core.docker.models import ImageTimeMode
 from auspex_core.models.scan import ReportData
 
 import matplotlib

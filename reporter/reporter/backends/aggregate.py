@@ -6,7 +6,7 @@ from itertools import chain
 import itertools
 from typing import Iterable, Iterator, Optional, TypeVar
 from auspex_core.models.cve import CVESeverity
-from auspex_core.models.gcr import ImageInfo, ImageTimeMode
+from auspex_core.docker.models import ImageInfo, ImageTimeMode
 
 import numpy as np
 from loguru import logger

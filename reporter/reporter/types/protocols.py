@@ -19,7 +19,7 @@ from typing import (
 
 from .nptypes import MplRGBAColor
 
-from auspex_core.models.gcr import ImageInfo, ImageTimeMode
+from auspex_core.docker.models import ImageInfo, ImageTimeMode
 from auspex_core.models.cve import CVSS, CVESeverity, CVETimeType
 from ..cve import DEFAULT_CVE_TIMETYPE
 

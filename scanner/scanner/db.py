@@ -2,7 +2,7 @@ from datetime import datetime
 
 from auspex_core.gcp.firestore import add_document
 from auspex_core.gcp.storage import upload_json_blob_from_memory
-from auspex_core.models.gcr import ImageInfo
+from auspex_core.docker.models import ImageInfo
 from auspex_core.models.scan import ScanLog
 
 from .config import AppConfig
