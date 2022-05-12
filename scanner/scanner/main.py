@@ -1,4 +1,6 @@
+from contextlib import suppress
 from functools import partial
+import json
 import os
 from typing import Any
 from auspex_core.gcp.firestore import get_document, check_db_exists
@@ -15,6 +17,7 @@ from pydantic import BaseModel, Field, ValidationError
 from auspex_core.models.gcr import ImageInfo
 from auspex_core.gcp.gcr import get_image_info
 from auspex_core.models.status import ServiceStatus, ServiceStatusCode
+from json import JSONDecodeError
 
 from .config import AppConfig
 from .exceptions import APIError, UserAPIError
@@ -23,15 +26,6 @@ from .types import ScanResultsType
 from .models import CompletedScan, ScanIn
 from .db import log_scan
 from .health import startup_health_check
-
-if os.getenv("DEBUG") == "1":
-    import debugpy
-
-    DEBUG_PORT = 5678
-    debugpy.listen(("0.0.0.0", DEBUG_PORT))
-    logger.debug(f"Debugger is listening on port {DEBUG_PORT}")
-    # debugpy.wait_for_client()
-    # debugpy.breakpoint()
 
 app = FastAPI()
 
@@ -78,10 +72,10 @@ async def scan_image(scan_request: ScanIn) -> ScanLog:
         backend=scan_request.backend,
     )
     if not scan.ok:
-        msg = f"Scan failed with the following output:\nstdout: {scan.scan}\nstderr:{scan.error}"
-        logger.error(msg)
+        detail = {"message": "The scan failed.", **scan.error}
+        logger.error(detail)
         # FIXME: add detail message
-        raise HTTPException(status_code=500, detail=msg)
+        raise HTTPException(status_code=500, detail=detail)
 
     s = await log_scan(scan, image_info)
 

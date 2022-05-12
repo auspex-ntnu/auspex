@@ -18,7 +18,7 @@ class ScanResultsType(Protocol):
         ...
 
     @property
-    def error(self) -> str:
+    def error(self) -> dict[str, Any]:
         """Returns error message for scan (if any)."""
         ...
 

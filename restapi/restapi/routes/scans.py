@@ -1,4 +1,5 @@
 import asyncio
+from json import JSONDecodeError
 import backoff
 
 import httpx
@@ -114,7 +115,6 @@ async def _send_scan_request(
         url,
         json=req.dict(),
     )
-    res.raise_for_status()
     return res
 
 
@@ -193,6 +193,8 @@ async def _handle_failed(failed: list[httpx.Response], ignore_failed: bool) -> N
                 f"Request failed: {f.url}. Code: {f.status_code}. Reason: '{f.text}'"
             )
         if not ignore_failed:
-            failed_info = "\n".join([str(r.url) for r in failed])  # this is useless
-            # TODO: add data structure for showing multiple failures
-            raise HTTPException(status_code=500, detail=failed_info)
+            try:
+                failures = [r.json() for r in failed]
+            except Exception as e:
+                failures = [r.text for r in failed]
+            raise HTTPException(status_code=500, detail={"failures": failures})

@@ -1,3 +1,4 @@
+import json
 import shutil
 import subprocess
 from subprocess import CalledProcessError, CompletedProcess
@@ -14,21 +15,54 @@ DEFAULT_CMD = "snyk"
 
 
 class SnykScanResults(BaseModel):
-    scan: str
-    error: str
+    stdout: str
+    stderr: str
     backend: str = Field("snyk", const=True)
+    # WARNING: the command might include sensitive information such as credentials
+    # DO NOT DISPLAY THIS TO USERS
+    # It isn't part of the ScanResultsType interface for this reason
+    command: str
     process: CompletedProcess[str] = Field(..., exclude=True)
 
     class Config:
         arbitrary_types_allowed = True  # for CompletedProcess
 
     @classmethod
-    def from_subprocess(cls, process: CompletedProcess[str]) -> "SnykScanResults":
+    def from_subprocess(
+        cls, process: CompletedProcess[str], command: str
+    ) -> "SnykScanResults":
         return cls(
-            scan=process.stdout,
-            error=process.stderr,
+            stdout=process.stdout,
+            stderr=process.stderr,
             process=process,
+            command=command,
         )
+
+    @property
+    def scan(self) -> str:
+        return self.stdout
+
+    @property
+    def error(self) -> dict[str, Any]:
+        """Returns error message for scan (if any)."""
+
+        def update_d(s: str, d: dict[str, Any]) -> dict[str, Any]:
+            try:
+                d.update(json.loads(s))
+            except json.JSONDecodeError:
+                pass
+            return d
+
+        d = {"error": self.stderr, "out": self.stdout, "message": ""}
+        d = update_d(self.stderr, d)
+        d = update_d(self.stdout, d)
+        if self.process.returncode == 2 and "incorrect username" in self.stdout:
+            d["message"] = (
+                "NOTE: This error might be due to an invalid image name. "
+                "Snyk does not report errors correctly when using custom username and password authentication. "
+                "Please check your image name and try again."
+            )
+        return d
 
     @property
     def ok(self) -> bool:
@@ -47,7 +81,6 @@ class SnykScanResults(BaseModel):
         #     FAILURE = 1
         #     FAILURE_RERUN = 2
         #     FAILURE_NOT_SUPPORTED = 3
-
         if self.process.returncode in [0, 1]:
             return True
         return False
@@ -76,4 +109,4 @@ def run_snyk_scan(image: str) -> SnykScanResults:
         capture_output=True,
         text=True,
     )
-    return SnykScanResults.from_subprocess(p)
+    return SnykScanResults.from_subprocess(p, command=snyk_cmd)
