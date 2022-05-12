@@ -4,6 +4,10 @@ import pytest
 from restapi.models import ScanReportRequest
 
 
+@pytest.mark.skip(
+    "Fuzzing with the current ScanReportRequest root validator always leads to exceptions. "
+    "This is because we cannot express the image/aggregate constraint in the model."
+)
 @given(st.builds(ScanReportRequest))
 def test_scanreportrequest_fuzz(request: ScanReportRequest):
     if request.aggregate:
