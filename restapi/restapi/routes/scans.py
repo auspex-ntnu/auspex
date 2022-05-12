@@ -122,17 +122,8 @@ async def _check_responses(
     responses: list[httpx.Response], ignore_failed: bool
 ) -> tuple[list[httpx.Response], list[httpx.Response]]:
     """Sorts out failed or malformed responses and returns the rest."""
-    failed = []
-    ok = []
-    for res in responses:
-        j = res.json()
-        if not j:
-            failed.append(res)
-            continue
-        if res.is_error:
-            failed.append(res)
-        else:
-            ok.append(res)
+    failed = [res for res in responses if res.is_error]
+    ok = [res for res in responses if not res.is_error]
     await _handle_failed(failed, ignore_failed)
     return ok, failed
 
