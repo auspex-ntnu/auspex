@@ -3,7 +3,6 @@ from functools import partial
 import json
 import os
 from typing import Any
-from auspex_core.docker.exceptions import DockerRegistryException
 from auspex_core.gcp.firestore import get_document, check_db_exists
 
 import backoff
@@ -27,38 +26,15 @@ from .types import ScanResultsType
 from .models import CompletedScan, ScanIn
 from .db import log_scan
 from .health import startup_health_check
+from .exceptions import install_handlers
 
 app = FastAPI()
+install_handlers(app)
 
 
 @app.on_event("startup")
 async def on_app_startup():
     await startup_health_check()
-
-
-@app.exception_handler(DockerRegistryException)
-async def handle_docker_registry_exception(
-    request: Request, exc: DockerRegistryException
-):
-    logger.error(exc)
-    return PlainTextResponse(
-        f"Docker registry error: {exc}",
-        status_code=500,
-        headers={"Content-Type": "text/plain"},
-    )
-
-
-@app.exception_handler(APIError)
-async def handle_api_error(request: Request, exc: APIError):
-    # TODO: improve message
-    logger.error("An exception occured", exc)
-    return JSONResponse(status_code=400, content=exc.args)
-
-
-@app.exception_handler(UserAPIError)
-async def handle_user_api_error(request: Request, exc: UserAPIError):
-    logger.debug("A user API exception occured", exc)
-    return JSONResponse(status_code=500, content=exc.args)
 
 
 @app.post("/scans", response_model=ScanLog)
