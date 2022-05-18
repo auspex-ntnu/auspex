@@ -23,9 +23,11 @@ from .db import get_reports_filtered
 from .report import SingleReportResult, create_single_report, create_aggregate_report
 from .backends.aggregate import AggregateReport
 from .types.protocols import ScanType
+from .exceptions import install_handlers
 
 
 app = FastAPI()
+install_handlers(app)
 
 # Add mock routes for internal development
 from contextlib import suppress
