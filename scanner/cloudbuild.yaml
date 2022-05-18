@@ -53,7 +53,7 @@ substitutions:
     _SNYK_TOKEN_FILE: /run/secrets/SNYK_TOKEN_FILE
     _SCANNER_CREDENTIALS: /run/secrets/gcpcreds/SCANNER_CREDENTIALS
     _PORT: "80"
-    _MEMORY: "2Gi"
+    _MEMORY: "4Gi"
 options:
     dynamic_substitutions: true
     substitution_option: 'ALLOW_LOOSE'
