@@ -76,8 +76,10 @@ class ImageInfo(BaseModel):
         schema_extra = {
             "examples": [
                 {
+                    "image": "ubuntu",
+                    "digest": "sha256:12345",
                     "imageSizeBytes": "12345",
-                    "layerId": "sha256:12345",
+                    "layerId": "",
                     "mediaType": "application/vnd.docker.image.rootfs.diff.tar.gzip",
                     "tag": ["latest", "1.0"],
                     "timeCreatedMs": "1577836800000",  # TODO: fix these example timestamps
