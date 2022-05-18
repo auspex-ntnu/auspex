@@ -153,7 +153,7 @@ def scatter_mean_trend(
     scans = []  # type: list[ScanType]
     # TODO: move this timezone fixing to a separate function
 
-    for scan in prev_reports:  # type: ScanType
+    for scan in prev_reports + [report]:  # type: ScanType
         if scan.timestamp.tzinfo is None:
             scan.timestamp = scan.timestamp.replace(tzinfo=timezone.utc)
         scans.append(scan)
