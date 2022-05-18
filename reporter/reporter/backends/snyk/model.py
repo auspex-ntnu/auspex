@@ -279,7 +279,9 @@ class VulnerabilityList(BaseModel):
 class SnykContainerScan(BaseModel):
     """Represents the output of `snyk container test --json`"""
 
-    vulnerabilities: VulnerabilityList  # TODO: just use list[SnykVulnerability] instead?
+    vulnerabilities: list[
+        SnykVulnerability
+    ]  # TODO: just use list[SnykVulnerability] instead?
     ok: bool
     dependencyCount: int
     org: str
@@ -556,7 +558,7 @@ class SnykContainerScan(BaseModel):
         Distribution of upgradable to non-upgradable vulnerabilities
         for all severity levels combined.
         """
-        return self._get_vuln_upgradability_distribution(self.vulnerabilities.__root__)
+        return self._get_vuln_upgradability_distribution(self.vulnerabilities)
 
     # NOTE: remain a property or be a function named get_malicious?
     @property
