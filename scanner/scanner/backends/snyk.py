@@ -18,24 +18,19 @@ class SnykScanResults(BaseModel):
     stdout: str
     stderr: str
     backend: str = Field("snyk", const=True)
-    # WARNING: the command might include sensitive information such as credentials
+    # WARNING: the command (CompltedProcess.args)might include sensitive information such as credentials
     # DO NOT DISPLAY THIS TO USERS
-    # It isn't part of the ScanResultsType interface for this reason
-    command: str
     process: CompletedProcess[str] = Field(..., exclude=True)
 
     class Config:
         arbitrary_types_allowed = True  # for CompletedProcess
 
     @classmethod
-    def from_subprocess(
-        cls, process: CompletedProcess[str], command: str
-    ) -> "SnykScanResults":
+    def from_subprocess(cls, process: CompletedProcess[str]) -> "SnykScanResults":
         return cls(
             stdout=process.stdout,
             stderr=process.stderr,
             process=process,
-            command=command,
         )
 
     @property
@@ -86,17 +81,41 @@ class SnykScanResults(BaseModel):
         return False
 
 
+def get_snyk_exe() -> str:
+    """Attempts to find the Snyk executable.
+
+    Returns
+    -------
+    str
+        Path to the Snyk executable.
+    """
+    snyk_exe = shutil.which("snyk")
+    if snyk_exe:
+        return snyk_exe
+    logger.warning(
+        "Unable to locate Snyk CLI executable. "
+        "Program is either not in PATH or is not installed. "
+        f"Attempting to use '{DEFAULT_CMD}'."
+    )
+    return DEFAULT_CMD
+
+
 def run_snyk_scan(image: str) -> SnykScanResults:
+    """Runs the Snyk CLI container scan.
+
+    Parameters
+    ----------
+    image : `str`
+        Image name to scan.
+
+    Returns
+    -------
+    `SnykScanResults`
+        Results of the scan.
+    """
     # TODO: support other container registries.
     # Currently only supports GCR
-    snyk_exe = shutil.which("snyk")
-    if not snyk_exe:
-        logger.warning(
-            "Unable to locate snyk executable. "
-            "Program is either not in PATH or is not installed. "
-            f"Attempting to use '{DEFAULT_CMD}'."
-        )
-        snyk_exe = DEFAULT_CMD
+    snyk_exe = get_snyk_exe()
 
     # We use the --json option to pipe the results to stdout
     # and then read it directly into memory.
@@ -109,4 +128,4 @@ def run_snyk_scan(image: str) -> SnykScanResults:
         capture_output=True,
         text=True,
     )
-    return SnykScanResults.from_subprocess(p, command=snyk_cmd)
+    return SnykScanResults.from_subprocess(p)
