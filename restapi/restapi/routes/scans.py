@@ -28,14 +28,14 @@ async def get_scan(scan_id: str) -> ScanLog:
         raise HTTPException(status_code=500, detail="Could not parse scan response.")
 
 
-@router.get("/", response_model=list[ScanLog])
+@router.get("", response_model=list[ScanLog])
 async def get_scans() -> list[ScanLog]:
     """Get all scans."""
     # NYI
     pass
 
 
-@router.post("/", response_model=list[ScanLog])
+@router.post("", response_model=list[ScanLog])
 async def scan_images(req: ScanRequest) -> list[ScanLog]:
     """Scan one or more images."""
     # TODO: (further work) use pub/sub to submit one message for each image

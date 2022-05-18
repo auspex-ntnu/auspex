@@ -23,7 +23,7 @@ from ..config import AppConfig
 router = APIRouter(prefix="/reports", tags=["reports"])
 
 
-@router.post("/", response_model=ReportOut)
+@router.post("", response_model=ReportOut)
 async def create_report(req: ScanReportRequest) -> ReportOut:
     """Create reports from a list of scans."""
     scanreq = ScanRequest(**req.dict())
@@ -56,7 +56,7 @@ async def _create_reports(scans: list[ScanLog], req: ScanReportRequest) -> Repor
             )
 
 
-@router.get("/", response_model=list[ReportData])
+@router.get("", response_model=list[ReportData])
 async def get_reports(
     request: Request,
     params: ReportQuery = Depends(),  # can we only include this in the schema somehow?
