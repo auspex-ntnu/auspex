@@ -179,6 +179,7 @@ class LatexDocument:
             self.delete_temp_files()
 
     def add_section_failed(self, failed: list[str]) -> None:
+        """Adds a section with a list of failed sections."""
         if failed:
             self.doc.append(NewPage())
             with self.doc.create(
