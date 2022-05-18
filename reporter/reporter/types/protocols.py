@@ -173,7 +173,7 @@ class ScanType(Protocol):
         """Sorted list of tuples of CVE IDs and number of occurences."""
 
     @property
-    def most_severe(self) -> Any:  # TODO: decide on return type
+    def most_severe(self) -> Optional[VulnerabilityType]:
         """Get most severe vulnerability"""
 
     def most_severe_n(

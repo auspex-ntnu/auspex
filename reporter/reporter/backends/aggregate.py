@@ -256,9 +256,9 @@ class AggregateReport:
         vulns.sort(key=lambda v: v.cvssScore, reverse=True)
         if upgradable:
             vulns = list(filter(lambda v: v.is_upgradable, vulns))
-        if n and n > len(vulns):  # make sure we don't go out of bounds
-            n = len(vulns)
-        return vulns[:n]
+        if n and len(vulns) > n:
+            return vulns[:n]
+        return vulns
 
     # BACKLOG: add n argument so we can get multiple per image?
     def most_severe_per_scan(self) -> dict[str, Optional[VulnerabilityType]]:
