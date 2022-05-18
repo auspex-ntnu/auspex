@@ -39,7 +39,7 @@ async def _create_reports(scans: list[ScanLog], req: ScanReportRequest) -> Repor
         scan_ids=[scan.id for scan in scans],
         **req.dict(),
     )
-    async with httpx.AsyncClient(timeout=60) as client:
+    async with httpx.AsyncClient(timeout=AppConfig().timeout_reporter) as client:
         res = await client.post(
             f"{AppConfig().url_reporter}/reports", json=request.dict()
         )
@@ -74,7 +74,7 @@ async def get_reports(
 )
 async def _get_reports(request: Request, params: ReportQuery = Depends()) -> Response:
     """Retrieves reports for the given query parameters from the Reporter service."""
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(timeout=AppConfig().timeout_reporter) as client:
         res = await client.get(
             f"{AppConfig().url_reporter}/reports",
             params=request.query_params,

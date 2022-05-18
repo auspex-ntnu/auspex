@@ -18,7 +18,7 @@ router = APIRouter(prefix="/scans", tags=["scans"])
 @router.get("/{scan_id}", response_model=ScanLog)
 async def get_scan(scan_id: str) -> ScanLog:
     """Get a scan by its ID."""
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(timeout=AppConfig().timeout_scanner) as client:
         res = await client.get(f"{AppConfig().url_scanner}/{scan_id}")
     res.raise_for_status()
     try:
