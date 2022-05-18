@@ -1,14 +1,23 @@
 from datetime import datetime
 
+import aiohttp
+import backoff
+from auspex_core.docker.models import ImageInfo
 from auspex_core.gcp.firestore import add_document
 from auspex_core.gcp.storage import upload_json_blob_from_memory
-from auspex_core.docker.models import ImageInfo
 from auspex_core.models.scan import ScanLog
+from google.api_core.exceptions import ServerError
 
 from .config import AppConfig
 from .types import ScanResultsType
 
 
+@backoff.on_exception(
+    backoff.expo,
+    exception=(aiohttp.ClientResponseError, ServerError),
+    max_tries=5,
+    jitter=backoff.full_jitter,
+)
 async def log_scan(scan: ScanResultsType, image: ImageInfo) -> ScanLog:
     # Generate log filename
     timestamp = datetime.utcnow()
