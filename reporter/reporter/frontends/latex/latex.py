@@ -29,6 +29,7 @@ from pylatex import (
     Table,
     LongTabu,
     Package,
+    Itemize,
 )
 from pylatex.utils import NoEscape, bold, italic
 from ...types.protocols import ScanType
@@ -138,28 +139,54 @@ class LatexDocument:
         )
 
     def generate_pdf(self) -> Document:
-        """Fills the document with content and generates a PDF."""
+        """Sets up a document, adds content, and generates a PDF."""
+        content_methods = {
+            "CVSS Intervals": self.add_table_cvss_intervals,
+            "Image Info": self.add_table_image_info,
+            "Statistics": self.add_table_statistics,
+            "Mean Trend Plot": self.add_plot_mean_trend,
+            "Top Vulnerabilities Table": self.add_table_top_vuln,
+            "Top Upgradable Vulnerabilities Table": self.add_table_top_vuln_upgradable,
+            "Severity Distribution Pie Chart": self.add_plot_severity_piechart,
+            "Vulnerability vs Age Scatter Plot": self.add_plot_scatter_vuln_age,
+            "Exploitable Vulnerabilities Table": self.add_table_exploitable_vulns,
+            "Exploitable Vulnerabilities Pie Chart": self.add_plot_severity_piechart_exploitable,
+            "All Critical Vulnerabilities Table": self.add_table_all_critical,
+        }
+        # List of failed sections
+        failed = []  # type: list[str]
         try:
             self.add_packages()
             # self.add_preamble()
             self.add_header()
-            self.add_table_cvss_intervals()
-            self.add_table_image_info()
-            self.add_table_statistics()
-            self.add_plot_mean_trend()
-            self.add_table_top_vuln()
-            self.add_table_top_vuln_upgradable()
-            self.add_plot_severity_piechart()
-            self.add_plot_scatter_vuln_age()
-            self.add_table_exploitable_vulns()
-            self.add_plot_severity_piechart_exploitable()
-            self.add_table_all_critical()
+
+            for section_name, method in content_methods.items():
+                try:
+                    # TODO: we could try to modify a COPY of the document
+                    # and only overwrite the original document if this method succeeds.
+                    method()
+                except Exception as e:
+                    logger.exception(e)
+                    logger.error(f"Failed to create {section_name}")
+                    failed.append(section_name)
+
+            self.add_section_failed(failed)
             self.doc.generate_pdf(compiler_args=["-f"])
-            logger.debug("Generated PDF: {}", self.path)
+            logger.debug(f"Generated PDF: {self.path}")
         finally:
             # NOTE: we could implement __enter__ and __exit__ to ensure
             # ALL temporary files are cleaned up (including generated pdf)
             self.delete_temp_files()
+
+    def add_section_failed(self, failed: list[str]) -> None:
+        if failed:
+            self.doc.append(NewPage())
+            with self.doc.create(
+                Section("Sections That Failed to Render", numbering=False)
+            ):
+                with self.doc.create(Itemize()) as itemize:
+                    for section_name in failed:
+                        itemize.add_item((NoEscape(f"{section_name}")))
 
     def delete_temp_files(self) -> None:
         """Deletes all temporary files after generating document."""
