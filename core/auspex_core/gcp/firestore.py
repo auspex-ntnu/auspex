@@ -1,6 +1,6 @@
-from functools import cache
 import os
-from typing import Any, TYPE_CHECKING
+from functools import cache
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from google.cloud.firestore_v1.async_query import AsyncQuery
@@ -9,11 +9,11 @@ import aiohttp
 import backoff
 import firebase_admin
 from firebase_admin import credentials, firestore
+from google.api_core.exceptions import ServerError
 from google.cloud.firestore_v1 import DocumentSnapshot
 from google.cloud.firestore_v1.async_client import AsyncClient
 from google.cloud.firestore_v1.async_document import AsyncDocumentReference
 from loguru import logger
-
 
 # TODO: refactor. Pass this in as a parameter where required.
 GOOGLE_CLOUD_PROJECT = os.getenv("GOOGLE_CLOUD_PROJECT")
@@ -51,7 +51,7 @@ app = firebase_admin.initialize_app(
 
 @backoff.on_exception(
     backoff.expo,
-    exception=aiohttp.ClientResponseError,
+    exception=(aiohttp.ClientResponseError, ServerError),
     max_tries=5,
     jitter=backoff.full_jitter,
 )
@@ -63,13 +63,13 @@ async def get_document(collection_name: str, document_id: str) -> DocumentSnapsh
     d = db.document(docpath)
     doc = await d.get()  # type: DocumentSnapshot
     if not doc.exists:
-        raise ValueError("Document not found.")
+        raise ValueError(f"Document '{document_id}' not found.")
     return doc
 
 
 @backoff.on_exception(
     backoff.expo,
-    exception=aiohttp.ClientResponseError,
+    exception=(aiohttp.ClientResponseError, ServerError),
     max_tries=5,
     jitter=backoff.full_jitter,
 )
