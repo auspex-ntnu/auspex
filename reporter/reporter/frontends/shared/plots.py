@@ -203,7 +203,12 @@ def scatter_mean_trend(
     # Save fig and store its filename
     p.path = save_fig(fig, report, basename, "scatter_mean_trend")
     nreports = len(prev_reports) + 1  # prev + current
-    p.description = f"Mean CVSSv3 score trend for the {nreports} most recent reports"
+    p.description = (
+        f"Mean CVSSv3 score trend for the {nreports} most recent reports. "
+        "Each data point in blue represents a previous scan. "
+        "The current scan is represented by a green dot. "
+        "The red line is the trend and shows whether the security state is improving or worsening over time. "
+    )
     return p
 
 
@@ -262,11 +267,17 @@ def scatter_vulnerability_age(
     ax.set_axisbelow(True)
     # '%b' means month as locale’s abbreviated name
 
+    description = (
+        "The age of unpatched vulnerabilities found and their corresponding CVSS scores. "
+        "Each dot represents a vulnerability and is color coded, following the same style as the pie chart. "
+        "The age of a vulnerability is based on its publication time. "
+    )
+
     path = save_fig(fig, report, basename, "plot_vuln_age")
     return PlotData(
         title="Age of Unpatched Vulnerabilities",
         caption="Age of Unpatched Vulnerabilities",
-        description="The age of unpatched vulnerabilities found and their corresponding CVSSv3 scores.",
+        description=description,
         path=path,
         plot_type=PlotType.SCATTER,
     )

@@ -62,7 +62,9 @@ def top_vulns_table(
     #
     # However, it means that we can make sure we display at least N vulnerabilties
     # from each image, and that we don't omit any image completely because it didn't
-    # make the `maxrows` cutoff.
+    # make the `maxrows` cutoff, and that we also are able to include the image the
+    # vulnerability is associated with.
+
     rows = []
     reports = []
     if isinstance(report, AggregateReport):
@@ -89,8 +91,15 @@ def top_vulns_table(
     up = " Upgradable " if upgradable else " "
     ag = " by Image" if is_aggregate else ""
     title = f"Most Critical{up}Vulnerabilities{ag}"
+    description = (
+        "Lists the found vulnerabilities with highest CVSS scores. "
+        "The CVSS ID is a hyperlink to official documentation for that vulnerability. "
+        "'Upgradeable' denotes whether the found vulnerability has a known fix ie. a new version of a package or library. "
+    )
+    if upgradable:
+        description += "Only vulnerabilities that are upgradable are listed."
 
-    return TableData(title, header, rows)
+    return TableData(title, header, rows, description=description)
 
 
 def severity_vulns_table(
@@ -152,9 +161,17 @@ def severity_vulns_table(
     sev = severity.name.title()
     if maxrows:
         title = f"Top {len(rows)} {sev} Vulnerabilities"
+        vuln_scope = f"the top {len(rows)}"
     else:
         title = f"All {sev} Vulnerabilities"
-    return TableData(title, header, rows)
+        vuln_scope = "all"
+
+    description = (
+        f"Lists {vuln_scope} discovered {severity.name.lower()} vulnerabilities. "
+        "'Upgradeable' denotes whether the found vulnerability has a known fix ie. a new version of a package or library. "
+        "Year represents the publication year of the vulnerability."
+    )
+    return TableData(title, header, rows, description=description)
 
 
 def statistics_table(report: ScanType) -> TableData:
@@ -214,7 +231,12 @@ def statistics_table(report: ScanType) -> TableData:
         header=columns,
         rows=rows,
         caption="",
-        description="Where: L = Low (0.1 - 3.9), M = Medium, (4.0 - 6.9), H = High (7.0 - 8.9), C = Critical (9.0 - 10.0)",
+        description=(
+            "The statistics is based on the scanned image(s) and denotes the Median, Mean and Standard deviation (Stdev) score of all vulnerabilities found. "
+            "Additionally it showcases the single highest score of a vulnerability for this scan. 'L', 'M', 'H' and 'C' denote the severity categories, with the corresponding number of vulnerabilities for each category. "
+            "'#Vulns' denotes the total number of vulnerabilities found. "
+            "\n\nWhere: L = Low (0.1 - 3.9), M = Medium, (4.0 - 6.9), H = High (7.0 - 8.9), C = Critical (9.0 - 10.0)"
+        ),
     )
 
 
@@ -381,6 +403,6 @@ def exploitable_vulns(report: ScanType) -> TableData:
     else:
         td.description = (
             "The following vulnerabilities are exploitable. "
-            "An exploitable vulnerability has a functional exploit that can be abused."
+            "An exploitable vulnerability has a known working exploit that can be abused."
         )
     return td
