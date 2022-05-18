@@ -1,6 +1,7 @@
 import os
 from enum import Enum
 from typing import Any, Iterable, NamedTuple, Optional, Union
+from fastapi import HTTPException
 
 from google.cloud import firestore
 from pydantic import BaseModel, Field, root_validator, validator
@@ -127,12 +128,18 @@ class ReportQuery(BaseModel):
     @root_validator
     def validate_values(cls, values: dict[str, Any]) -> dict[str, Any]:
         if values["image"] and values["aggregate"]:
-            raise ValueError("Cannot search for both image and aggregate.")
+            raise HTTPException(
+                status_code=422, detail="Cannot search for both image and aggregate."
+            )
         if not values["image"] and not values["aggregate"]:
-            raise ValueError("Must search for either image or aggregate.")
+            raise HTTPException(
+                status_code=422, detail="Must search for either image or aggregate."
+            )
         if values["le"] is not None and values["ge"] is not None:
             if values["le"] < values["ge"]:
-                raise ValueError("`le` must be greater than `ge`.")
+                raise HTTPException(
+                    status_code=422, detail="`le` must be greater than `ge`."
+                )
         return values
 
 
