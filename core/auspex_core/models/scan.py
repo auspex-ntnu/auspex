@@ -5,8 +5,6 @@ from pydantic import BaseModel, Field
 from ..docker.models import ImageInfo, ImageTimeMode
 from .cve import CVSS
 
-# Very similar definition of Scan from /functions/logger/gcp/main.py
-
 
 class ScanLog(BaseModel):
     # TODO: move to auspex_core/models/api/scan.py
