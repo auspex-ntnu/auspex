@@ -1,17 +1,21 @@
 import json
 import shutil
 import subprocess
-from subprocess import CalledProcessError, CompletedProcess
-from functools import cache
+from subprocess import CompletedProcess
 from typing import Any
-from loguru import logger
 
+import backoff
+from auspex_core.utils.backoff import on_backoff, on_giveup
+from loguru import logger
 from pydantic import BaseModel, Field
 
 from ..config import AppConfig
 
-
 DEFAULT_CMD = "snyk"
+
+
+class ECONNRESET_Exception(Exception):
+    """Exception raised when Snyk CLI returns an ECONNRESET error."""
 
 
 class SnykScanResults(BaseModel):
@@ -100,6 +104,13 @@ def get_snyk_exe() -> str:
     return DEFAULT_CMD
 
 
+@backoff.on_exception(
+    backoff.expo,
+    ECONNRESET_Exception,
+    max_tries=5,
+    on_backoff=on_backoff,
+    on_giveup=on_giveup,
+)
 def run_snyk_scan(image: str) -> SnykScanResults:
     """Runs the Snyk CLI container scan.
 
@@ -128,4 +139,10 @@ def run_snyk_scan(image: str) -> SnykScanResults:
         capture_output=True,
         text=True,
     )
-    return SnykScanResults.from_subprocess(p)
+    snykscan = SnykScanResults.from_subprocess(p)
+    if "ECONNRESET" in snykscan.stderr:
+        logger.debug(
+            f"Snyk CLI returned an ECONNRESET error. Rerunning scan of {image}."
+        )
+        raise ECONNRESET_Exception(snykscan.stderr)
+    return snykscan
