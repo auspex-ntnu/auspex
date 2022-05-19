@@ -4,6 +4,8 @@ from hypothesis import strategies as st
 from reporter.backends.aggregate import AggregateReport
 from reporter.backends.snyk.model import SnykContainerScan, SnykVulnerability
 
+# TODO: add strategies that generate values that are not known to be valid
+
 
 # Snyk data structure strategies
 _SEVERITY_SAMPLE = [
@@ -63,7 +65,7 @@ _IMAGEINFO = st.builds(
         ),
         st.lists(st.text(), min_size=0),
     ),
-)
+)  # type: st.SearchStrategy[ImageInfo] # no idea why mypy requires manual typing here
 
 
 def _snykcontainerscan_strategy(
