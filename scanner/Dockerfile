@@ -31,7 +31,7 @@ RUN : \
     # && apt-get install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin google-cloud-cli\
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/* \
-    && curl https://static.snyk.io/cli/v1.914.0/snyk-linux -o snyk \
+    && curl https://static.snyk.io/cli/v1.933.0/snyk-linux -o snyk \
     && chmod +x ./snyk \
     && mv ./snyk /usr/local/bin/ \
     && :
