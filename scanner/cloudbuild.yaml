@@ -22,6 +22,8 @@ steps:
     '${_PORT}',
     '--memory',
     '${_MEMORY}',
+    '--cpu',
+    '${_CPU}',
     '--region',
     '${_SERVICE_REGION}',
     '--concurrency',
@@ -55,7 +57,9 @@ substitutions:
     _SNYK_TOKEN_FILE: /run/secrets/SNYK_TOKEN_FILE
     _SCANNER_CREDENTIALS: /run/secrets/gcpcreds/SCANNER_CREDENTIALS
     _PORT: "80"
+    # NOTE: MUST have 2 cores if using 8 GiB (Cloud Run restriction)
     _MEMORY: "8Gi"
+    _CPU: "2"
 options:
     dynamic_substitutions: true
     substitution_option: 'ALLOW_LOOSE'
