@@ -1,11 +1,9 @@
-
-
-
 # File types
 *.pdf
 *.json
 *.sarif
 *.txt
+*.pkl
 
 # Python
 __pycache__
@@ -16,8 +14,6 @@ __pycache__
 # Poetry
 */dist/*
 
-# Google Drive
-.dccache
 
 # Scripts
 /build.sh
@@ -33,3 +29,29 @@ sort_severity.py
 
 # VSCode
 !/.vscode/tasks.json
+
+
+# Misc
+_dev/subcollections.py
+reporter/reporter/frontends/latex/example.py
+reporter/reporter/frontends/latex/scatter.py
+setup/scanner_vm_init.sh
+setup/pubsub_init.py
+setup/scanner_vm_startup.sh
+
+
+# TOP-LEVEL DIRECTORIES
+
+# Secrets
+.keys
+.secrets
+
+# Misc
+_dev/
+.build/
+.devcontainer/
+.persistent/
+_scans/
+
+# Google Drive
+.dccache
