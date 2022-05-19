@@ -24,6 +24,8 @@ steps:
     '${_MEMORY}',
     '--region',
     '${_SERVICE_REGION}',
+    '--concurrency',
+    '1',
     '--set-env-vars',
     'COLLECTION_SCANS=${_COLLECTION_SCANS},BUCKET_SCANS=${_BUCKET_SCANS},GOOGLE_CLOUD_PROJECT=${_GOOGLE_CLOUD_PROJECT},SNYK_TOKEN_FILE=${_SNYK_TOKEN_FILE},GOOGLE_APPLICATION_CREDENTIALS=${_SCANNER_CREDENTIALS}',
     '--set-secrets',
@@ -53,7 +55,7 @@ substitutions:
     _SNYK_TOKEN_FILE: /run/secrets/SNYK_TOKEN_FILE
     _SCANNER_CREDENTIALS: /run/secrets/gcpcreds/SCANNER_CREDENTIALS
     _PORT: "80"
-    _MEMORY: "4Gi"
+    _MEMORY: "8Gi"
 options:
     dynamic_substitutions: true
     substitution_option: 'ALLOW_LOOSE'
