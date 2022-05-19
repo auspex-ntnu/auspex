@@ -1,3 +1,6 @@
+# TODO: move to auspex_core/exceptions
+
+
 class DockerRegistryException(Exception):
     pass
 
