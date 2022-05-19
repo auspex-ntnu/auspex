@@ -1,0 +1,63 @@
+# This workflow requests single and aggregate reports for all of Auspex's container images.
+#
+# The resulting aggregate report is sent by mail to a destination address.
+
+
+main:
+    steps:
+    - init:
+        assign:
+        - project_id: ${sys.get_env("GOOGLE_CLOUD_PROJECT_ID")}
+        - secret_id: "SENDGRID_API_KEY"
+        - version: "latest"
+        - email_destination: "peder.andresen@gmail.com"
+    - get_secret:
+        call: googleapis.secretmanager.v1.projects.secrets.versions.accessString
+        args:
+            secret_id: ${secret_id}
+            version: ${version}
+            project_id: ${project_id}
+        result: SENDGRID_API_KEY
+
+    # Request a scan + create reports
+    - getReports:
+        try:
+            call: http.post
+            args:
+                url: https://restapi-qk6stf4ejq-lz.a.run.app/reports
+                body:
+                    images: ["eu.gcr.io/ntnu-student-project/auspex/reporter", "eu.gcr.io/ntnu-student-project/auspex/scanner", "eu.gcr.io/ntnu-student-project/auspex/restapi", "eu.gcr.io/ntnu-student-project/auspex/setup"]
+                    aggregate: true
+                    individual: true
+                    ignore_failed: false
+                timeout: 1200
+            result: reportResult
+        retry:
+            max_retries: 8
+            backoff:
+                initial_delay: 1
+                max_delay: 60
+                multiplier: 2
+
+    - sendEmail:
+        call: http.post
+        args:
+            url: https://api.sendgrid.com/v3/mail/send
+            headers:
+                Content-Type: "application/json"
+                Authorization: ${"Bearer " + SENDGRID_API_KEY}
+            body:
+                personalizations:
+                    - to:
+                        - email: ${email_destination}
+                from:
+                    email: auspexmailer@gmail.com
+                subject: Daily Auspex Report
+                content:
+                    - type: text/html
+                      value: ${"<a clicktracking=off href=\"" + reportResult.body.aggregate.report_url + "\">Report</a>"}
+        result: email_result
+    - return_result:
+        return: ${email_result.body}
+
+# https://cloud.google.com/build/docs/subscribe-build-notifications
