@@ -253,28 +253,6 @@ class LicensesPolicy(BaseModel):
     orgLicenseRules: dict[str, OrgLicenseRule]  # key: name of license
 
 
-class VulnerabilityList(BaseModel):
-    __root__: list[SnykVulnerability]
-
-    class Config:
-        keep_untouched = (_lru_cache_wrapper,)
-
-    def __iter__(self):
-        return iter(self.__root__)
-
-    def __getitem__(self, item) -> SnykVulnerability:
-        return self.__root__[item]
-
-    def __repr__(self) -> str:
-        return f"VulnerabilityList(len={len(self.__root__)})"
-
-    def __len__(self) -> int:
-        return len(self.__root__)
-
-    def __hash__(self) -> int:
-        return id(self)
-
-
 # JSON: .
 class SnykContainerScan(BaseModel):
     """Represents the output of `snyk container test --json`"""
