@@ -308,7 +308,7 @@ class SnykContainerScan(BaseModel):
         return unique
 
     @validator("timestamp", pre=True)
-    def ensure_default_factory(
+    def _ensure_default_factory(
         cls, v: Optional[datetime], field: ModelField
     ) -> Optional[datetime]:
         """Hypothesis seems to pass `None` to this attribute even though
@@ -319,7 +319,7 @@ class SnykContainerScan(BaseModel):
         return v
 
     @validator("id", always=True)  # use Pre=True instead?
-    def assign_default_id(cls, v: str, values: dict[str, Any]) -> str:
+    def _assign_default_id(cls, v: str, values: dict[str, Any]) -> str:
         """Fall back on autogenerating an ID if Google Cloud Storage
         does not provide us with an ID from its blob metadata.
         Should never happen, but we leave it here as a failsafe."""
@@ -332,7 +332,7 @@ class SnykContainerScan(BaseModel):
         return id
 
     @validator("image", always=True, pre=True)
-    def ensure_image_info(
+    def _ensure_image_info(
         cls, v: Optional[dict[str, Any]], field: ModelField
     ) -> ImageInfo:
         """Fix for hypothesis failing to call default factory properly when nesting models."""
