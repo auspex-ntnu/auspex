@@ -257,9 +257,7 @@ class LicensesPolicy(BaseModel):
 class SnykContainerScan(BaseModel):
     """Represents the output of `snyk container test --json`"""
 
-    vulnerabilities: list[
-        SnykVulnerability
-    ]  # TODO: just use list[SnykVulnerability] instead?
+    vulnerabilities: list[SnykVulnerability]
     ok: bool
     dependencyCount: int
     org: str
@@ -284,6 +282,30 @@ class SnykContainerScan(BaseModel):
         extra = "allow"  # should we allow or disallow this?
         validate_assignment = True
         keep_untouched = (cached_property, _lru_cache_wrapper)
+
+    @validator("vulnerabilities")
+    def _remove_duplicate_vulnerabilties(
+        cls, vuls: list[SnykVulnerability]
+    ) -> list[SnykVulnerability]:
+        """
+        Removes duplicate vulnerabilities.
+
+        This is necessary because the Snyk scan returns duplicate vulnerabilities.
+        E.g. multiple vulnerabilities with the same CVE ID.
+
+        TODO: investigate why this happens.
+               Could it be that multiple vulnerabilities with different SNYK IDs
+               share the same CVE ID? This could be some idiosyncracy in Snyk.
+        """
+        seen = set()
+        unique = []
+        for vuln in vuls:
+            vid = vuln.get_id()
+            if vid in seen:
+                continue
+            seen.add(vid)
+            unique.append(vuln)
+        return unique
 
     @validator("timestamp", pre=True)
     def ensure_default_factory(
