@@ -1,6 +1,7 @@
 from datetime import datetime
 
 import aiohttp
+from auspex_core.models.api.scan import ScanRequest
 import backoff
 from auspex_core.docker.models import ImageInfo
 from auspex_core.gcp.firestore import add_document
@@ -18,7 +19,9 @@ from .types import ScanResultsType
     max_tries=5,
     jitter=backoff.full_jitter,
 )
-async def log_scan(scan: ScanResultsType, image: ImageInfo) -> ScanLog:
+async def log_scan(
+    scan: ScanResultsType, image: ImageInfo, options: ScanRequest
+) -> ScanLog:
     # Generate log filename
     timestamp = datetime.utcnow()
     filename = f"{image.image}_{str(timestamp).replace('.', '_')}"
@@ -36,6 +39,7 @@ async def log_scan(scan: ScanResultsType, image: ImageInfo) -> ScanLog:
         url=obj.selfLink,
         blob=obj.name,
         bucket=obj.bucket,
+        base_vulns=options.base_vulns,
     )
 
     # Add firestore document

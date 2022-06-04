@@ -3,6 +3,8 @@ import shutil
 import subprocess
 from subprocess import CompletedProcess
 from typing import Any
+from auspex_core.docker.models import ImageInfo
+from auspex_core.models.api.scan import ScanRequest
 
 import backoff
 from auspex_core.utils.backoff import on_backoff, on_giveup
@@ -22,7 +24,7 @@ class SnykScanResults(BaseModel):
     stdout: str
     stderr: str
     backend: str = Field("snyk", const=True)
-    # WARNING: the command (CompltedProcess.args)might include sensitive information such as credentials
+    # WARNING: the command (CompletedProcess.args) might include sensitive information such as credentials
     # DO NOT DISPLAY THIS TO USERS
     process: CompletedProcess[str] = Field(..., exclude=True)
 
@@ -104,6 +106,39 @@ def get_snyk_exe() -> str:
     return DEFAULT_CMD
 
 
+def get_snyk_cmd(image: ImageInfo, options: ScanRequest) -> str:
+    """Returns the Snyk CLI command to run based on image and options.
+
+    Parameters
+    ----------
+    image : `ImageInfo`
+        The image to scan.
+    options : `ScanRequest`
+        The options for the scan.
+
+    Returns
+    -------
+    `str`
+        The Snyk CLI command to run.
+    """
+    snyk_exe = get_snyk_exe()
+
+    # We use the --json option to pipe the results to stdout
+    # and then read it directly into memory.
+    cmd = f"{snyk_exe} container test --json "
+    # TODO: decide authentication scheme based on image info + configured repos
+    # TODO: replace with something more robust:
+    if "gcr.io" in image.image:
+        cmd += f'--username=_json_key --password="$(cat {AppConfig().google_credentials})" '
+    if not options.base_vulns:
+        cmd += "--exclude-base-image-vulns "
+    # if options.app_vulns:
+    #     cmd += "--app-vulns "
+    cmd += image.image
+
+    return cmd
+
+
 @backoff.on_exception(
     backoff.expo,
     ECONNRESET_Exception,
@@ -111,7 +146,7 @@ def get_snyk_exe() -> str:
     on_backoff=on_backoff,
     on_giveup=on_giveup,
 )
-def run_snyk_scan(image: str) -> SnykScanResults:
+def run_snyk_scan(image: ImageInfo, options: ScanRequest) -> SnykScanResults:
     """Runs the Snyk CLI container scan.
 
     Parameters
@@ -124,14 +159,12 @@ def run_snyk_scan(image: str) -> SnykScanResults:
     `SnykScanResults`
         Results of the scan.
     """
-    # TODO: support other container registries.
-    # Currently only supports GCR
-    snyk_exe = get_snyk_exe()
+    snyk_cmd = get_snyk_cmd(image, options)
 
-    # We use the --json option to pipe the results to stdout
-    # and then read it directly into memory.
-    snyk_cmd = f'{snyk_exe} container test --json --username=_json_key --password="$(cat {AppConfig().google_credentials})" {image}'
+    # SECURITY RISK
+    # This will leak the location of the credentials file but NOT its contents
     logger.debug(f"Running snyk command: {snyk_cmd}")
+
     p = subprocess.run(
         # FIXME: is there a better way to use "$(cat <file>)" in a subprocess?
         # Ideally we would just want to run the Snyk binary directly

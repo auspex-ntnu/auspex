@@ -29,5 +29,16 @@ class ScanRequest(BaseModel):
         description="Whether or not to ignore failed scans. Failed scans raise exception if False.",
     )  # TODO: Get default value from config
 
+    base_vulns: bool = Field(
+        default=True,
+        description="Whether or not to include base image vulnerabilities. See: https://docs.snyk.io/snyk-cli/commands/container#exclude-base-image-vulns",
+    )
+
+    # Currently NOT supported with Snyk JSON output as of Snyk v1.933.0
+    # app_vulns: bool = Field(
+    #     default=True,
+    #     description="Whether or not to include application vulnerabilities. See: https://docs.snyk.io/snyk-cli/commands/container#app-vulns",
+    # )
+
     class Config:
         extra = "allow"  # allow extra fields in the request

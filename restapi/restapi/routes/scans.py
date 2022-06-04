@@ -66,9 +66,7 @@ async def do_request_scans(req: ScanRequest) -> list[ScanLog]:
 
     # send request for each image
     url = f"{AppConfig().url_scanner}/scans"
-    coros = [
-        _send_scan_request(client, url, image, req.backend) for image in req.images
-    ]
+    coros = [_send_scan_request(client, url, image, req) for image in req.images]
     responses = await asyncio.gather(*coros)
 
     # close connection since we don't use ctx manager
@@ -90,7 +88,7 @@ async def do_request_scans(req: ScanRequest) -> list[ScanLog]:
     on_giveup=on_giveup,
 )
 async def _send_scan_request(
-    client: httpx.AsyncClient, url: str, image: str, backend: str
+    client: httpx.AsyncClient, url: str, image: str, options: ScanRequest
 ) -> httpx.Response:
     """Sends a request to the scanner service.
 
@@ -102,15 +100,16 @@ async def _send_scan_request(
         The URL to send the request to.
     image : `str`
         The image to scan.
-    backend : `str`
-        The backend to use for scanning.
+    options : `ScanRequest`
+        The scan options to use.
 
     Returns
     -------
     `httpx.Response`
         The response from the request.
     """
-    req = ScanRequest(image=image, backend=backend)
+    req = ScanRequest.parse_obj(options)
+    req.images = [image]  # only supply one image per invocation
     res = await client.post(
         url,
         json=req.dict(),

@@ -4,6 +4,7 @@ import json
 import os
 from typing import Any
 from auspex_core.gcp.firestore import get_document, check_db_exists
+from auspex_core.models.api.scan import ScanRequest
 
 import backoff
 import httpx
@@ -38,25 +39,22 @@ async def on_app_startup():
 
 
 @app.post("/scans", response_model=ScanLog)
-async def scan_image(scan_request: ScanIn) -> ScanLog:
+async def scan_image(options: ScanRequest) -> ScanLog:
     """Scans a single container image."""
-    image_info = await get_image_info(scan_request.image, AppConfig().project)
+    # Can we copy and monkey-patch the ScanRequest class to assert 1 image is required?
+    assert options.images, "No image specified"  # TODO: make this a HTTP error
+
+    image_info = await get_image_info(options.images[0], AppConfig().project)
     logger.debug(image_info)
     # TODO: pass ImageInfo object to scan_container
     #       Only use credentials if scanning image from private repo
-    scan = await scan_container(
-        image=scan_request.image,
-        backend=scan_request.backend,
-    )
+    scan = await scan_container(image_info, options)
     if not scan.ok:
         detail = {"message": "The scan failed.", **scan.error}
         logger.error(detail)
         # FIXME: add detail message
         raise HTTPException(status_code=500, detail=detail)
-
-    s = await log_scan(scan, image_info)
-
-    # use scan
+    s = await log_scan(scan, image_info, options)
     return s
 
 
