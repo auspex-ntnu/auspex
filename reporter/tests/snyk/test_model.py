@@ -11,7 +11,6 @@ from reporter.backends.snyk.model import (
     Identifiers,
     Semver,
     SnykContainerScan,
-    VulnerabilityList,
     SnykVulnerability,
 )
 import pytest
@@ -24,9 +23,9 @@ def test_SnykContainerScan_from_file() -> None:
         Path(__file__).parent / "../_static/vulhub_php_5.4.1_cgi.json"
     )
     assert scan is not None
-    assert math.isclose(scan.cvss_mean, 6.535999999999999)
-    assert math.isclose(scan.cvss_median, 6.5)  # probably don't need isclose here?
-    assert math.isclose(scan.cvss_stdev, 1.8512989051916053)
+    assert math.isclose(scan.cvss_mean, 6.79047619047619)
+    assert math.isclose(scan.cvss_median, 7.3)
+    assert math.isclose(scan.cvss_stdev, 1.6306600363641133)
 
 
 # Fuzzing test with hypothesis
@@ -139,17 +138,6 @@ def test_fuzz_SnykContainerScan(scan: SnykContainerScan) -> None:
 
 
 # TODO: Create strategy for constructing SnykVulnerability objects
-
-
-@settings(max_examples=10, suppress_health_check=[HealthCheck.too_slow])
-@given(st.builds(VulnerabilityList))
-def test_fuzz_VulnerabilityList(v: VulnerabilityList) -> None:
-    # Test dunder methods
-    assert iter(v)  # __iter__
-    if len(v) > 0:  # __getitem__
-        for i in range(len(v)):
-            assert v[i] is not None
-    assert repr(v) is not None  # __repr__
 
 
 @settings(max_examples=10, suppress_health_check=[HealthCheck.too_slow])

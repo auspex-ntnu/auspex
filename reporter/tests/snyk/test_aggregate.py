@@ -6,11 +6,12 @@ from hypothesis import HealthCheck, given, settings, strategies as st
 import pytest
 
 from reporter.backends.aggregate import AggregateReport
-from reporter.backends.snyk.model import VulnerabilityList, SnykContainerScan
+from reporter.backends.snyk.model import SnykContainerScan
 from ..strategies import CLASS_STRATEGIES
 
 
 def test_AggregateReport_from_file() -> None:
+    # TODO: make this backend-agnostic
     scan = SnykContainerScan.parse_file(
         Path(__file__).parent / "../_static/vulhub_php_5.4.1_cgi.json"
     )
