@@ -18,7 +18,6 @@ main:
             version: ${version}
             project_id: ${project_id}
         result: SENDGRID_API_KEY
-
     # Request a scan + create reports
     - getReports:
         try:
@@ -38,7 +37,6 @@ main:
                 initial_delay: 1
                 max_delay: 60
                 multiplier: 2
-
     - sendEmail:
         call: http.post
         args:
