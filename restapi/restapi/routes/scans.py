@@ -1,5 +1,6 @@
 import asyncio
 from json import JSONDecodeError
+from auspex_core.docker.registry import get_repos_in_registry
 import backoff
 
 import httpx
@@ -64,9 +65,19 @@ async def do_request_scans(req: ScanRequest) -> list[ScanLog]:
     # Sometimes it closes the client while some requests are still pending
     client = httpx.AsyncClient(timeout=AppConfig().timeout_scanner)
 
+    if req.repository:
+        # get images in repository
+        # Ideally this work should be done by the scanner service,
+        # but due to the current design with maximum concurrency = 1,
+        # we have to do it here.
+        images = await get_repos_in_registry(req.repository, req.excluded_images)
+    else:
+        # get images from list
+        images = req.images
+
     # send request for each image
     url = f"{AppConfig().url_scanner}/scans"
-    coros = [_send_scan_request(client, url, image, req) for image in req.images]
+    coros = [_send_scan_request(client, url, image, req) for image in images]
     responses = await asyncio.gather(*coros)
 
     # close connection since we don't use ctx manager

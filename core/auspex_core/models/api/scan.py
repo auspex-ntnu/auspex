@@ -1,10 +1,7 @@
 import os
-from typing import Optional
+from typing import Any, Optional
 
-from pydantic import BaseModel, Field
-
-
-# FIXME: why is this shared
+from pydantic import BaseModel, Field, root_validator
 
 
 class ScanRequest(BaseModel):
@@ -13,10 +10,14 @@ class ScanRequest(BaseModel):
         description="List of image names to scan.",
     )
 
-    # NYI:
     repository: Optional[str] = Field(
         default=None,
         description="Repository name to scan images of. Supercedes images.",
+    )
+
+    excluded_images: list[str] = Field(
+        default_factory=list,
+        description="List of image repository names to exclude from scan when using the repository option.",
     )
 
     backend: str = Field(
@@ -39,6 +40,12 @@ class ScanRequest(BaseModel):
     #     default=True,
     #     description="Whether or not to include application vulnerabilities. See: https://docs.snyk.io/snyk-cli/commands/container#app-vulns",
     # )
+
+    @root_validator
+    def ensure_image_or_repository(cls, values: dict[str, Any]) -> dict[str, Any]:
+        if not values.get("images") and not values.get("repository"):
+            raise ValueError("Either images or repository must be provided.")
+        return values
 
     class Config:
         extra = "allow"  # allow extra fields in the request
