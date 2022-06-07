@@ -25,7 +25,7 @@ from .models import (
     TagsResponse,
 )
 
-GCR_REGISTRIES = ["gcr.io", "eu.gcr.io", "us.gcr.io"]
+GCR_REGISTRIES = ["gcr.io", "eu.gcr.io", "us.gcr.io", "asia.gcr.io"]
 DOCKER_REGISTRIES = ["docker.io", "registry.hub.docker.com"]
 SUPPORTED_REGISTRIES = GCR_REGISTRIES + DOCKER_REGISTRIES
 DEFAULT_REGISTRY = "docker.io"
