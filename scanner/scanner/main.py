@@ -1,33 +1,20 @@
-from contextlib import suppress
 from functools import partial
-import json
-import os
-from typing import Any
-from auspex_core.gcp.firestore import get_document, check_db_exists
-from auspex_core.models.api.scan import ScanRequest
 
-import backoff
-import httpx
+from auspex_core.docker.registry import get_image_info
+from auspex_core.gcp.firestore import check_db_exists, get_document
+from auspex_core.models.api.scan import ScanRequest
 from auspex_core.models.scan import ScanLog
-from auspex_core.utils.backoff import on_backoff
+from auspex_core.models.status import ServiceStatus, ServiceStatusCode
 from fastapi import FastAPI, Request
 from fastapi.exceptions import HTTPException
-from fastapi.responses import JSONResponse, PlainTextResponse
+from fastapi.responses import PlainTextResponse
 from loguru import logger
-from pydantic import BaseModel, Field, ValidationError
-from auspex_core.docker.models import ImageInfo
-from auspex_core.docker.registry import get_image_info
-from auspex_core.models.status import ServiceStatus, ServiceStatusCode
-from json import JSONDecodeError
 
 from .config import AppConfig
-from .exceptions import APIError, UserAPIError
-from .scan import scan_container
-from .types import ScanResultsType
-from .models import CompletedScan, ScanIn
 from .db import log_scan
-from .health import startup_health_check
 from .exceptions import install_handlers
+from .health import startup_health_check
+from .scan import scan_container
 
 app = FastAPI()
 install_handlers(app)
