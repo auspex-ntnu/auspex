@@ -56,8 +56,8 @@ def split_image_version(image: str) -> ImageVersionInfo:
     return ImageVersionInfo(image=image, mode=ImageNameMode.NONE)
 
 
-def get_registry(image_info: ImageVersionInfo) -> str:
-    """Get the registry from an image name."""
+def get_registry_name(image_info: ImageVersionInfo) -> str:
+    """Get the registry name from an image name."""
     base_url = image_info.image.split("/")[0]
     if base_url in SUPPORTED_REGISTRIES:
         return base_url
@@ -85,13 +85,18 @@ async def get_image_info(image: str, project: str) -> ImageInfo:
     versioninfo = split_image_version(image)
 
     # Given the image's name, we can find its registry
-    registry = get_registry(versioninfo)
+    registry = get_registry_name(versioninfo)
 
     # TODO: add support for other registries
     # Right now we just mock docker.io and return early
     if registry in DOCKER_REGISTRIES:
         return mock_dockerhub_imageinfo(versioninfo)
+    return await _get_gcr_image_info(image, project, registry, versioninfo)
 
+
+async def _get_gcr_image_info(
+    image: str, project: str, registry: str, versioninfo: ImageVersionInfo
+) -> ImageInfo:
     imgpath = get_image_path(versioninfo.image, project, registry)
 
     if registry in GCR_REGISTRIES:
@@ -163,6 +168,9 @@ def get_image_path(image: str, project: str, registry: str) -> str:
 
 def mock_dockerhub_imageinfo(versioninfo: ImageVersionInfo) -> ImageInfo:
     """Mock image info for dockerhub. This is a hack to 'support' Dockerhub images."""
+
+    # TODO: find a way to pull this information from DockerHub
+
     if versioninfo.mode == ImageNameMode.TAG and versioninfo.tag_or_digest is not None:
         tag = versioninfo.tag_or_digest
     else:
@@ -185,15 +193,39 @@ def mock_dockerhub_imageinfo(versioninfo: ImageVersionInfo) -> ImageInfo:
 
 
 # list repositories
-async def get_repositories(project_id: str = None) -> CatalogResponse:
-    """Get a list of repositories in a project."""
+async def get_repos_in_registry(
+    registry: str, exclude: Optional[list[str]] = None
+) -> list[str]:
+    """Get a list of image repositories in a registry."""
+    if exclude is None:
+        exclude = []
     # TODO: support other container registries apart from gcr.io
+    if any(x in registry for x in GCR_REGISTRIES):
+        return await _get_repositories_gcr(registry, exclude)
+        # TODO: filter by tags as well
+        #       We can only assume :latest is safe to use as a tag
+        #       for all images in the registry if we don't invidually check
+    raise NotImplementedError(f"Listing repositories for {registry} is not supported.")
+
+
+async def _get_repositories_gcr(registry: str, exclude: list[str]) -> list[str]:
     credentials = await get_gcr_token()
+    reg = registry.split("/")[0]
+    assert reg in GCR_REGISTRIES, f"Unknown registry: {reg}"
     async with httpx.AsyncClient() as client:
-        r = await client.get("https://eu.gcr.io/v2/_catalog", auth=credentials)
+        # TODO: use appropriate endpoint for gcr.io
+        r = await client.get(f"https://{reg}/v2/_catalog", auth=credentials)
         resp = CatalogResponse.parse_obj(r.json())
-        return resp
-    # TODO determine which project to use
+        # exclude = ["/gcf/", "cache"] will match all repos containing "/gcf/" or "cache"
+        repos = [
+            # The catalog response strips the top-level registry name (gcr.io)
+            # so we have to add it back in here
+            f"{reg}/{repo}"
+            for repo in resp.repositories
+            if not any(x in repo for x in exclude)
+        ]
+        # BACKLOG: add RepositoryInfo type instead of returning strings
+        return repos
 
 
 async def get_gcr_token() -> tuple[str, Union[bytes, Any]]:
