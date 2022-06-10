@@ -289,6 +289,7 @@ def save_fig(
     basename: Optional[str],
     suffix: str,
     filetype: str = "pdf",
+    close_after: bool = True,
 ) -> Path:
     """Saves a figure to a file.
 
@@ -312,4 +313,6 @@ def save_fig(
     fig_filename = sanitize(fig_filename)
     path = Path(fig_filename).absolute()
     fig.savefig(str(path))
+    if close_after:
+        plt.close(fig)
     return path
