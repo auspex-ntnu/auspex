@@ -8,10 +8,9 @@ async def startup_health_check() -> None:
     # Check that config works
     AppConfig()
 
-    # check that the firestore database exists and we can connect to it
-    if not await check_db_exists(AppConfig().collection_scans):
-        logger.error("Unable to contact Firestore database. Exiting...")
-        exit(1)
+    # Check credentials
+    check_credentials_json(AppConfig().google_credentials)
+    check_credentials_usable(AppConfig().google_credentials)
 
 
 def check_credentials_json(credentials_file: str) -> None:

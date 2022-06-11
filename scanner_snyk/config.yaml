@@ -1,0 +1,32 @@
+# !! NYI CONCEPT ONLY !!
+#########################
+
+# Example of how to configure multiple Google Container Registry registries
+
+# The username is ALWAYS `_json_key`
+# The password is the contents of a Google Cloud Service Account JSON Key File
+
+# REASON:
+# https://cloud.google.com/container-registry/docs/advanced-authentication#json-key
+
+# This is the only way of authenticating we found to work with Snyk
+# when Docker and GCloud CLI is not installed on the system.
+# The other solutions require Docker and/or GCloud CLI.
+
+# In order to authenticate, we NEED a Service Account JSON key file
+# The key needs to originate from the project hosting the registry,
+# and it must have READ permissions for the registry.
+
+# Remove _<type> key suffixes when implementing this
+registries:
+  # Value is the path to the key file
+  eu.gcr.io/ntnu-student-project_file: studentprojectkey.json
+  eu.gcr.io/mitt-spor-tes_file: mittsportestkey.json
+  # or
+  # Value is name of environment value pointing to file
+  eu.gcr.io/ntnu-student-project_env: STUDENT_PROJECT_KEY
+  eu.gcr.io/mitt-spor-test_env: MITT_SPOR_TEST_KEY
+  # or
+  # Value is the key itself (probably unsafe)
+  eu.gcr.io/ntnu-student-project_key: '{\n"type": "service_account",\n...'
+  eu.gcr.io/mitt-spor-test_key: '{\n"type": "service_account",\n...'

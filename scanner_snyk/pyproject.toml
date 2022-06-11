@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "scanner"
+name = "scanner_snyk"
 version = "0.1.0"
 description = ""
 authors = [
@@ -19,7 +19,6 @@ httpx = "^0.22.0"
 backoff = "^1.11.1"
 debugpy = "^1.6.0"
 auspex-core = { path = "../core", develop = true }
-pytest-mock = "^3.7.0"
 
 
 [tool.poetry.dev-dependencies]

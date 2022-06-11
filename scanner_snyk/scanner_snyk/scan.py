@@ -1,19 +1,28 @@
+import asyncio
 import json
 import shutil
 import subprocess
 from subprocess import CompletedProcess
 from typing import Any
-from auspex_core.docker.models import ImageInfo
-from auspex_core.models.api.scan import ScanRequest
 
 import backoff
+from auspex_core.docker.models import ImageInfo
+from auspex_core.models.api.scan import ScanRequest
 from auspex_core.utils.backoff import on_backoff, on_giveup
 from loguru import logger
 from pydantic import BaseModel, Field
 
-from ..config import AppConfig
+
+from .config import AppConfig
+from .models import ScanOptions
 
 DEFAULT_CMD = "snyk"
+
+
+async def scan_container(image: ImageInfo, options: ScanOptions) -> "SnykScanResults":
+    """Scans a container image using the selected scanning backend."""
+    loop = asyncio.get_event_loop()
+    return await loop.run_in_executor(None, run_snyk_scan, image, options)
 
 
 class ECONNRESET_Exception(Exception):
@@ -106,14 +115,14 @@ def get_snyk_exe() -> str:
     return DEFAULT_CMD
 
 
-def get_snyk_cmd(image: ImageInfo, options: ScanRequest) -> str:
+def get_snyk_cmd(image: ImageInfo, options: ScanOptions) -> str:
     """Returns the Snyk CLI command to run based on image and options.
 
     Parameters
     ----------
     image : `ImageInfo`
         The image to scan.
-    options : `ScanRequest`
+    options : `dict[str, Any]`
         The options for the scan.
 
     Returns
@@ -146,13 +155,15 @@ def get_snyk_cmd(image: ImageInfo, options: ScanRequest) -> str:
     on_backoff=on_backoff,
     on_giveup=on_giveup,
 )
-def run_snyk_scan(image: ImageInfo, options: ScanRequest) -> SnykScanResults:
+def run_snyk_scan(image: ImageInfo, options: ScanOptions) -> SnykScanResults:
     """Runs the Snyk CLI container scan.
 
     Parameters
     ----------
     image : `str`
         Image name to scan.
+    options : `dict[str, Any]`
+        Options for the scan.
 
     Returns
     -------

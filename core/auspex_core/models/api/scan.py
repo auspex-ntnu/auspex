@@ -1,5 +1,5 @@
-import os
 from typing import Any, Optional
+from ...docker.models import ImageInfo
 
 from pydantic import BaseModel, Field, root_validator
 
@@ -49,3 +49,19 @@ class ScanRequest(BaseModel):
 
     class Config:
         extra = "allow"  # allow extra fields in the request
+
+
+class ScanResults(BaseModel):
+    """Interface for scan results from any backend."""
+
+    scan: str = Field(
+        ...,
+        description="Scan results from scanning tool (JSON-encoded string for Snyk).",
+    )
+    image: ImageInfo = Field(..., description="Scanned image metadata.")
+    backend: str = Field(
+        ..., description="Name of the backend used to perform the scan."
+    )
+    # Error field type/format TBD
+    error: Any = Field(None, description="Error message for scan (if any).")
+    ok: bool = Field(True, description="Success status of scan.")

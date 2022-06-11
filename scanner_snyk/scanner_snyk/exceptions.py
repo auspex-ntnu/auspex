@@ -19,13 +19,6 @@ class UserAPIError(Exception):
     """Exception raised in response to bad input from user."""
 
 
-class UnknownBackend(HTTPException):
-    """Exception raised when the scanner backend is unknown."""
-
-    def __init__(self, backend: str, *args, **kwargs):
-        super().__init__(400, f"Unknown backend: {backend}", *args, **kwargs)
-
-
 async def _handle_exception(
     request: Request, exc: Exception, code: int = 500, prefix: str = ""
 ) -> JSONResponse:
