@@ -1,6 +1,6 @@
 from subprocess import CompletedProcess
 from unittest.mock import Mock
-from scanner.backends.snyk import SnykScanResults
+from scanner_snyk.scan import SnykScanResults
 
 command = "/usr/bin/snyk container test --json my-image"
 
@@ -31,3 +31,6 @@ def test_snykscanresults_1() -> None:
     mockprocess.returncode = 1
     scan = SnykScanResults(stdout="", stderr="Fail!", process=mockprocess)
     assert scan.ok
+
+
+# TODO: add tests to ensure it complies with ScanResults

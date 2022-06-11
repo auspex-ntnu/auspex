@@ -1,4 +1,4 @@
-from scanner import __version__
+from scanner_snyk import __version__
 
 
 def test_version():
