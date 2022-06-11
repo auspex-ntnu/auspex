@@ -41,10 +41,8 @@ EXPOSE 80
 ENV PYTHONOPTIMIZE=1
 
 # Environment variable for Scanner app
-ENV SNYK_TOKEN_FILE=<YOUR_SNYK_TOKEN_FILE>
 ENV COLLECTION_SCANS=auspex-scans
 ENV BUCKET_SCANS=auspex-scans
 ENV GOOGLE_CLOUD_PROJECT=ntnu-student-project
 
-# CMD ["uvicorn", "scanner:app", "--host", "0.0.0.0", "--port", "80"]
 CMD ["/bin/bash", "/app/entrypoint.sh"]

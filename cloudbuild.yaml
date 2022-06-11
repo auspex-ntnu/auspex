@@ -46,6 +46,7 @@ substitutions:
   _GOOGLE_CLOUD_PROJECT: ${PROJECT_ID}
   _URL_SCANNER: https://scanner-qk6stf4ejq-lz.a.run.app
   _URL_REPORTER: https://reporter-qk6stf4ejq-lz.a.run.app
+  _URL_SCANNER_SNYK: https://scanner-snyk-qk6stf4ejq-lz.a.run.app
   _SECRET_SNYK_TOKEN: SNYK_TOKEN:latest
   _SECRET_CREDENTIALS: SCANNER_CREDENTIALS:latest
 options:

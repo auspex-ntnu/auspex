@@ -3,7 +3,7 @@ steps:
 - name: 'gcr.io/cloud-builders/docker'
   env:
     - DOCKER_BUILDKIT=1
-  args: ['build', '-t', '${_IMAGE_NAME}', '-f', 'scanner/Dockerfile', '.']
+  args: ['build', '-t', '${_IMAGE_NAME}', '-f', 'scanner_snyk/Dockerfile', '.']
 # Push the container image to Container Registry
 - name: 'gcr.io/cloud-builders/docker'
   args: ['push', '${_IMAGE_NAME}']

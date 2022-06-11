@@ -49,7 +49,6 @@ images:
 substitutions:
     _IMAGE_NAME: 'eu.gcr.io/${PROJECT_ID}/auspex/scanner'
     _SERVICE_NAME: 'scanner'
-    _URL_SCANNER_SNYK: https://scanner-snyk-qk6stf4ejq-lz.a.run.app
     _PORT: "80"
     _MEMORY: "1Gi"
     _CPU: "1"

@@ -1,4 +1,4 @@
-FROM python:3.10.4-slim-buster as scanner-requirements
+FROM python:3.10.4-slim-buster as scanner-snyk-requirements
 
 WORKDIR /tmp
 
@@ -28,7 +28,7 @@ RUN : \
     && :
 
 WORKDIR /app
-COPY --from=scanner-requirements /tmp/requirements.txt /app/requirements.txt
+COPY --from=scanner-snyk-requirements /tmp/requirements.txt /app/requirements.txt
 COPY ./core /core
 RUN --mount=type=cache,target=/root/.cache \
     pip install --upgrade -r /app/requirements.txt
@@ -46,5 +46,4 @@ ENV COLLECTION_SCANS=auspex-scans
 ENV BUCKET_SCANS=auspex-scans
 ENV GOOGLE_CLOUD_PROJECT=ntnu-student-project
 
-# CMD ["uvicorn", "scanner:app", "--host", "0.0.0.0", "--port", "80"]
 CMD ["/bin/bash", "/app/entrypoint.sh"]
