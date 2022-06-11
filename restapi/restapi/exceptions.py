@@ -54,7 +54,9 @@ async def handle_HTTPStatusError(
 ) -> JSONResponse:
     """Handles HTTPStatusError which stem from failed HTTP requests by the httpx module."""
     logger.error(exc)
-    return await _handle_exception(request, exc, code=400, prefix="HTTP error")
+    return await _handle_exception(
+        request, exc, code=exc.response.status_code, prefix="HTTP error"
+    )
 
 
 def install_handlers(app: FastAPI):
