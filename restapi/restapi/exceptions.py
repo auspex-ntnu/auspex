@@ -1,8 +1,8 @@
 from fastapi import FastAPI, Request
-from google.api_core.exceptions import FailedPrecondition, BadRequest, GoogleAPIError
 from fastapi.responses import JSONResponse
-from loguru import logger
+from google.api_core.exceptions import BadRequest, FailedPrecondition, GoogleAPIError
 from httpx import HTTPStatusError
+from loguru import logger
 
 
 async def _handle_exception(
@@ -54,7 +54,9 @@ async def handle_HTTPStatusError(
 ) -> JSONResponse:
     """Handles HTTPStatusError which stem from failed HTTP requests by the httpx module."""
     logger.error(exc)
-    return await _handle_exception(request, exc, code=400, prefix="HTTP error")
+    return await _handle_exception(
+        request, exc, code=exc.response.status_code, prefix="HTTP error"
+    )
 
 
 def install_handlers(app: FastAPI):

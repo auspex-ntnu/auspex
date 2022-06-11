@@ -5,13 +5,12 @@ used to display vulnerability tables in reports.
 
 from typing import Any, Optional, cast
 
-from auspex_core.models.cve import CVESeverity
 from auspex_core.docker.models import ImageInfo
+from auspex_core.models.cve import CVESeverity
 from loguru import logger
 
-from ...types.protocols import ScanType
 from ...backends.aggregate import AggregateReport
-
+from ...types.protocols import ScanType
 from .format import format_decimal
 from .models import Hyperlink, TableData
 
@@ -130,33 +129,40 @@ def severity_vulns_table(
         "Upgradable",  # Yes/No
         "Year",
     ]
-
     # Add image column if we have an aggregated report
     aggregate = isinstance(report, AggregateReport)
     if aggregate:
         header.insert(0, "Image")
 
     # Get list of vulnerabilities
-    # TODO: add method to get vulnerabilities by severity
-    vulns = list(report.get_vulnerabilities_by_severity(severity))
-    vulns.sort(key=lambda x: x.cvssScore, reverse=True)
-
-    if maxrows is not None and len(vulns) > maxrows:
-        vulns = vulns[:maxrows]
-
+    # TODO: consolidate this method with `top_vulns_table``
+    #       they basically do the same thing
     rows = []
-    for vuln in vulns:
-        row = [
-            vuln.title,
-            Hyperlink(text=vuln.get_id(), url=vuln.url),
-            format_decimal(vuln.cvssScore),  # TODO: format
-            vuln.severity.title(),
-            vuln.is_upgradable,
-            vuln.get_year(),
-        ]
-        if aggregate:
-            row.insert(0, "Image")
-        rows.append(row)
+    reports = []
+    if isinstance(report, AggregateReport):
+        reports = report.reports
+    else:
+        reports = [report]
+
+    for r in reports:
+        vulns = list(r.get_vulnerabilities_by_severity(severity))
+        vulns.sort(key=lambda x: x.cvssScore, reverse=True)
+
+        if maxrows is not None and len(vulns) > maxrows:
+            vulns = vulns[:maxrows]
+
+        for vuln in vulns:
+            row = [
+                vuln.title,
+                Hyperlink(text=vuln.get_id(), url=vuln.url),
+                format_decimal(vuln.cvssScore),  # TODO: format
+                vuln.severity.title(),
+                vuln.is_upgradable,
+                vuln.get_year(),
+            ]
+            if aggregate:
+                row.insert(0, r.image.image_name)
+            rows.append(row)
 
     sev = severity.name.title()
     if maxrows:

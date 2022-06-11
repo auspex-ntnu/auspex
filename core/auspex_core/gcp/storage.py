@@ -3,13 +3,12 @@ import json
 import os
 from pathlib import Path
 from typing import Any, NamedTuple, Optional
+
 import aiohttp
 import backoff
-
-
+from gcloud.aio.storage import Blob, Storage
 from google.cloud import storage
 from google.cloud.storage import Bucket
-from gcloud.aio.storage import Blob, Storage
 from loguru import logger
 from pydantic import BaseModel
 from sanitize_filename import sanitize

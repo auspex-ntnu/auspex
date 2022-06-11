@@ -72,7 +72,7 @@ class ImageInfo(BaseModel):
     class Config:
         # Allow population using both camelCase and snake_case
         allow_population_by_field_name = True
-        extra = "ignore"
+        extra = "ignore"  # is there a reason for this?
         schema_extra = {
             "examples": [
                 {
@@ -122,7 +122,10 @@ class ImageInfo(BaseModel):
 
 
 class ImageNameMode(Enum):
-    """Name mode for a Docker image"""
+    """Name mode for a Docker image.
+
+    Docker Images can be specified as `name:tag`,  `name@digest` or just `name`.
+    """
 
     DIGEST = auto()
     TAG = auto()

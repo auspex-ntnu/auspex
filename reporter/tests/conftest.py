@@ -1,6 +1,5 @@
 import os
 
-
 # TODO fix this
 os.environ.setdefault(
     "GOOGLE_APPLICATION_CREDENTIALS",
@@ -15,11 +14,10 @@ os.environ.setdefault("COLLECTION_REPORTS", "auspex-reports")
 
 from typing import Any
 
-from hypothesis import strategies as st
 import pytest
+from hypothesis import strategies as st
 
 from reporter.backends.snyk.model import Identifiers, Semver
-
 
 # Hypothesis strategies:
 

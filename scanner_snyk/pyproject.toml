@@ -1,0 +1,30 @@
+[tool.poetry]
+name = "scanner_snyk"
+version = "0.1.0"
+description = ""
+authors = [
+    "Peder Hovdan Andresen <pedeha@stud.ntnu.no>",
+    "Patrick Eilert Krosby <patricek@stud.ntnu.no>",
+    "Anders Westby <anderscw@stud.ntnu.no>",
+]
+
+[tool.poetry.dependencies]
+python = "^3.10"
+pydantic = "^1.9.0"
+fastapi = "^0.73.0"
+uvicorn = { extras = ["standard"], version = "^0.17.0" }
+sanitize-filename = "^1.2.0"
+loguru = "^0.6.0"
+httpx = "^0.22.0"
+backoff = "^1.11.1"
+debugpy = "^1.6.0"
+auspex-core = { path = "../core", develop = true }
+
+
+[tool.poetry.dev-dependencies]
+pytest = "^6.2.5"
+black = "^22.1.0"
+mypy = "^0.942"
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"

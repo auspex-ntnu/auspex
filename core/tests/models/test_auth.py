@@ -1,6 +1,7 @@
 import os
-from auspex_core.gcp.auth import credentials_from_keyfile
+
 import pytest
+from auspex_core.gcp.auth import credentials_from_keyfile
 
 
 def test_credentials_from_keyfile():

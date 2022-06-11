@@ -1,17 +1,14 @@
 import os
 from enum import Enum
-from typing import Any, Iterable, NamedTuple, Optional, Union
-from fastapi import HTTPException
+from typing import Any, Iterable, List, NamedTuple, Optional, Union
 
+from fastapi import HTTPException
 from google.cloud import firestore
 from pydantic import BaseModel, Field, root_validator, validator
 
+from ..api.scan import ScanRequest
 from ..cve import CVSS, CVSS_MAX_SCORE, CVSS_MIN_SCORE
 from ..scan import ReportData
-from ..api.scan import ScanRequest
-
-from typing import List
-from pydantic import BaseModel, Field, validator
 
 
 class ReportRequestBase(BaseModel):

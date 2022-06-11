@@ -1,27 +1,26 @@
+import itertools
+import time
 from collections import Counter
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 from functools import _lru_cache_wrapper, cache, cached_property
 from itertools import chain
-import itertools
 from typing import Iterable, Iterator, Optional, TypeVar
-from auspex_core.models.cve import CVESeverity
-from auspex_core.docker.models import ImageInfo, ImageTimeMode
 
 import numpy as np
+from auspex_core.docker.models import ImageInfo, ImageTimeMode
+from auspex_core.models.cve import CVSS, CVESeverity
 from loguru import logger
-from pydantic import BaseModel, Field, validator
 from more_itertools import ilen
+from pydantic import BaseModel, Field, validator
 
+from ..frontends.shared.models import VulnAgePoint
 from ..types.nptypes import MplRGBAColor
-from auspex_core.models.cve import CVSS
+from ..types.protocols import ScanType, VulnerabilityType
 
 # from .snyk.model import SnykContainerScan, SnykVulnerability
 from ..utils import npmath
-from ..types.protocols import ScanType, ScanType, VulnerabilityType
-import time
-from ..frontends.shared.models import VulnAgePoint
-from dataclasses import dataclass, field
+
 
 # TODO: move this out the snyk module
 @dataclass

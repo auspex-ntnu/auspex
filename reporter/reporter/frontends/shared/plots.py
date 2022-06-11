@@ -1,20 +1,20 @@
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
+
+import matplotlib
 from auspex_core.docker.models import ImageTimeMode
 from auspex_core.models.scan import ReportData
 
-import matplotlib
-
 matplotlib.use("Agg")  # disable GUI
-import matplotlib.pyplot as plt  # noqa
 import matplotlib.dates as mdates
+import matplotlib.pyplot as plt  # noqa
 import numpy as np
 from sanitize_filename import sanitize
 
+from ...cve import CVSS_DATE_BRACKETS
 from ...types.protocols import ScanType
 from ...utils.matplotlib import DEFAULT_CMAP
-from ...cve import CVSS_DATE_BRACKETS
 from .models import PlotData, PlotType
 
 
@@ -289,6 +289,7 @@ def save_fig(
     basename: Optional[str],
     suffix: str,
     filetype: str = "pdf",
+    close_after: bool = True,
 ) -> Path:
     """Saves a figure to a file.
 
@@ -312,4 +313,6 @@ def save_fig(
     fig_filename = sanitize(fig_filename)
     path = Path(fig_filename).absolute()
     fig.savefig(str(path))
+    if close_after:
+        plt.close(fig)
     return path

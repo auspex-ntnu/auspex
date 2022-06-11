@@ -7,27 +7,27 @@ from datetime import datetime, timezone
 from functools import _lru_cache_wrapper, cache, cached_property
 from os import PathLike
 from typing import Any, Iterable, Iterator, Optional, Sequence, Union
-from auspex_core.docker.models import ImageInfo, ImageTimeMode
 
 import numpy as np
+from auspex_core.docker.models import ImageInfo, ImageTimeMode
+from auspex_core.models.cve import CVSS, CVESeverity, CVETimeType
 from loguru import logger
+from more_itertools import ilen
 from numpy.typing import NDArray
 from pydantic import BaseModel, Field, root_validator, validator
 from pydantic.fields import ModelField
-from more_itertools import ilen
-from auspex_core.models.cve import CVETimeType, CVESeverity, CVSS
 
-from ...types.nptypes import MplRGBAColor
-from ...types.protocols import VulnerabilityType
-from ...utils.matplotlib import get_cvss_color
 from ...cve import (
     CVSS_DATE_BRACKETS,
     DEFAULT_CVE_TIMETYPE,
     DateDescription,
     UpgradabilityCounter,
 )
-from ...utils import npmath
 from ...frontends.shared.models import VulnAgePoint
+from ...types.nptypes import MplRGBAColor
+from ...types.protocols import VulnerabilityType
+from ...utils import npmath
+from ...utils.matplotlib import get_cvss_color
 
 
 # JSON: .vulnerabilities[n].identifiers
@@ -253,35 +253,11 @@ class LicensesPolicy(BaseModel):
     orgLicenseRules: dict[str, OrgLicenseRule]  # key: name of license
 
 
-class VulnerabilityList(BaseModel):
-    __root__: list[SnykVulnerability]
-
-    class Config:
-        keep_untouched = (_lru_cache_wrapper,)
-
-    def __iter__(self):
-        return iter(self.__root__)
-
-    def __getitem__(self, item) -> SnykVulnerability:
-        return self.__root__[item]
-
-    def __repr__(self) -> str:
-        return f"VulnerabilityList(len={len(self.__root__)})"
-
-    def __len__(self) -> int:
-        return len(self.__root__)
-
-    def __hash__(self) -> int:
-        return id(self)
-
-
 # JSON: .
 class SnykContainerScan(BaseModel):
     """Represents the output of `snyk container test --json`"""
 
-    vulnerabilities: list[
-        SnykVulnerability
-    ]  # TODO: just use list[SnykVulnerability] instead?
+    vulnerabilities: list[SnykVulnerability]
     ok: bool
     dependencyCount: int
     org: str
@@ -307,8 +283,32 @@ class SnykContainerScan(BaseModel):
         validate_assignment = True
         keep_untouched = (cached_property, _lru_cache_wrapper)
 
+    @validator("vulnerabilities")
+    def _remove_duplicate_vulnerabilties(
+        cls, vuls: list[SnykVulnerability]
+    ) -> list[SnykVulnerability]:
+        """
+        Removes duplicate vulnerabilities.
+
+        This is necessary because the Snyk scan returns duplicate vulnerabilities.
+        E.g. multiple vulnerabilities with the same CVE ID.
+
+        TODO: investigate why this happens.
+               Could it be that multiple vulnerabilities with different SNYK IDs
+               share the same CVE ID? This could be some idiosyncracy in Snyk.
+        """
+        seen = set()
+        unique = []
+        for vuln in vuls:
+            vid = vuln.get_id()
+            if vid in seen:
+                continue
+            seen.add(vid)
+            unique.append(vuln)
+        return unique
+
     @validator("timestamp", pre=True)
-    def ensure_default_factory(
+    def _ensure_default_factory(
         cls, v: Optional[datetime], field: ModelField
     ) -> Optional[datetime]:
         """Hypothesis seems to pass `None` to this attribute even though
@@ -319,7 +319,7 @@ class SnykContainerScan(BaseModel):
         return v
 
     @validator("id", always=True)  # use Pre=True instead?
-    def assign_default_id(cls, v: str, values: dict[str, Any]) -> str:
+    def _assign_default_id(cls, v: str, values: dict[str, Any]) -> str:
         """Fall back on autogenerating an ID if Google Cloud Storage
         does not provide us with an ID from its blob metadata.
         Should never happen, but we leave it here as a failsafe."""
@@ -332,7 +332,7 @@ class SnykContainerScan(BaseModel):
         return id
 
     @validator("image", always=True, pre=True)
-    def ensure_image_info(
+    def _ensure_image_info(
         cls, v: Optional[dict[str, Any]], field: ModelField
     ) -> ImageInfo:
         """Fix for hypothesis failing to call default factory properly when nesting models."""

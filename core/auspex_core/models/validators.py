@@ -2,7 +2,6 @@
 
 from typing import TypeVar
 
-
 IntFloatT = TypeVar("IntFloatT", int, float)
 
 

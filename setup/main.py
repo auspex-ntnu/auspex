@@ -1,5 +1,7 @@
 from typing import Protocol
+
 from loguru import logger
+
 from setup import firestore, storage
 
 

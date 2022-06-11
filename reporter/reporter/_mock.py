@@ -1,14 +1,15 @@
-from datetime import datetime, timedelta
 import io
-from pathlib import Path
 import pickle
 import random
+from datetime import datetime, timedelta
+from pathlib import Path
 from typing import Optional
-from auspex_core.models.cve import CVSS
-from auspex_core.docker.models import ImageInfo
-from auspex_core.models.scan import CVSSv3Distribution, ReportData
 
 import fastapi
+from auspex_core.docker.models import ImageInfo
+from auspex_core.models.api.report import ReportRequestIn
+from auspex_core.models.cve import CVSS
+from auspex_core.models.scan import CVSSv3Distribution, ReportData
 from fastapi.exceptions import HTTPException
 from fastapi.responses import StreamingResponse
 
@@ -17,11 +18,10 @@ from reporter.utils.firestore import get_firestore_document
 from .backends.aggregate import AggregateReport
 from .backends.snyk.model import SnykContainerScan
 from .config import AppConfig
+from .db import get_prev_scans
 from .frontends.latex import create_document
-from auspex_core.models.api.report import ReportRequestIn
 from .types.protocols import ScanType
 from .utils.firestore import get_firestore_document
-from .db import get_prev_scans
 
 mockrouter = fastapi.APIRouter()
 

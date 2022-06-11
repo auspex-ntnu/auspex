@@ -1,6 +1,8 @@
 import datetime
-from reporter.cve import DateDescription
+
 import pytest
+
+from reporter.cve import DateDescription
 
 date_year = DateDescription(
     datetime.timedelta(days=365),

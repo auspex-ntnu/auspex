@@ -1,24 +1,24 @@
 from typing import Any
-from auspex_core.models.api.scan import ScanRequest
-from auspex_core.models.scan import ScanLog
+
 import backoff
 import httpx
-from httpx import Response, RequestError
 from auspex_core.models.api.report import (
     ReportData,
     ReportOut,
     ReportQuery,
     ReportRequestIn,
 )
+from auspex_core.models.api.scan import ScanRequest
+from auspex_core.models.scan import ScanLog
+from auspex_core.utils.backoff import on_backoff, on_giveup
 from fastapi import APIRouter, Depends, Request
 from fastapi.exceptions import HTTPException
-from auspex_core.utils.backoff import on_backoff, on_giveup
+from httpx import RequestError, Response
 from loguru import logger
 
-from .scans import do_request_scans
-from ..models import ScanReportRequest
-
 from ..config import AppConfig
+from ..models import ScanReportRequest
+from .scans import do_request_scans
 
 router = APIRouter(prefix="/reports", tags=["reports"])
 

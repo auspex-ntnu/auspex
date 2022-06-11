@@ -1,6 +1,6 @@
+from .exceptions import *
 from .models import *
 from .registry import *
-from .exceptions import *
 
 __all__ = [
     "CatalogResponse",

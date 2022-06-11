@@ -6,8 +6,8 @@ from unittest.mock import Mock, patch
 import pytest
 from auspex_core.gcp.firestore import add_document
 from auspex_core.models.scan import ScanLog
-from google.cloud.firestore_v1.async_client import AsyncClient
 from google.cloud.firestore import DocumentSnapshot
+from google.cloud.firestore_v1.async_client import AsyncClient
 from google.cloud.firestore_v1.async_document import AsyncDocumentReference
 from hypothesis import given
 from hypothesis import strategies as st

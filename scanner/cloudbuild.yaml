@@ -17,7 +17,6 @@ steps:
     '${_SERVICE_NAME}',
     '--image',
     '${_IMAGE_NAME}',
-    '--allow-unauthenticated',
     '--port',
     '${_PORT}',
     '--memory',
@@ -26,14 +25,10 @@ steps:
     '${_CPU}',
     '--region',
     '${_SERVICE_REGION}',
-    '--concurrency',
-    '1',
-    '--set-env-vars',
-    'COLLECTION_SCANS=${_COLLECTION_SCANS},BUCKET_SCANS=${_BUCKET_SCANS},GOOGLE_CLOUD_PROJECT=${_GOOGLE_CLOUD_PROJECT},SNYK_TOKEN_FILE=${_SNYK_TOKEN_FILE},GOOGLE_APPLICATION_CREDENTIALS=${_SCANNER_CREDENTIALS}',
-    '--set-secrets',
-    '${_SNYK_TOKEN_FILE}=${_SECRET_SNYK_TOKEN},${_SCANNER_CREDENTIALS}=${_SECRET_CREDENTIALS}',
     '--project',
     '${PROJECT_ID}',
+    '--set-env-vars',
+    'COLLECTION_SCANS=${_COLLECTION_SCANS},BUCKET_SCANS=${_BUCKET_SCANS},URL_SCANNER_SNYK=${_URL_SCANNER_SNYK}',
   ]
 - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
   entrypoint: gcloud
@@ -49,17 +44,15 @@ steps:
 tags:
   - scanner
 images:
-- ${_IMAGE_NAME}
+  - ${_IMAGE_NAME}
 # https://cloud.google.com/build/docs/configuring-builds/substitute-variable-values#dynamic_substitutions
 substitutions:
     _IMAGE_NAME: 'eu.gcr.io/${PROJECT_ID}/auspex/scanner'
     _SERVICE_NAME: 'scanner'
-    _SNYK_TOKEN_FILE: /run/secrets/SNYK_TOKEN_FILE
-    _SCANNER_CREDENTIALS: /run/secrets/gcpcreds/SCANNER_CREDENTIALS
+    _URL_SCANNER_SNYK: https://scanner-snyk-qk6stf4ejq-lz.a.run.app
     _PORT: "80"
-    # NOTE: MUST have 2 cores if using 8 GiB (Cloud Run restriction)
-    _MEMORY: "8Gi"
-    _CPU: "2"
+    _MEMORY: "1Gi"
+    _CPU: "1"
 options:
     dynamic_substitutions: true
     substitution_option: 'ALLOW_LOOSE'

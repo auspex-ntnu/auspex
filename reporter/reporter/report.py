@@ -2,22 +2,22 @@ from dataclasses import dataclass
 from datetime import timedelta
 from json import JSONDecodeError
 from typing import Any, Optional
+
+import httpx
 from auspex_core.gcp.storage import fetch_json_blob
 from auspex_core.models.api.report import ReportRequestIn
-
+from auspex_core.models.scan import ReportData, ScanLog
 from fastapi import HTTPException
 from loguru import logger
-from .config import AppConfig
 
-
-from auspex_core.models.scan import ReportData, ScanLog
-import httpx
 from .backends import get_backend
-from .types.protocols import ScanType
 from .backends.aggregate import AggregateReport
-from .frontends.latex import create_document
-from .utils.storage import upload_report_to_bucket
+from .config import AppConfig
 from .db import get_prev_scans, log_report
+from .frontends.latex import create_document
+from .types.protocols import ScanType
+from .utils.storage import upload_report_to_bucket
+
 
 # Class to collect results from asyncio.gather
 @dataclass

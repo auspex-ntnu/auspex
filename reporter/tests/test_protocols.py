@@ -1,11 +1,10 @@
-from reporter.types.protocols import (
-    ScanType,
-    VulnerabilityType,
-)
-from reporter.backends.snyk.model import SnykContainerScan, SnykVulnerability
-from reporter.backends.aggregate import AggregateReport
+from hypothesis import HealthCheck, given, settings
+from hypothesis import strategies as st
 
-from hypothesis import strategies as st, given, settings, HealthCheck
+from reporter.backends.aggregate import AggregateReport
+from reporter.backends.snyk.model import SnykContainerScan, SnykVulnerability
+from reporter.types.protocols import ScanType, VulnerabilityType
+
 from .strategies import CLASS_STRATEGIES
 
 

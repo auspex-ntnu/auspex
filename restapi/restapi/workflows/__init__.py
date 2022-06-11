@@ -2,9 +2,10 @@ import os
 from typing import Type
 
 from loguru import logger
-from .gcp.runner import GCPRunner
+
 from .azure.runner import AzureRunner
-from .base import WorkflowRunner, WorkflowRunner
+from .base import WorkflowRunner
+from .gcp.runner import GCPRunner
 
 _RUNNERS: dict[str, Type[WorkflowRunner]] = {
     "gcp": GCPRunner,

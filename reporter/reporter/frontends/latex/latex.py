@@ -3,8 +3,8 @@ import contextlib
 from datetime import datetime
 from pathlib import Path
 from typing import Any, ContextManager, Final, Type, Union, cast
-from auspex_core.models.cve import CVESeverity
 
+from auspex_core.models.cve import CVESeverity
 from auspex_core.models.scan import ReportData
 from loguru import logger
 from pylatex import (
@@ -13,30 +13,31 @@ from pylatex import (
     Figure,
     Foot,
     Head,
+    Itemize,
     LargeText,
     LineBreak,
     LongTable,
+    LongTabu,
     LongTabularx,
     MediumText,
     MiniPage,
     MultiColumn,
+    NewPage,
+    Package,
     PageStyle,
     Section,
     Subsection,
+    Table,
     Tabular,
     simple_page_number,
-    NewPage,
-    Table,
-    LongTabu,
-    Package,
-    Itemize,
 )
 from pylatex.utils import NoEscape, bold, italic
-from ...types.protocols import ScanType
-from ...backends.aggregate import AggregateReport
 from sanitize_filename import sanitize
 
-from ...types import ScanType, ScanType
+from ...backends.aggregate import AggregateReport
+from ...types import ScanType
+from ...types.protocols import ScanType
+from ..shared.models import PlotData, TableData
 from ..shared.plots import (
     piechart_severity,
     scatter_mean_trend,
@@ -50,8 +51,7 @@ from ..shared.tables import (
     statistics_table,
     top_vulns_table,
 )
-from ..shared.models import TableData, PlotData
-from .table import init_longtable, add_row
+from .table import add_row, init_longtable
 from .utils import hyperlink
 
 # TODO: support aggregate scans
@@ -253,7 +253,6 @@ class LatexDocument:
 
     def add_table_statistics(self) -> None:
         """Adds a table with statistics about the scanned image(s)."""
-        # TODO: rewrite using _add_section_longtable
         tabledata = statistics_table(self.scan)
         self._add_section_longtable(tabledata, newpage=False)
 

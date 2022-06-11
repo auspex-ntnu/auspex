@@ -8,20 +8,20 @@
 
 from datetime import datetime
 from typing import (
+    TYPE_CHECKING,
+    Any,
+    Collection,
     Iterable,
     Optional,
     Protocol,
-    Any,
     runtime_checkable,
-    TYPE_CHECKING,
-    Collection,
 )
-
-from .nptypes import MplRGBAColor
 
 from auspex_core.docker.models import ImageInfo, ImageTimeMode
 from auspex_core.models.cve import CVSS, CVESeverity, CVETimeType
+
 from ..cve import DEFAULT_CVE_TIMETYPE
+from .nptypes import MplRGBAColor
 
 if TYPE_CHECKING:
     from ..frontends.shared.models import VulnAgePoint  # pragma: no cover

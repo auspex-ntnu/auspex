@@ -9,9 +9,9 @@ services:
       dockerfile: ./reporter/Dockerfile
     env_file: .env
     secrets:
-      - reporter_key
+      - gcp_credentials
     environment:
-      GOOGLE_APPLICATION_CREDENTIALS: /run/secrets/reporter_key
+      GOOGLE_APPLICATION_CREDENTIALS: /run/secrets/gcp_credentials
     ports:
       - 8090:80
       - 5690:5678
@@ -45,8 +45,12 @@ services:
     env_file: .env
     secrets:
       - snyk_token
+      - gcp_credentials
+      - scanner_key
     environment:
       SNYK_TOKEN_FILE: /run/secrets/snyk_token
+      GOOGLE_APPLICATION_CREDENTIALS: /run/secrets/scanner_key
+      SCANNER_KEY_FILE: /run/secrets/scanner_key
     ports:
       - 8092:80
       - 5692:5678
@@ -56,5 +60,7 @@ services:
 secrets:
   snyk_token:
     file: .keys/snyk_token
-  reporter_key:
+  gcp_credentials:
     file: .keys/reporter_local.json
+  scanner_key:
+    file: .keys/scanner.json

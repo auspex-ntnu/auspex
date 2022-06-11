@@ -14,9 +14,12 @@ Furthermore, we have to test for multiple scenarios:
 """
 
 from typing import Optional
-from auspex_core.models.cve import SEVERITIES, CVESeverity
-from hypothesis import HealthCheck, given, settings, strategies as st
+
 import pytest
+from auspex_core.models.cve import SEVERITIES, CVESeverity
+from hypothesis import HealthCheck, given, settings
+from hypothesis import strategies as st
+
 from reporter.backends.aggregate import AggregateReport
 from reporter.backends.snyk.model import SnykContainerScan, SnykVulnerability
 from reporter.frontends.shared.models import TableData
@@ -29,8 +32,8 @@ from reporter.frontends.shared.tables import (
     top_vulns_table,
 )
 from reporter.types.protocols import ScanType
-from ...strategies import REPORT_STRATEGY
 
+from ...strategies import REPORT_STRATEGY
 
 # def _test_table_structure(report: ScanType, table: TableData, maxrows: int) -> None:
 

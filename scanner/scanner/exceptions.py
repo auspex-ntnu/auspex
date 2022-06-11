@@ -1,9 +1,10 @@
 from json import JSONDecodeError
+
+from auspex_core.docker.exceptions import DockerRegistryException
 from fastapi import FastAPI, Request
 from fastapi.exceptions import HTTPException
-from auspex_core.docker.exceptions import DockerRegistryException
-from loguru import logger
 from fastapi.responses import JSONResponse
+from loguru import logger
 
 
 class HTTPNotFoundException(HTTPException):
@@ -17,6 +18,13 @@ class APIError(Exception):
 
 class UserAPIError(Exception):
     """Exception raised in response to bad input from user."""
+
+
+class UnknownBackend(HTTPException):
+    """Exception raised when the scanner backend is unknown."""
+
+    def __init__(self, backend: str, *args, **kwargs):
+        super().__init__(400, f"Unknown backend: {backend}", *args, **kwargs)
 
 
 async def _handle_exception(

@@ -1,10 +1,7 @@
 from auspex_core.gcp.firestore import get_document, get_firestore_client
-
 from fastapi.exceptions import HTTPException
 from google.cloud.firestore_v1 import DocumentSnapshot
-
 from loguru import logger
-
 
 from ..config import AppConfig
 
@@ -31,6 +28,7 @@ async def get_firestore_document(document_id: str, collection: str) -> DocumentS
         FastAPI HTTPException that is propagated to the user in the event
         of a failure.
     """
+    # TODO: why not just bake this into get_document?
     try:
         doc = await get_document(collection, document_id)
     except Exception as e:

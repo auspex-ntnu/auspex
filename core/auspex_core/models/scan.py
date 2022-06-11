@@ -1,5 +1,6 @@
 from datetime import datetime, timezone
 from typing import Any, Optional
+
 from pydantic import BaseModel, Field
 
 from ..docker.models import ImageInfo, ImageTimeMode
@@ -17,6 +18,9 @@ class ScanLog(BaseModel):
     url: str
     blob: str
     bucket: str
+    base_vulns: bool = Field(
+        True, description="Whether or not the scan includes base image vulnerabilities"
+    )
 
 
 class CVSSv3Distribution(BaseModel):
@@ -58,6 +62,11 @@ class ReportData(BaseModel):
     upgrade_paths: list[str] = Field(default_factory=list)
     dockerfile_instructions: list[str] = Field(default_factory=list)
 
+    # List of single report IDs if the report is an aggregate report
+    # Otherwise, this is an empty list.
+    # TODO: implement this
+    # sub_reports: list[str] = Field(default_factory=list)
+
     class Config:
         schema_extra = {
             "examples": [
@@ -86,6 +95,7 @@ class ReportData(BaseModel):
                     "updated": "2020-01-01T00:00:00Z",
                     "upgrade_paths": ["libc@6.6.6"],
                     "dockerfile_instructions": ["sudo apt-get install -y libc666"],
+                    # "sub_reports": ["report_id_1", "report_id_2"],
                 },
             ]
         }

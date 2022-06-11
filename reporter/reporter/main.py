@@ -6,25 +6,19 @@ from functools import partial
 from typing import Optional
 
 from auspex_core.gcp.firestore import check_db_exists
-from auspex_core.models.api.report import (
-    ReportOut,
-    ReportQuery,
-    ReportRequestIn,
-)
+from auspex_core.models.api.report import ReportOut, ReportQuery, ReportRequestIn
 from auspex_core.models.scan import ReportData
 from auspex_core.models.status import ServiceStatus, ServiceStatusCode
 from fastapi import Depends, FastAPI, Request
 from fastapi.exceptions import HTTPException
 from loguru import logger
 
-
+from .backends.aggregate import AggregateReport
 from .config import AppConfig
 from .db import get_reports_filtered
-from .report import SingleReportResult, create_single_report, create_aggregate_report
-from .backends.aggregate import AggregateReport
-from .types.protocols import ScanType
 from .exceptions import install_handlers
-
+from .report import SingleReportResult, create_aggregate_report, create_single_report
+from .types.protocols import ScanType
 
 app = FastAPI()
 install_handlers(app)
