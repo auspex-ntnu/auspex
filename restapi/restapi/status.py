@@ -1,11 +1,12 @@
 from functools import partial
 from typing import Optional
+
+import httpx
 from auspex_core.models.status import (
     ServiceStatus,
-    ServiceStatusCode,
     ServiceStatusAggregate,
+    ServiceStatusCode,
 )
-import httpx
 from loguru import logger
 
 

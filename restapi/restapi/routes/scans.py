@@ -1,15 +1,15 @@
 import asyncio
 from json import JSONDecodeError
-from auspex_core.docker.registry import get_repos_in_registry
-import backoff
 
+import backoff
 import httpx
+from auspex_core.docker.registry import get_repos_in_registry
 from auspex_core.models.api.scan import ScanRequest
 from auspex_core.models.scan import ScanLog
+from auspex_core.utils.backoff import on_backoff, on_giveup
 from fastapi import APIRouter
 from fastapi.exceptions import HTTPException
 from loguru import logger
-from auspex_core.utils.backoff import on_backoff, on_giveup
 
 from ..config import AppConfig
 

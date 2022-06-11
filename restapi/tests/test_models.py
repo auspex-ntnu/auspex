@@ -1,6 +1,8 @@
-from hypothesis import strategies as st, settings, given
-from pydantic import ValidationError
 import pytest
+from hypothesis import given, settings
+from hypothesis import strategies as st
+from pydantic import ValidationError
+
 from restapi.models import ScanReportRequest
 
 

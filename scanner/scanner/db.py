@@ -1,11 +1,11 @@
 from datetime import datetime
 
 import aiohttp
-from auspex_core.models.api.scan import ScanRequest, ScanResults
 import backoff
 from auspex_core.docker.models import ImageInfo
 from auspex_core.gcp.firestore import add_document
 from auspex_core.gcp.storage import upload_json_blob_from_memory
+from auspex_core.models.api.scan import ScanRequest, ScanResults
 from auspex_core.models.scan import ScanLog
 from google.api_core.exceptions import ServerError
 

@@ -1,5 +1,5 @@
-from loguru import logger
 from fastapi import FastAPI
+from loguru import logger
 
 from .config import AppConfig
 from .exceptions import install_handlers

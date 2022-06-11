@@ -1,7 +1,8 @@
 from typing import Any, Optional
-from ...docker.models import ImageInfo
 
 from pydantic import BaseModel, Field, root_validator
+
+from ...docker.models import ImageInfo
 
 
 class ScanRequest(BaseModel):

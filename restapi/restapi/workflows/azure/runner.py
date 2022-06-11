@@ -2,9 +2,10 @@ from functools import cache
 from re import S
 from typing import Any
 
-from pydantic import BaseSettings, Field
-from ..base import WorkflowRunner
 from azure.mgmt.logic.aio import LogicManagementClient
+from pydantic import BaseSettings, Field
+
+from ..base import WorkflowRunner
 
 
 class AzureRunner(WorkflowRunner):

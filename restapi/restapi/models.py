@@ -1,7 +1,9 @@
 from typing import Any
+
 from auspex_core.models.api.report import ReportRequestBase
 from auspex_core.models.api.scan import ScanRequest
-from pydantic import Field, conlist, validator, root_validator
+from pydantic import Field, root_validator, validator
+
 
 # TODO: add timeouts as fields?
 class ScanReportRequest(ReportRequestBase, ScanRequest):

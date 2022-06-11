@@ -1,5 +1,6 @@
 from subprocess import CompletedProcess
 from unittest.mock import Mock
+
 from scanner_snyk.scan import SnykScanResults
 
 command = "/usr/bin/snyk container test --json my-image"

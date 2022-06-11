@@ -2,12 +2,7 @@ from datetime import datetime, timedelta
 from typing import Any, AsyncGenerator, Optional, Union, cast
 
 from auspex_core.gcp.firestore import get_firestore_client
-from auspex_core.models.api.report import (
-    CVSSField,
-    Direction,
-    OrderOption,
-    ReportQuery,
-)
+from auspex_core.models.api.report import CVSSField, Direction, OrderOption, ReportQuery
 from auspex_core.models.cve import SEVERITIES
 from auspex_core.models.scan import ParsedVulnerabilities, ReportData
 from google.api_core.exceptions import InvalidArgument
@@ -26,7 +21,7 @@ from loguru import logger
 from pydantic import ValidationError
 
 from .config import AppConfig
-from .types.protocols import ScanType, ScanType
+from .types.protocols import ScanType
 from .utils.types import get_reportdata
 
 # async def log_report(scan: ScanType) -> WriteResult:

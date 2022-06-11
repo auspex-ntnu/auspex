@@ -1,4 +1,4 @@
-from pylatex import escape_latex, NoEscape
+from pylatex import NoEscape, escape_latex
 
 
 def hyperlink(url, text):

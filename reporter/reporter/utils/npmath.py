@@ -1,6 +1,7 @@
+from typing import Any, Callable, Iterable
+
 import numpy as np
 from loguru import logger
-from typing import Any, Callable, Iterable
 
 from ..types.nptypes import NumberType
 

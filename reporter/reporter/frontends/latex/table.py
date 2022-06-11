@@ -1,6 +1,7 @@
 from typing import Any, Literal, Optional, Sequence, Union
 
 from pylatex import LongTable, LongTabu, LongTabularx, MultiColumn, NoEscape
+
 from ..shared.models import Hyperlink
 from .utils import hyperlink
 

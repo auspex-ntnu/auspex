@@ -1,8 +1,7 @@
-from matplotlib.cm import get_cmap
-from matplotlib.colors import Colormap
-import numpy as np
-from matplotlib.colors import ListedColormap
 import matplotlib as mpl
+import numpy as np
+from matplotlib.cm import get_cmap
+from matplotlib.colors import Colormap, ListedColormap
 
 from ..types.nptypes import MplRGBAColor
 

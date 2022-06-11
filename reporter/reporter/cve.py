@@ -1,9 +1,10 @@
+import operator
 from datetime import timedelta
 from enum import Enum
 from typing import Any, Callable, NamedTuple
-import operator
-from pydantic import BaseModel
+
 from auspex_core.models.cve import CVETimeType
+from pydantic import BaseModel
 
 
 class DateDescription(NamedTuple):

@@ -5,13 +5,12 @@ used to display vulnerability tables in reports.
 
 from typing import Any, Optional, cast
 
-from auspex_core.models.cve import CVESeverity
 from auspex_core.docker.models import ImageInfo
+from auspex_core.models.cve import CVESeverity
 from loguru import logger
 
-from ...types.protocols import ScanType
 from ...backends.aggregate import AggregateReport
-
+from ...types.protocols import ScanType
 from .format import format_decimal
 from .models import Hyperlink, TableData
 
@@ -130,15 +129,13 @@ def severity_vulns_table(
         "Upgradable",  # Yes/No
         "Year",
     ]
-
     # Add image column if we have an aggregated report
     aggregate = isinstance(report, AggregateReport)
     if aggregate:
         header.insert(0, "Image")
 
     # Get list of vulnerabilities
-
-    # TODO: consolidate this method with top_vulns_table
+    # TODO: consolidate this method with `top_vulns_table``
     #       they basically do the same thing
     rows = []
     reports = []

@@ -1,8 +1,8 @@
 from fastapi import FastAPI, Request
-from google.api_core.exceptions import FailedPrecondition, BadRequest, GoogleAPIError
 from fastapi.responses import JSONResponse
-from loguru import logger
+from google.api_core.exceptions import BadRequest, FailedPrecondition, GoogleAPIError
 from httpx import HTTPStatusError
+from loguru import logger
 from pylatex.errors import PyLaTeXError
 
 

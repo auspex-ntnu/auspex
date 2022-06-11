@@ -12,12 +12,11 @@ from fastapi.responses import PlainTextResponse
 from loguru import logger
 from pydantic import BaseModel
 
-
 from .config import AppConfig
 from .exceptions import install_handlers
 from .health import startup_health_check
-from .scan import scan_container
 from .models import ScanOptions
+from .scan import scan_container
 
 app = FastAPI()
 install_handlers(app)

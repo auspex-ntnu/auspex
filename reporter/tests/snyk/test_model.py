@@ -1,19 +1,21 @@
 # from typing import Any
-from datetime import datetime
 import math
+from datetime import datetime
 from pathlib import Path
 from typing import Any
-from auspex_core.models.cve import CVESeverity
 
-from hypothesis import HealthCheck, given, settings, strategies as st
-from reporter.cve import CVETimeType, DateDescription, UpgradabilityCounter
+import pytest
+from auspex_core.models.cve import CVESeverity
+from hypothesis import HealthCheck, given, settings
+from hypothesis import strategies as st
+
 from reporter.backends.snyk.model import (
     Identifiers,
     Semver,
     SnykContainerScan,
     SnykVulnerability,
 )
-import pytest
+from reporter.cve import CVETimeType, DateDescription, UpgradabilityCounter
 
 from ..strategies import CLASS_STRATEGIES
 

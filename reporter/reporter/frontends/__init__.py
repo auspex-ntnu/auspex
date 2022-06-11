@@ -1,5 +1,6 @@
 from enum import Enum
-from .latex import create_document, LatexDocument
+
+from .latex import LatexDocument, create_document
 
 
 # TODO: use this enum for something

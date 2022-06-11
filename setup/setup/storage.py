@@ -9,9 +9,11 @@ Optional environment variables:
 
 import os
 from typing import Any
-from google.cloud import storage
+
 import backoff
+from google.cloud import storage
 from loguru import logger
+
 from .config import AppConfig
 
 

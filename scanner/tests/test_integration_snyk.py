@@ -5,6 +5,7 @@ from auspex_core.models.scan import ScanLog
 from fastapi.testclient import TestClient
 from google.cloud.firestore_v1.async_document import AsyncDocumentReference
 from pytest_mock import MockerFixture
+
 from scanner.main import app
 
 client = TestClient(app)

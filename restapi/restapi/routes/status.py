@@ -1,19 +1,18 @@
 from functools import partial
 from typing import Optional
-import backoff
 
+import backoff
 import httpx
 from auspex_core.models.status import (
     ServiceStatus,
     ServiceStatusAggregate,
     ServiceStatusCode,
 )
+from auspex_core.utils.backoff import on_backoff, on_giveup
 from fastapi import APIRouter
 from loguru import logger
 
 from ..config import AppConfig
-
-from auspex_core.utils.backoff import on_giveup, on_backoff
 
 router = APIRouter(prefix="/status", tags=["status"])
 

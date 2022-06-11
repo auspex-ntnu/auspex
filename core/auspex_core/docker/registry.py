@@ -16,7 +16,6 @@ from loguru import logger
 from pydantic import ValidationError
 
 from .exceptions import RegistryError, TagsError
-
 from .models import (
     CatalogResponse,
     ImageInfo,
@@ -230,6 +229,7 @@ async def _get_repositories_gcr(registry: str, exclude: list[str]) -> list[str]:
 
 async def get_gcr_token() -> tuple[str, Union[bytes, Any]]:
     """Get credentials from a service account file and prime it with a token."""
+    # TODO: REWRITE TO SUPPORT MULTIPLE SERVICE ACCOUNTS
     loop = asyncio.get_event_loop()
     credentials_file = os.getenv("GOOGLE_APPLICATION_CREDENTIALS")
     credentials = await loop.run_in_executor(

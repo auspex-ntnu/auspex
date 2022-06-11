@@ -5,16 +5,15 @@
 #   * Support for arbitrary JSON-serializable key:value pairs
 #   * Logging with loguru instead of print
 
-from loguru import logger
-
 import json
 import os
 import time
 from typing import Any
 
-from google.cloud.workflows_v1beta import WorkflowsAsyncClient
 from google.cloud.workflows.executions_v1beta import ExecutionsAsyncClient
 from google.cloud.workflows.executions_v1beta.types import Execution
+from google.cloud.workflows_v1beta import WorkflowsAsyncClient
+from loguru import logger
 from pydantic import BaseSettings, Field
 
 

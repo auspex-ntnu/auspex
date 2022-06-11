@@ -1,12 +1,15 @@
 import itertools
 from pathlib import Path
-from auspex_core.models.cve import SEVERITIES, CVESeverity
-from auspex_core.docker.models import ImageTimeMode
-from hypothesis import HealthCheck, given, settings, strategies as st
+
 import pytest
+from auspex_core.docker.models import ImageTimeMode
+from auspex_core.models.cve import SEVERITIES, CVESeverity
+from hypothesis import HealthCheck, given, settings
+from hypothesis import strategies as st
 
 from reporter.backends.aggregate import AggregateReport
 from reporter.backends.snyk.model import SnykContainerScan
+
 from ..strategies import CLASS_STRATEGIES
 
 

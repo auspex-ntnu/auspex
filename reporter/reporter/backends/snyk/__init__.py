@@ -1,6 +1,8 @@
 import time
 from typing import Any
+
 from auspex_core.models.scan import ScanLog
+
 from .model import SnykContainerScan
 
 

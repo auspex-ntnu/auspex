@@ -3,8 +3,8 @@
 The final structure should somewhat mirror Google API Core's exceptions.
 """
 
-from .firestore import *
 from .base import *
+from .firestore import *
 
 __all__ = [
     "DocumentNotFound",

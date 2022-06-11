@@ -1,14 +1,14 @@
 import json
 from typing import Any
 from unittest.mock import Mock, patch
-from auspex_core.models.scan import ScanLog
 
 import pytest
-from google.cloud import storage
+from auspex_core.gcp.storage import ObjectStatus, upload_json_blob_from_memory
+from auspex_core.models.scan import ScanLog
 from gcloud.aio.storage import Storage
+from google.cloud import storage
 from hypothesis import given
 from hypothesis import strategies as st
-from auspex_core.gcp.storage import ObjectStatus, upload_json_blob_from_memory
 
 
 class MockStorageClient(Storage):

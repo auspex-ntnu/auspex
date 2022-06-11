@@ -1,8 +1,8 @@
-from fastapi.testclient import TestClient
 import pytest
+from fastapi.testclient import TestClient
+from httpx import AsyncClient
 
 from reporter.main import app
-from httpx import AsyncClient
 
 # TODO: implement patching before running integraton tests
 

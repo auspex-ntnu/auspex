@@ -12,7 +12,6 @@ from auspex_core.utils.backoff import on_backoff, on_giveup
 from loguru import logger
 from pydantic import BaseModel, Field
 
-
 from .config import AppConfig
 from .models import ScanOptions
 

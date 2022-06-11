@@ -1,5 +1,6 @@
 from auspex_core.gcp.firestore import check_db_exists
 from loguru import logger
+
 from .config import AppConfig
 
 

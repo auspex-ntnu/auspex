@@ -1,6 +1,7 @@
-from auspex_core.models.cve import CVESeverity
 from auspex_core.docker.models import ImageInfo
+from auspex_core.models.cve import CVESeverity
 from hypothesis import strategies as st
+
 from reporter.backends.aggregate import AggregateReport
 from reporter.backends.snyk.model import SnykContainerScan, SnykVulnerability
 

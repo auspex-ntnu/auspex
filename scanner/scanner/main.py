@@ -16,9 +16,9 @@ from fastapi.responses import PlainTextResponse
 from loguru import logger
 
 from .config import AppConfig
+from .db import log_scan
 from .exceptions import UnknownBackend, install_handlers
 from .health import startup_health_check
-from .db import log_scan
 
 app = FastAPI()
 install_handlers(app)

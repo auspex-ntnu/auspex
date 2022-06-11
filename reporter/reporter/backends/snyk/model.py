@@ -7,27 +7,27 @@ from datetime import datetime, timezone
 from functools import _lru_cache_wrapper, cache, cached_property
 from os import PathLike
 from typing import Any, Iterable, Iterator, Optional, Sequence, Union
-from auspex_core.docker.models import ImageInfo, ImageTimeMode
 
 import numpy as np
+from auspex_core.docker.models import ImageInfo, ImageTimeMode
+from auspex_core.models.cve import CVSS, CVESeverity, CVETimeType
 from loguru import logger
+from more_itertools import ilen
 from numpy.typing import NDArray
 from pydantic import BaseModel, Field, root_validator, validator
 from pydantic.fields import ModelField
-from more_itertools import ilen
-from auspex_core.models.cve import CVETimeType, CVESeverity, CVSS
 
-from ...types.nptypes import MplRGBAColor
-from ...types.protocols import VulnerabilityType
-from ...utils.matplotlib import get_cvss_color
 from ...cve import (
     CVSS_DATE_BRACKETS,
     DEFAULT_CVE_TIMETYPE,
     DateDescription,
     UpgradabilityCounter,
 )
-from ...utils import npmath
 from ...frontends.shared.models import VulnAgePoint
+from ...types.nptypes import MplRGBAColor
+from ...types.protocols import VulnerabilityType
+from ...utils import npmath
+from ...utils.matplotlib import get_cvss_color
 
 
 # JSON: .vulnerabilities[n].identifiers

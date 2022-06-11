@@ -1,9 +1,10 @@
 from json import JSONDecodeError
+
+from auspex_core.docker.exceptions import DockerRegistryException
 from fastapi import FastAPI, Request
 from fastapi.exceptions import HTTPException
-from auspex_core.docker.exceptions import DockerRegistryException
-from loguru import logger
 from fastapi.responses import JSONResponse
+from loguru import logger
 
 
 class HTTPNotFoundException(HTTPException):
