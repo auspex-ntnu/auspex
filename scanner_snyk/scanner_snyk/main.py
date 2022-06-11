@@ -17,7 +17,7 @@ from .config import AppConfig
 from .exceptions import install_handlers
 from .health import startup_health_check
 from .scan import scan_container
-from .models import CompletedScan, ScanOptions
+from .models import ScanOptions
 
 app = FastAPI()
 install_handlers(app)
