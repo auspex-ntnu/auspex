@@ -1,9 +1,9 @@
 # Builds and tests all Auspex services
 
-name: Build and Test
+name: Test and Build
 on: [push]
 jobs:
-  ci:
+  test:
     strategy:
       fail-fast: false
       matrix:
@@ -28,3 +28,21 @@ jobs:
       - name: Run tests
         working-directory: ./${{ matrix.service }}
         run: poetry run pytest
+  build:
+    needs: test
+    name: Trigger Google Cloud Build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - id: 'auth'
+        uses: 'google-github-actions/auth@v0'
+        with:
+          credentials_json: '${{ secrets.GCP_CREDENTIALS }}'
+      - name: 'Set up Cloud SDK'
+        uses: 'google-github-actions/setup-gcloud@v0'
+      - name: 'Use gcloud CLI'
+        run: 'gcloud info'
+      - name: 'Start Google Cloud Build trigger'
+        run: |
+          export CLOUDSDK_CORE_DISABLE_PROMPTS=1
+          gcloud beta builds triggers run ${{ secrets.GCP_PROD_BUILD_TRIGGER_ID }}
