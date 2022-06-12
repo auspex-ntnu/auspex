@@ -34,7 +34,7 @@ RUN --mount=type=cache,target=/root/.cache \
     pip install --upgrade -r /app/requirements.txt
 
 
-COPY ./scanner /app
+COPY ./scanner_snyk /app
 EXPOSE 80
 
 # Python optimization
