@@ -32,4 +32,4 @@ file_env() {
 file_env "SNYK_TOKEN"
 
 snyk auth $SNYK_TOKEN
-uvicorn scanner:app --host 0.0.0.0 --port 80
+uvicorn scanner_snyk:app --host 0.0.0.0 --port 80
