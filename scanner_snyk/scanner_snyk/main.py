@@ -51,33 +51,6 @@ async def scan_image(options: ScanOptions) -> ScanResults:
     )
 
 
-@app.get("/scans", response_model=list[ScanLog])
-async def get_scans(image: str = "") -> list[ScanLog]:
-    pass
-
-
-@app.get("/scans/{scan_id}", response_model=ScanLog)
-async def get_scan(scan_id: str) -> ScanLog:
-    """Retrieve scan for a given scan ID.
-
-    Args
-    ----
-    scan_id: `str`
-        The scan ID to retrieve.
-        A scan ID is the ID of a Firestore document.
-
-    Returns
-    -------
-    `ScanLog`
-        The scan log for the given scan ID.
-    """
-    try:
-        doc = await get_document(AppConfig().collection_scans, scan_id)
-    except ValueError:
-        raise HTTPException(status_code=404, detail="Scan not found")
-    return ScanLog(**doc.to_dict(), id=doc.id)
-
-
 @app.get("/status", response_model=ServiceStatus)
 async def get_service_status(request: Request) -> ServiceStatus:
     """Get the status of the server."""
