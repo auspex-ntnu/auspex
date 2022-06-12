@@ -30,9 +30,11 @@ steps:
     '--set-env-vars',
     'GOOGLE_CLOUD_PROJECT=${_GOOGLE_CLOUD_PROJECT},SNYK_TOKEN_FILE=${_SNYK_TOKEN_FILE},GOOGLE_APPLICATION_CREDENTIALS=${_SCANNER_CREDENTIALS}',
     '--set-secrets',
-    '${_SNYK_TOKEN_FILE}=${_SECRET_SNYK_TOKEN},${_SCANNER_CREDENTIALS}=${_SECRET_CREDENTIALS}',
+    '${_SNYK_TOKEN_FILE}=${_SECRET_SNYK_TOKEN},${_SCANNER_CREDENTIALS}=${_SCANNER_GCP_CREDENTIALS}',
     '--project',
     '${PROJECT_ID}',
+    '--service-account',
+    '${_SERVICE_ACCOUNT_SCANNER_SNYK}',
   ]
 - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
   entrypoint: gcloud

@@ -25,6 +25,8 @@ steps:
     'URL_SCANNER=${_URL_SCANNER},URL_REPORTER=${_URL_REPORTER}',
     '--project',
     '${PROJECT_ID}',
+    '--service-account',
+    '${_SERVICE_ACCOUNT_API}',
   ]
 - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
   entrypoint: gcloud

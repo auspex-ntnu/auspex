@@ -16,7 +16,6 @@ steps:
     '${_SERVICE_NAME}',
     '--image',
     '${_IMAGE_NAME}',
-    '--allow-unauthenticated',
     '--port',
     '${_PORT}',
     '--region',
@@ -25,6 +24,8 @@ steps:
     'URL_SCANNER=${_URL_SCANNER},COLLECTION_REPORTS=${_COLLECTION_REPORTS},BUCKET_REPORTS=${_BUCKET_REPORTS}',
     '--project',
     '${PROJECT_ID}',
+    '--service-account',
+    '${_SERVICE_ACCOUNT_REPORTER}',
   ]
 - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
   entrypoint: gcloud

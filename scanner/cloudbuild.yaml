@@ -25,10 +25,14 @@ steps:
     '${_CPU}',
     '--region',
     '${_SERVICE_REGION}',
-    '--project',
-    '${PROJECT_ID}',
     '--set-env-vars',
     'COLLECTION_SCANS=${_COLLECTION_SCANS},BUCKET_SCANS=${_BUCKET_SCANS},URL_SCANNER_SNYK=${_URL_SCANNER_SNYK}',
+    '--set-secrets',
+    '${_SCANNER_CREDENTIALS}=${_SCANNER_GCP_CREDENTIALS}',
+    '--project',
+    '${PROJECT_ID}',
+    '--service-account',
+    '${_SERVICE_ACCOUNT_SCANNER}',
   ]
 - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
   entrypoint: gcloud
@@ -52,6 +56,7 @@ substitutions:
     _PORT: "80"
     _MEMORY: "1Gi"
     _CPU: "1"
+    _SCANNER_CREDENTIALS: /run/secrets/gcpcreds/SCANNER_CREDENTIALS
 options:
     dynamic_substitutions: true
     substitution_option: 'ALLOW_LOOSE'
